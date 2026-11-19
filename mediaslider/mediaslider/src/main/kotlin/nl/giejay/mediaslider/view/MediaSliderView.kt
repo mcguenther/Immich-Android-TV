@@ -44,6 +44,7 @@ import nl.giejay.mediaslider.adapter.ScreenSlidePagerAdapter
 import nl.giejay.mediaslider.animation.KenBurnsAnimator
 import nl.giejay.mediaslider.animation.KenBurnsPlanner
 import nl.giejay.mediaslider.animation.MotionPlan
+import nl.giejay.mediaslider.animation.MotionTiming
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.config.TransitionType
 import nl.giejay.mediaslider.model.SliderItemType
@@ -93,6 +94,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     private var prefetcher: SlidePrefetcher? = null
     private var videoPrecacher: VideoPrecacher? = null
     private var loading = false
+    private var destroyed = false
+    private var pluginsDestroyed = false
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
     private data class ViewPluginEntry(val plugin: SliderViewPlugin<Any?>, val state: Any?)
     private val viewPlugins = mutableListOf<ViewPluginEntry>()
@@ -113,7 +116,13 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         controller = MediaSliderController(context, mainHandler, mPager, playButton, this)
         playButton.setOnClickListener { controller.toggleSlideshow(true) }
         controller.onSlideshowPlayingChanged = { playing ->
-            if (playing) resumeMotion() else freezeMotion()
+            if (playing) {
+                resumeMotion()
+                // The direction may have changed with this toggle.
+                prefetcher?.onPageChanged(mPager.currentItem, config.items, controller.isReverseSlideshow)
+            } else {
+                freezeMotion()
+            }
         }
     }
 
@@ -223,6 +232,9 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             listener
         )
 
+        pagerAdapter?.onPageDestroyed = { page -> dropMotionOfPage(page) }
+        pagerAdapter?.onFitChanged = { position -> restartMotionAfterRelayout(position) }
+
         applyTransition()
         setUpPrefetching()
 
@@ -245,6 +257,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                 if (sliderItemIndex != mPager.currentItem) {
                     return
                 }
+                // Non-smooth navigation (transition NONE) dispatches no SCROLL_STATE_IDLE, so clean up here too.
+                if (v == 0f) resetMotionOfOtherPages()
                 val sliderItem = config.items[sliderItemIndex]
                 val mainItem = sliderItem.mainItem
 
@@ -284,10 +298,12 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
             override fun onPageSelected(i: Int) {
                 viewPlugins.forEach { it.plugin.onPageSelected(viewPluginContext, i, it.state) }
-                prefetcher?.onPageChanged(i, config.items)
+                prefetcher?.onPageChanged(i, config.items, playingBackwards())
                 if (!controller.isControllerVisible) {
                     controller.restorePagerFocus()
                 }
+                // Without an animated transition the old page is gone at once; with one it is reset when idle.
+                if (!hasAnimatedTransition()) resetMotionOfOtherPages()
                 startMotionForPage(i)
             }
 
@@ -333,11 +349,12 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     // Photo motion (Ken Burns). Behaviour:
     //  - starts as soon as a page becomes the target page (onPageSelected fires when the scroll
     //    starts), so it already moves while it fades in; the settled callback is a safe fallback;
-    //  - runs for interval + transition duration, so it keeps moving while the page fades out;
+    //  - runs for interval + 2 x transition duration (it starts with the incoming transition), so it
+    //    keeps moving while the page fades out;
     //  - when the scroll is idle, every other page is cancelled and reset, so no page ever
     //    reappears mid-zoom;
     //  - pausing the slideshow freezes the motion in place; resuming continues towards the
-    //    planned end for the remaining time (at least half an interval).
+    //    planned end, timed to end when the next transition (restarted with a full interval) ends.
     // Only while the slideshow plays and the interval is at least MIN_MOTION_INTERVAL seconds.
     // ---------------------------------------------------------------------------------------
 
@@ -345,16 +362,32 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         val pageIndex: Int,
         val plan: MotionPlan,
         var startedAt: Long,
-        val durationMs: Long,
         var frozenElapsed: Long = -1L
     )
 
     private val activeMotions = HashMap<View, ActiveMotion>()
     private val waitingMovers = HashSet<View>()
 
-    private fun motionDurationMs(): Long {
+    /** Transition length in ms that actually runs: 0 for NONE or a zero duration. */
+    private fun effectiveTransitionMs(): Int {
         val t = config.transition
-        return config.interval * 1000L + (if (t.type == TransitionType.NONE) 0 else t.durationMillis)
+        return if (t.type == TransitionType.NONE) 0 else t.durationMillis.coerceAtLeast(0)
+    }
+
+    private fun hasAnimatedTransition(): Boolean = isConfigReady && effectiveTransitionMs() > 0
+
+    private fun playingBackwards(): Boolean = controller.slideShowPlaying && controller.isReverseSlideshow
+
+    /**
+     * Motion starts with the incoming transition (t = 0), the next transition starts one interval
+     * after the page settled and takes the transition time, so the motion lasts interval + 2 x transition.
+     */
+    private fun motionDurationMs(): Long = MotionTiming.fullDurationMs(config.interval, effectiveTransitionMs())
+
+    private fun moversOf(page: View): List<View> {
+        val single = page.findViewById<View>(R.id.mBigImage)
+        return if (single != null) listOf(single)
+        else listOfNotNull(page.findViewById<View>(R.id.left_image), page.findViewById<View>(R.id.right_image))
     }
 
     private fun startMotionForPage(index: Int) {
@@ -362,64 +395,85 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         val item = config.items.getOrNull(index) ?: return
         if (item.type != SliderItemType.IMAGE) return
         val page = mPager.findViewWithTag<View>("view$index") ?: return
-        val single = page.findViewById<View>(R.id.mBigImage)
-        val movers = if (single != null) listOf(single)
-        else listOfNotNull(page.findViewById<View>(R.id.left_image), page.findViewById<View>(R.id.right_image))
-        val seed = System.nanoTime()
-        val panorama = single != null && item.mainItem.isPanorama && config.motion.panoramaScroll
-        movers.forEach { startMoverMotion(it, index, panorama, seed) }
+        val movers = moversOf(page).filter { !activeMotions.containsKey(it) && !waitingMovers.contains(it) }
+        if (movers.isEmpty()) return
+        val panorama = page.findViewById<View>(R.id.mBigImage) != null && item.mainItem.isPanorama && config.motion.panoramaScroll
+        startMotionGroup(movers, index, panorama, System.nanoTime())
     }
 
-    private fun startMoverMotion(mover: View, index: Int, panorama: Boolean, seed: Long) {
-        if (activeMotions.containsKey(mover) || !waitingMovers.add(mover)) return
+    /**
+     * Starts the motion of all [movers] of one page together (a portrait pair must move in sync): waits
+     * until every mover is laid out at its fit size, then plans each with the same seed and starts
+     * them in the same moment.
+     */
+    private fun startMotionGroup(movers: List<View>, index: Int, panorama: Boolean, seed: Long) {
+        waitingMovers.addAll(movers)
         var tries = 0
+        var finished = false
         fun finish() {
-            waitingMovers.remove(mover)
+            finished = true
+            waitingMovers.removeAll(movers.toSet())
         }
-        fun tryStart(): Boolean {
-            if (mPager.currentItem != index || !controller.slideShowPlaying) {
+        fun isReady(mover: View): Boolean {
+            val fit = mover.getTag(R.id.slider_fit_result) as? FitResult ?: return false
+            val slot = mover.parent as? View ?: return false
+            return mover.width == fit.displayW && mover.height == fit.displayH && slot.width > 0 && slot.height > 0
+        }
+        fun startAll(ready: List<View>) {
+            finish()
+            val startedAt = SystemClock.uptimeMillis()
+            val duration = motionDurationMs()
+            ready.forEach { mover ->
+                val fit = mover.getTag(R.id.slider_fit_result) as FitResult
+                val slot = mover.parent as View
+                val sw = slot.width.toFloat()
+                val sh = slot.height.toFloat()
+                val dw = fit.displayW.toFloat()
+                val dh = fit.displayH.toFloat()
+                val plan = (if (panorama) KenBurnsPlanner.planPanorama(sw, sh, dw, dh, kotlin.random.Random(seed)) else null)
+                    ?: KenBurnsPlanner.plan(sw, sh, dw, dh, config.motion, kotlin.random.Random(seed))
+                if (plan != null) {
+                    KenBurnsAnimator.start(mover, plan, duration)
+                    activeMotions[mover] = ActiveMotion(index, plan, startedAt)
+                }
+            }
+        }
+        /** True when this group is done (started or abandoned). [last] starts whatever is ready. */
+        fun attempt(last: Boolean): Boolean {
+            if (finished) return true
+            if (mPager.currentItem != index || !controller.slideShowPlaying || movers.any { !it.isAttachedToWindow }) {
                 finish()
                 return true
             }
-            val fit = mover.getTag(R.id.slider_fit_result) as? FitResult ?: return false
-            val slot = mover.parent as? View ?: return false
-            if (mover.width != fit.displayW || mover.height != fit.displayH || slot.width <= 0 || slot.height <= 0) return false
-            val random = kotlin.random.Random(seed)
-            val sw = slot.width.toFloat()
-            val sh = slot.height.toFloat()
-            val dw = fit.displayW.toFloat()
-            val dh = fit.displayH.toFloat()
-            val plan = (if (panorama) KenBurnsPlanner.planPanorama(sw, sh, dw, dh, kotlin.random.Random(seed)) else null)
-                ?: KenBurnsPlanner.plan(sw, sh, dw, dh, config.motion, random)
-            finish()
-            if (plan != null) {
-                val duration = motionDurationMs()
-                KenBurnsAnimator.start(mover, plan, duration)
-                activeMotions[mover] = ActiveMotion(index, plan, SystemClock.uptimeMillis(), duration)
+            val ready = movers.filter { isReady(it) }
+            if (ready.size == movers.size || (last && ready.isNotEmpty())) {
+                startAll(ready)
+                return true
             }
-            return true
+            return false
         }
-        if (tryStart()) return
+        if (attempt(false)) return
         // Not laid out yet (photo size still unknown): start when it is.
+        val layoutListener = object : OnLayoutChangeListener {
+            override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
+                if (attempt(false)) v?.removeOnLayoutChangeListener(this)
+            }
+        }
+        movers.forEach { it.addOnLayoutChangeListener(layoutListener) }
         val retry = object : Runnable {
             override fun run() {
-                if (!waitingMovers.contains(mover)) return
-                if (tryStart() || ++tries >= 20) {
+                if (finished) {
+                    movers.forEach { it.removeOnLayoutChangeListener(layoutListener) }
+                    return
+                }
+                if (attempt(++tries >= 20)) {
                     finish()
+                    movers.forEach { it.removeOnLayoutChangeListener(layoutListener) }
                     return
                 }
                 mainHandler.postDelayed(this, 300)
             }
         }
-        mover.addOnLayoutChangeListener(object : OnLayoutChangeListener {
-            override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
-                if (!waitingMovers.contains(mover)) {
-                    mover.removeOnLayoutChangeListener(this)
-                } else if (tryStart()) {
-                    mover.removeOnLayoutChangeListener(this)
-                }
-            }
-        })
         mainHandler.postDelayed(retry, 300)
     }
 
@@ -435,6 +489,48 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
         }
         waitingMovers.retainAll { w -> w.isAttachedToWindow && w.parent != null && pageIndexOf(w) == current }
+    }
+
+    /** Drops all motion state of a page that is being destroyed (its views must not be kept alive). */
+    private fun dropMotionOfPage(page: View) {
+        fun belongsToPage(v: View): Boolean {
+            var p: View? = v
+            while (p != null && p !== page) p = p.parent as? View
+            return p === page
+        }
+        val it = activeMotions.keys.iterator()
+        while (it.hasNext()) {
+            val v = it.next()
+            if (belongsToPage(v)) {
+                KenBurnsAnimator.cancel(v)
+                it.remove()
+            }
+        }
+        waitingMovers.removeAll { belongsToPage(it) }
+    }
+
+    /** A photo's real size changed its layout: the plan of a running motion is stale, so plan again. */
+    private fun restartMotionAfterRelayout(position: Int) {
+        if (!isConfigReady || position != mPager.currentItem) return
+        val page = mPager.findViewWithTag<View>("view$position") ?: return
+        moversOf(page).forEach { mover ->
+            if (activeMotions.remove(mover) != null) KenBurnsAnimator.cancel(mover)
+            waitingMovers.remove(mover)
+        }
+        startMotionForPage(position)
+    }
+
+    /**
+     * Starts the motion of the current page once its page view exists, e.g. after the adapter rebuilt
+     * all pages. Gives up after about a second.
+     */
+    private fun startMotionWhenPageReady(index: Int, attempt: Int = 0) {
+        if (!isConfigReady || mPager.currentItem != index) return
+        if (mPager.findViewWithTag<View>("view$index") != null) {
+            startMotionForPage(index)
+        } else if (attempt < 20) {
+            mainHandler.postDelayed({ startMotionWhenPageReady(index, attempt + 1) }, 50)
+        }
     }
 
     private fun pageIndexOf(view: View): Int {
@@ -458,9 +554,11 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         val now = SystemClock.uptimeMillis()
         val current = mPager.currentItem
         var resumed = false
+        // Resuming restarts the next-slide timer with a full interval, so the motion lasts until that
+        // transition has ended; otherwise the photo would stand still before the next slide.
+        val remaining = MotionTiming.resumeDurationMs(config.interval, effectiveTransitionMs())
         activeMotions.forEach { (view, motion) ->
             if (motion.frozenElapsed >= 0 && motion.pageIndex == current) {
-                val remaining = (motion.durationMs - motion.frozenElapsed).coerceAtLeast(config.interval * 500L)
                 KenBurnsAnimator.resume(view, motion.plan, remaining)
                 motion.startedAt = now - motion.frozenElapsed
                 motion.frozenElapsed = -1L
@@ -470,11 +568,37 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         if (!resumed) startMotionForPage(current)
     }
 
+    /**
+     * Pauses everything that must not run in the background: the player and timers are released and
+     * prefetching is torn down. [onResume] sets prefetching up again.
+     */
+    fun onPause() {
+        tearDownPrefetching()
+        destroyPluginsOnce()
+        controller.onDestroy()
+    }
+
+    /** Restores prefetching (and its video cache) after [onPause]. */
+    fun onResume() {
+        if (!isConfigReady || destroyed || prefetcher != null || pagerAdapter == null) return
+        setUpPrefetching()
+        prefetcher?.onPageChanged(mPager.currentItem, config.items, playingBackwards())
+    }
+
+    /** Final teardown; also safe after [onPause]. */
     fun onDestroy() {
+        if (destroyed) return
+        destroyed = true
         tearDownPrefetching()
         ioScope.cancel()
-        viewPlugins.forEach { it.plugin.onDestroy(viewPluginContext, it.state) }
+        destroyPluginsOnce()
         controller.onDestroy()
+    }
+
+    private fun destroyPluginsOnce() {
+        if (pluginsDestroyed) return
+        pluginsDestroyed = true
+        viewPlugins.forEach { it.plugin.onDestroy(viewPluginContext, it.state) }
     }
 
     fun setDefaultExoFactory(defaultExoFactory: DefaultHttpDataSource.Factory) {
@@ -500,9 +624,12 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         }
         config.items = items
         pagerAdapter!!.setItems(items)
-        prefetcher?.onPageChanged(mPager.currentItem, items)
+        prefetcher?.onPageChanged(mPager.currentItem, items, playingBackwards())
         if (controller.slideShowPlaying && currentItemType() == SliderItemType.IMAGE) {
             controller.startTimerNextAsset()
+            // notifyDataSetChanged rebuilt every page (stale motion entries were dropped as they were
+            // destroyed); the current page lost its motion, so start it again once its view exists.
+            mainHandler.post { startMotionWhenPageReady(mPager.currentItem) }
         }
     }
 

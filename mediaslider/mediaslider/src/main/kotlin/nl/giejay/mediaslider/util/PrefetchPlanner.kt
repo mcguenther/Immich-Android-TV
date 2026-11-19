@@ -18,10 +18,12 @@ object PrefetchPlanner {
      * Indices of the next [count] slides after [current] in a list of [size], wrapping around at the end
      * like the slider does. Never contains [current] and never repeats an index, so it is shorter than
      * [count] when the list is small. Empty for an empty list, a non-positive count or an invalid [current].
+     * With [reverse] the slides before [current] are returned instead (nearest first), for a slideshow
+     * that plays backwards.
      */
-    fun indicesToPrefetch(current: Int, count: Int, size: Int): List<Int> {
+    fun indicesToPrefetch(current: Int, count: Int, size: Int, reverse: Boolean = false): List<Int> {
         if (count <= 0 || size <= 1 || current !in 0 until size) return emptyList()
-        return (1..minOf(count, size - 1)).map { (current + it) % size }
+        return (1..minOf(count, size - 1)).map { if (reverse) (current - it + size) % size else (current + it) % size }
     }
 
     /** Keys that are active but no longer wanted, i.e. the preloads to cancel. */

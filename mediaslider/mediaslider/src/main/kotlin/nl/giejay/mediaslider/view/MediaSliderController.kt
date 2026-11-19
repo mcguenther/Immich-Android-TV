@@ -19,6 +19,7 @@ import androidx.viewpager.widget.ViewPager
 import com.zeuskartik.mediaslider.R
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.config.TransitionType
+import nl.giejay.mediaslider.util.PageJump
 import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.plugin.ControllerButtonPlacement
@@ -63,6 +64,9 @@ class MediaSliderController(
     private var isSeeking = false
 
     private var reverseSlideShowDirection = false
+
+    /** True while the slideshow plays backwards (previous instead of next); used to prefetch in that direction. */
+    val isReverseSlideshow: Boolean get() = reverseSlideShowDirection
     private val goToNextAssetRunnable = Runnable { goToNextAsset() }
     private val goToPreviousAssetRunnable = Runnable { goToPreviousAsset() }
 
@@ -134,8 +138,9 @@ class MediaSliderController(
 
     fun toggleSlideshow(showPlayIndicator: Boolean, reverseSlideShowDirection: Boolean = false) {
         slideShowPlaying = !slideShowPlaying
-        onSlideshowPlayingChanged?.invoke(slideShowPlaying)
+        // Set before notifying, so listeners (motion, prefetch) already see the new direction.
         this.reverseSlideShowDirection = reverseSlideShowDirection
+        onSlideshowPlayingChanged?.invoke(slideShowPlaying)
         val itemType = currentItemTypeOrNull()
         if (slideShowPlaying) {
             if (itemType == SliderItemType.IMAGE) {
@@ -203,12 +208,14 @@ class MediaSliderController(
     private val smoothScroll: Boolean
         get() = config.transition.type != TransitionType.NONE && config.transition.durationMillis > 0
 
+    /** Moves to [target]; only neighbouring pages animate, a wrap-around is a hard cut (see [PageJump.smooth]). */
+    private fun goToPage(target: Int) {
+        pager.setCurrentItem(target, PageJump.smooth(pager.currentItem, target, smoothScroll))
+    }
+
     fun goToNextAsset() {
-        if (pager.currentItem < pager.adapter!!.count - 1) {
-            pager.setCurrentItem(pager.currentItem + 1, smoothScroll)
-        } else {
-            pager.setCurrentItem(0, smoothScroll)
-        }
+        val count = pager.adapter!!.count
+        goToPage(if (pager.currentItem < count - 1) pager.currentItem + 1 else 0)
         // Keep controller focus if the overlay is open (e.g. mid D-pad to pause during slideshow).
         if (!isControllerVisible) {
             restorePagerFocus()
@@ -216,10 +223,7 @@ class MediaSliderController(
     }
 
     fun goToPreviousAsset() {
-        pager.setCurrentItem(
-            (if (0 == pager.currentItem) pager.adapter!!.count else pager.currentItem) - 1,
-            smoothScroll
-        )
+        goToPage((if (0 == pager.currentItem) pager.adapter!!.count else pager.currentItem) - 1)
         if (!isControllerVisible) {
             restorePagerFocus()
         }

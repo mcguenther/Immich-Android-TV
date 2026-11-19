@@ -11,8 +11,10 @@ import kotlin.math.abs
  * and the incoming page fades in on top of the outgoing one, which stays opaque; fading both
  * would dip to dark in the middle.
  *
- * [SurfaceView] ignores alpha, so a page that contains one cannot fade: it is shown fully while
- * it is the nearer page (|position| < 0.5) and hidden otherwise, i.e. a hard cut at the midpoint.
+ * [SurfaceView] ignores alpha, so a page that contains one cannot fade. As the OUTGOING page it simply
+ * stays visible until it is fully covered (the incoming page is drawn above it via translationZ and
+ * fades in over the video, so there is no dip). As the INCOMING page it is hidden until the midpoint
+ * (|position| < 0.5) and then cut in on top, so the outgoing photo is never replaced by an empty surface.
  *
  * @param currentItem the pager's target item; it is the incoming page during a scroll
  */
@@ -25,7 +27,7 @@ class CrossfadePageTransformer(private val currentItem: () -> Int) : ViewPager.P
         page.translationZ = if (incoming) 1f else 0f
         if (containsSurfaceView(page)) {
             page.alpha = 1f
-            page.visibility = if (abs(position) < 0.5f) View.VISIBLE else View.INVISIBLE
+            page.visibility = if (surfaceVisible(position, incoming)) View.VISIBLE else View.INVISIBLE
         } else {
             page.visibility = View.VISIBLE
             page.alpha = alphaFor(position, incoming)
@@ -41,6 +43,12 @@ class CrossfadePageTransformer(private val currentItem: () -> Int) : ViewPager.P
     }
 
     companion object {
+        /** Visibility of a page holding a [SurfaceView], which cannot fade; see the class comment. */
+        fun surfaceVisible(position: Float, incoming: Boolean): Boolean {
+            val a = abs(position)
+            return if (incoming) a < 0.5f else a < 1f
+        }
+
         /** Cancels the pager's horizontal slide of a page at [position]. */
         fun pinnedTranslationX(position: Float, width: Int): Float = -position * width
 

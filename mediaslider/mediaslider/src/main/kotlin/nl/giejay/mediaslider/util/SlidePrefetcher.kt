@@ -32,10 +32,13 @@ class SlidePrefetcher(
         PrefetchPlanner.effectiveCount(config.loading.prefetchCount, am?.isLowRamDevice ?: false, am?.memoryClass ?: Int.MAX_VALUE)
     }
 
-    /** Re-plans the window after the current page became [current] (or [items] changed). */
-    fun onPageChanged(current: Int, items: List<SliderItemViewHolder>) {
+    /**
+     * Re-plans the window after the current page became [current] (or [items] changed). With
+     * [reverse] the slides before [current] are prefetched (a slideshow playing backwards).
+     */
+    fun onPageChanged(current: Int, items: List<SliderItemViewHolder>, reverse: Boolean = false) {
         if (count == 0) return
-        val wanted = PrefetchPlanner.indicesToPrefetch(current, count, items.size).map { items[it] }
+        val wanted = PrefetchPlanner.indicesToPrefetch(current, count, items.size, reverse).map { items[it] }
         val wantedKeys = wanted.map { key(it) }.toSet()
         PrefetchPlanner.staleKeys(active.keys.toList(), wantedKeys).forEach { cancel(it) }
         wanted.forEach { slide ->
