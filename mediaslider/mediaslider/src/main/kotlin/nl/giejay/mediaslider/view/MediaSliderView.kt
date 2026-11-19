@@ -14,8 +14,6 @@ import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.children
@@ -33,7 +31,10 @@ import com.google.common.collect.Lists
 import com.zeuskartik.mediaslider.R
 import nl.giejay.mediaslider.player.VideoCache
 import nl.giejay.mediaslider.player.VideoPrecacher
+import nl.giejay.mediaslider.util.OverlayFade
+import nl.giejay.mediaslider.util.PrefetchDeferral
 import nl.giejay.mediaslider.util.SlidePrefetcher
+import nl.giejay.mediaslider.util.TransitionFrameMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -96,6 +97,19 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     private var prefetcher: SlidePrefetcher? = null
     private var videoPrecacher: VideoPrecacher? = null
     private var loading = false
+
+    // Slide transition bookkeeping (see the pager listener): while a transition animates nothing heavy may start.
+    private var transitionActive = false
+    private var jumpCandidate = false
+    private var playerStoppedForScroll = false
+    private var lastSelected = -1
+    private var transitionSeq = 0
+    private var transitionImageStart = ""
+    private val frameMonitor = TransitionFrameMonitor { 1000.0 / (display?.refreshRate?.takeIf { it > 1f } ?: 60f) }
+    private val prefetchRunnable = Runnable {
+        if (!destroyed) prefetcher?.onPageChanged(mPager.currentItem, config.items, playingBackwards())
+    }
+    private val monitorTimeoutRunnable = Runnable { frameMonitor.stop("no idle signal, stopped by timeout") }
     private var destroyed = false
     private var pluginsDestroyed = false
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
@@ -210,11 +224,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             return
         }
         try {
-            val interpolator = if (transition.type == TransitionType.CROSSFADE) {
-                AccelerateDecelerateInterpolator()
-            } else {
-                DecelerateInterpolator(0.75F)
-            }
+            // The label cross-fade uses the same easing, see OverlayFade.
+            val interpolator = OverlayFade.interpolator(transition)
             val mScroller: Field = ViewPager::class.java.getDeclaredField("mScroller")
             mScroller.isAccessible = true
             mScroller.set(mPager, FixedSpeedScroller(mPager.context, interpolator, transition.durationMillis))
@@ -222,7 +233,12 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             Timber.e(e, "Could not set scroller")
         }
         if (transition.type == TransitionType.CROSSFADE) {
-            mPager.setPageTransformer(false, CrossfadePageTransformer { mPager.currentItem })
+            // LAYER_TYPE_NONE: by default the pager turns every page into a hardware layer for the length of the
+            // transition. That costs a full-screen texture per page created at the first frame (and torn down at
+            // the last one), and the incoming page's Ken Burns motion would invalidate its layer on every frame.
+            // Without layers the outgoing page is drawn directly and only the incoming page needs an offscreen
+            // pass for its alpha.
+            mPager.setPageTransformer(false, CrossfadePageTransformer { mPager.currentItem }, View.LAYER_TYPE_NONE)
         }
     }
 
@@ -237,6 +253,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
         pagerAdapter?.onPageDestroyed = { page -> dropMotionOfPage(page) }
         pagerAdapter?.onFitChanged = { position -> restartMotionAfterRelayout(position) }
+        pagerAdapter?.isTransitionActive = { transitionActive }
 
         applyTransition()
         setUpPrefetching()
@@ -256,9 +273,22 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                         loading = false
                     }
                 }
-                controller.stopPlayer()
+                // Stop the player once per transition (and at rest), not on every scroll frame.
+                if (v == 0f || !playerStoppedForScroll) {
+                    controller.stopPlayer()
+                    playerStoppedForScroll = v != 0f
+                }
                 if (sliderItemIndex != mPager.currentItem) {
                     return
+                }
+                // While a transition runs the pager reports offsets for the current page too (e.g. when paging
+                // backwards); the settle work below (plugins, controller rebuild, player) must only run once, at rest.
+                if (v != 0f) return
+                onTransitionEnded()
+                if (jumpCandidate) {
+                    // No animated scroll followed the selection (wrap-around jump, transition NONE): hard cut.
+                    jumpCandidate = false
+                    viewPlugins.forEach { it.plugin.onTransitionSkipped(viewPluginContext, it.state) }
                 }
                 // Non-smooth navigation (transition NONE) dispatches no SCROLL_STATE_IDLE, so clean up here too.
                 if (v == 0f) resetMotionOfOtherPages()
@@ -302,8 +332,16 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
 
             override fun onPageSelected(i: Int) {
+                transitionActive = hasAnimatedTransition()
+                jumpCandidate = true
                 viewPlugins.forEach { it.plugin.onPageSelected(viewPluginContext, i, it.state) }
-                prefetcher?.onPageChanged(i, config.items, playingBackwards())
+                // Prefetching decodes big photos and starts video I/O: wait for the transition to be over.
+                mainHandler.removeCallbacks(prefetchRunnable)
+                mainHandler.postDelayed(
+                    prefetchRunnable,
+                    if (transitionActive) PrefetchDeferral.fallbackDelayMs(effectiveTransitionMs()) else PrefetchDeferral.SETTLE_DELAY_MS
+                )
+                startFrameMonitor(i)
                 if (!controller.isControllerVisible) {
                     controller.restorePagerFocus()
                 }
@@ -313,7 +351,10 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
 
             override fun onPageScrollStateChanged(state: Int) {
-                if (state == ViewPager.SCROLL_STATE_IDLE) {
+                if (state != ViewPager.SCROLL_STATE_IDLE) {
+                    jumpCandidate = false
+                } else {
+                    onTransitionEnded()
                     resetMotionOfOtherPages()
                 }
             }
@@ -322,6 +363,39 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         // still gets onPageSelected / onPageSettled (metadata, date overlay, etc.).
         setStartPosition()
         prefetcher?.onPageChanged(mPager.currentItem, config.items)
+    }
+
+    /**
+     * The transition (if any) is over: stops the jank measurement, applies postponed photo relayouts and
+     * starts the postponed prefetching after a short quiet time. Idempotent (called for both the settle and idle signals).
+     */
+    private fun onTransitionEnded() {
+        val wasActive = transitionActive
+        transitionActive = false
+        if (frameMonitor.isRecording) {
+            mainHandler.removeCallbacks(monitorTimeoutRunnable)
+            frameMonitor.stop("image ${transitionImageStart} -> ${pagerAdapter?.imageState(mPager.currentItem)}")
+        }
+        pagerAdapter?.flushPendingFits()
+        if (wasActive) {
+            mainHandler.removeCallbacks(prefetchRunnable)
+            mainHandler.postDelayed(prefetchRunnable, PrefetchDeferral.SETTLE_DELAY_MS)
+        }
+    }
+
+    /** Starts the per-transition frame timing (one INFO line, tag SlideTransition, when it ends). */
+    private fun startFrameMonitor(index: Int) {
+        val previous = lastSelected
+        lastSelected = index
+        if (previous < 0 || !transitionActive) return
+        transitionSeq++
+        transitionImageStart = pagerAdapter?.imageState(index) ?: "?"
+        frameMonitor.start(
+            "#$transitionSeq ${previous}->${index} ${config.transition.type.name.lowercase()} ${config.transition.durationMillis}ms" +
+                (if (playingBackwards()) " reverse" else "") + (if (controller.slideShowPlaying) " playing" else " manual")
+        )
+        mainHandler.removeCallbacks(monitorTimeoutRunnable)
+        mainHandler.postDelayed(monitorTimeoutRunnable, effectiveTransitionMs() + MONITOR_TIMEOUT_MARGIN_MS)
     }
 
     /** Authenticated HTTP factory, wrapped in the shared video cache when that could be opened. */
@@ -340,6 +414,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     }
 
     private fun tearDownPrefetching() {
+        mainHandler.removeCallbacks(prefetchRunnable)
         prefetcher?.clear()
         prefetcher = null
         videoPrecacher?.shutdown()
@@ -650,6 +725,9 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     companion object {
         /** Shortest slide interval (seconds) that still gets photo motion. */
         private const val MIN_MOTION_INTERVAL = 4
+
+        /** Slack after the transition length before a measurement without idle signal is closed. */
+        private const val MONITOR_TIMEOUT_MARGIN_MS = 1500L
 
         @SuppressLint("UnsafeOptInUsageError")
         fun prepareMedia(mediaUrl: String, player: ExoPlayer, factory: DataSource.Factory, startPositionMs: Long = 0L) {

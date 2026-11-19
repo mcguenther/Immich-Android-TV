@@ -136,19 +136,13 @@ object KenBurnsPlanner {
  * Callers should pass [MotionTiming.fullDurationMs]: the motion starts with the incoming transition
  * and keeps running while the slide fades/slides out, so it never stops visibly before the next slide.
  * There is deliberately no end or reset animation; call [cancel] when the page is recycled.
+ *
+ * No hardware layer is used on the animated view (no `withLayer()`): an ImageView's bitmap is already a GPU
+ * texture, so scaling/translating it is a single textured quad per frame, while a layer would add a texture
+ * allocation + render at the start of the motion (which coincides with the slide transition), one more
+ * full-screen composite pass per frame, and a blurry result for strongly scaled photos (panoramas).
  */
 object KenBurnsAnimator {
-    /**
-     * A hardware layer is rasterised once at the view's layout size and then only scaled, which turns
-     * a strongly scaled photo (a scrolled panorama is ~2-3x) into a blurry texture. Plans that scale
-     * beyond this stay on the normal render path, where the bitmap is drawn at its real scale.
-     */
-    private const val MAX_LAYER_SCALE = 1.5f
-
-    /** True when [plan] scales little enough that a hardware layer stays sharp. */
-    internal fun useHardwareLayer(plan: MotionPlan): Boolean =
-        max(plan.startScale, plan.endScale) <= MAX_LAYER_SCALE
-
     /**
      * Plans (with `Random(seed)`, so both halves of a portrait pair can share a seed) and starts.
      * The view must already be laid out (its size is the display size). Returns false when the
@@ -183,7 +177,6 @@ object KenBurnsAnimator {
             .translationY(plan.endTranslationY)
             .setDuration(durationMs)
             .setInterpolator(LinearInterpolator())
-            .also { if (useHardwareLayer(plan)) it.withLayer() }
             .start()
     }
 
@@ -208,7 +201,6 @@ object KenBurnsAnimator {
             .translationY(plan.endTranslationY)
             .setDuration(durationMs)
             .setInterpolator(LinearInterpolator())
-            .also { if (useHardwareLayer(plan)) it.withLayer() }
             .start()
     }
 

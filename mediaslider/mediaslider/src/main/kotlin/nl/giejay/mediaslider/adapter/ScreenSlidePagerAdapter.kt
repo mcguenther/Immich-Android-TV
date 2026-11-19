@@ -2,11 +2,12 @@ package nl.giejay.mediaslider.adapter
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
-import android.view.View.GONE
+import android.view.View.INVISIBLE
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -53,6 +54,34 @@ class ScreenSlidePagerAdapter(private val context: Context,
     /** Called with the page position when a photo's real size changed its layout after it was shown (running motion is stale). */
     var onFitChanged: ((Int) -> Unit)? = null
 
+    /** True while a page transition animates; a relayout of a photo whose size is already known waits until it ends. */
+    var isTransitionActive: () -> Boolean = { false }
+
+    private val pendingFits = HashMap<Int, () -> Unit>()
+
+    /** Where each position's (full resolution) image came from once it was delivered; one entry per photo of the page. */
+    private val loadedSources = HashMap<Int, MutableList<String>>()
+
+    /** Applies the fit changes that were postponed because a transition was running. Call when it is idle. */
+    fun flushPendingFits() {
+        if (pendingFits.isEmpty()) return
+        val pending = pendingFits.values.toList()
+        pendingFits.clear()
+        pending.forEach { it() }
+    }
+
+    /**
+     * Diagnostic: whether the image(s) of [position] have been delivered by Glide ("loaded(MEMORY_CACHE)"
+     * etc., i.e. no wait for the network or a decode) or are still pending; "video" for videos.
+     */
+    fun imageState(position: Int): String {
+        val item = items.getOrNull(position) ?: return "unknown"
+        if (item.type != SliderItemType.IMAGE) return "video"
+        val expected = if (item.hasSecondaryItem()) 2 else 1
+        val sources = loadedSources[position].orEmpty()
+        return if (sources.size >= expected) "loaded(${sources.joinToString("+")})" else "pending(${sources.size}/$expected)"
+    }
+
     fun setItems(items: List<SliderItemViewHolder>) {
         this.items = items
         notifyDataSetChanged()
@@ -61,7 +90,8 @@ class ScreenSlidePagerAdapter(private val context: Context,
     fun hideProgressBar(position: Int) {
         val progressBar = progressBars[position]
         if (progressBar != null) {
-            progressBar.visibility = GONE
+            // INVISIBLE, not GONE: GONE would request a layout of the page, possibly during a transition.
+            progressBar.visibility = INVISIBLE
             progressBars.remove(position)
         }
     }
@@ -208,17 +238,29 @@ class ScreenSlidePagerAdapter(private val context: Context,
                     // Runs before the drawable is set on the view, so the new layout and the new
                     // drawable are applied in the same pass. Metadata can be missing or wrong (edited
                     // photos), so the real aspect ratio wins when it differs.
+                    // Hint the GPU upload now (usually while the page is still off screen) instead of at its first draw.
+                    (resource as? BitmapDrawable)?.bitmap?.prepareToDraw()
+                    loadedSources.getOrPut(position) { mutableListOf() }.add(dataSource.name)
                     val rw = resource.intrinsicWidth
                     val rh = resource.intrinsicHeight
                     if (rw > 0 && rh > 0) {
                         val known = imageW > 0 && imageH > 0
                         val differs = known && abs((rw.toDouble() / rh) / (imageW.toDouble() / imageH) - 1.0) > ASPECT_TOLERANCE
                         if (!known || differs) {
-                            imageW = rw
-                            imageH = rh
-                            applyFit()
-                            // The mover is re-laid out; a motion planned for the old size is stale.
-                            onFitChanged?.invoke(position)
+                            val apply: () -> Unit = {
+                                imageW = rw
+                                imageH = rh
+                                applyFit()
+                                // The mover is re-laid out; a motion planned for the old size is stale.
+                                onFitChanged?.invoke(position)
+                            }
+                            if (known && isTransitionActive()) {
+                                // The page is animating: a layout pass now would cost a frame. The photo is
+                                // already drawn (scale type fits it into the old bounds); fix the layout at idle.
+                                pendingFits[position] = apply
+                            } else {
+                                apply()
+                            }
                         }
                     }
                     hideProgressBar(position)
@@ -240,6 +282,8 @@ class ScreenSlidePagerAdapter(private val context: Context,
     override fun destroyItem(container: ViewGroup, position: Int, `object`: Any) {
         val view = `object` as View
         onPageDestroyed?.invoke(view)
+        pendingFits.remove(position)
+        loadedSources.remove(position)
         if (view is ExoPlayerView) {
             view.releasePlayer()
         } else {

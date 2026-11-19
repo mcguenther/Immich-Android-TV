@@ -20,10 +20,19 @@ import kotlin.math.abs
  */
 class CrossfadePageTransformer(private val currentItem: () -> Int) : ViewPager.PageTransformer {
 
+    // Called for every page on every frame: do not allocate the tag string each time.
+    private var cachedItem = -1
+    private var cachedTag = ""
+
     override fun transformPage(page: View, position: Float) {
         val visible = abs(position) < 1f
         page.translationX = if (visible) pinnedTranslationX(position, page.width) else 0f
-        val incoming = page.tag == "view${currentItem()}"
+        val current = currentItem()
+        if (current != cachedItem) {
+            cachedItem = current
+            cachedTag = "view$current"
+        }
+        val incoming = page.tag == cachedTag
         page.translationZ = if (incoming) 1f else 0f
         if (containsSurfaceView(page)) {
             page.alpha = 1f
