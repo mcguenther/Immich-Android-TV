@@ -11,6 +11,7 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -33,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.giejay.mediaslider.adapter.ScreenSlidePagerAdapter
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
+import nl.giejay.mediaslider.config.TransitionType
 import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.plugin.MetadataViewPlugin
@@ -168,6 +170,33 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         controller.restorePagerFocus()
     }
 
+    /**
+     * Configures the pager for [MediaSliderConfiguration.transition]. The scroll duration is forced
+     * through [FixedSpeedScroller]; CROSSFADE additionally pins the pages and fades them.
+     * NONE (or a zero duration) needs no scroller because navigation then jumps without animation.
+     */
+    private fun applyTransition() {
+        val transition = config.transition
+        if (transition.type == TransitionType.NONE || transition.durationMillis <= 0) {
+            return
+        }
+        try {
+            val interpolator = if (transition.type == TransitionType.CROSSFADE) {
+                AccelerateDecelerateInterpolator()
+            } else {
+                DecelerateInterpolator(0.75F)
+            }
+            val mScroller: Field = ViewPager::class.java.getDeclaredField("mScroller")
+            mScroller.isAccessible = true
+            mScroller.set(mPager, FixedSpeedScroller(mPager.context, interpolator, transition.durationMillis))
+        } catch (e: Exception) {
+            Timber.e(e, "Could not set scroller")
+        }
+        if (transition.type == TransitionType.CROSSFADE) {
+            mPager.setPageTransformer(false, CrossfadePageTransformer { mPager.currentItem })
+        }
+    }
+
     private fun initViewsAndSetAdapter(listener: ExoPlayerListener) {
         pagerAdapter = ScreenSlidePagerAdapter(
             context,
@@ -177,16 +206,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             listener
         )
 
-        try {
-            if (config.enableSlideAnimation && config.animationSpeedMillis > 0) {
-                val mScroller: Field = ViewPager::class.java.getDeclaredField("mScroller")
-                mScroller.isAccessible = true
-                val scroller = FixedSpeedScroller(mPager.context, DecelerateInterpolator(0.75F), config.animationSpeedMillis)
-                mScroller.set(mPager, scroller)
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Could not set scroller")
-        }
+        applyTransition()
 
         mPager.setAdapter(pagerAdapter)
         mPager.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
