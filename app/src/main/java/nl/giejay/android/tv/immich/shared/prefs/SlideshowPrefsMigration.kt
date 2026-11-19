@@ -18,6 +18,8 @@ object SlideshowPrefsMigration {
     internal const val OLD_MERGE_PORTRAIT = "slider_merge_portrait_photos"
     internal const val OLD_ZOOM_SCROLL_PANORAMAS = "slider_zoom_scroll_panoramas"
     internal const val OLD_ANIMATION_SPEED = "slider_animation_speed"
+    // default of the removed cut-off seekbar, used when SAFE_CENTER_CROP was chosen without ever moving it
+    internal const val OLD_MAX_CUT_OFF_DEFAULT = 20
     internal const val OLD_SCREENSAVER_ANIMATE_SLIDE = "screensaver_animate_asset_slide"
     internal val OLD_KEYS = listOf(
         OLD_GLIDE_TRANSFORMATION, OLD_MAX_CUT_OFF_HEIGHT, "slider_max_cut_off_width", OLD_MERGE_PORTRAIT,
@@ -34,8 +36,9 @@ object SlideshowPrefsMigration {
         when (prefs.getString(OLD_GLIDE_TRANSFORMATION, null)) {
             "CENTER_CROP" -> edit.putString(SLIDESHOW_MAX_CROP.key(), "100")
             "SAFE_CENTER_CROP" -> {
-                val old = prefs.all[OLD_MAX_CUT_OFF_HEIGHT] as? Int
-                if (old != null) edit.putString(SLIDESHOW_MAX_CROP.key(), nearestMaxCrop(old).toString())
+                // a never-stored cut-off means the old default, not the new one
+                val old = prefs.all[OLD_MAX_CUT_OFF_HEIGHT] as? Int ?: OLD_MAX_CUT_OFF_DEFAULT
+                edit.putString(SLIDESHOW_MAX_CROP.key(), nearestMaxCrop(old).toString())
             }
         }
 
