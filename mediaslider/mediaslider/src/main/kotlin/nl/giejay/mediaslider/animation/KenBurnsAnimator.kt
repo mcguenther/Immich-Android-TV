@@ -88,6 +88,34 @@ object KenBurnsPlanner {
         )
     }
 
+    /**
+     * Plan for a panorama that is fitted (it does not cover the slot): scale it until it covers the
+     * slot on the short axis, then scroll linearly from one end to the other along the long axis,
+     * in a random direction. Returns null when there is nothing to scroll (the scaled image does
+     * not overflow the slot by at least a pixel), so callers can fall back to [plan].
+     */
+    fun planPanorama(
+        slotW: Float,
+        slotH: Float,
+        displayW: Float,
+        displayH: Float,
+        random: Random
+    ): MotionPlan? {
+        if (slotW <= 0f || slotH <= 0f || displayW <= 0f || displayH <= 0f) return null
+        val scale = max(1f, max(slotW / displayW, slotH / displayH))
+        val mx = maxTranslation(displayW, slotW, scale)
+        val my = maxTranslation(displayH, slotH, scale)
+        val horizontal = mx >= my
+        val m = if (horizontal) mx else my
+        if (m < 1f) return null
+        val dir = if (random.nextBoolean()) 1f else -1f
+        return if (horizontal) {
+            MotionPlan(scale, scale, -dir * m, 0f, dir * m, 0f)
+        } else {
+            MotionPlan(scale, scale, 0f, -dir * m, 0f, dir * m)
+        }
+    }
+
     /** Largest translation that still keeps the slot covered by an image of [display] size at [scale]. */
     fun maxTranslation(display: Float, slot: Float, scale: Float): Float = max(0f, (display * scale - slot) / 2f)
 
@@ -132,6 +160,25 @@ object KenBurnsAnimator {
         }
         start(view, plan, durationMs)
         return true
+    }
+
+    /** Animates from the view's current state to the end of [plan] (continues a motion that was frozen). */
+    fun resume(view: View, plan: MotionPlan, durationMs: Long) {
+        view.animate().cancel()
+        view.animate()
+            .scaleX(plan.endScale)
+            .scaleY(plan.endScale)
+            .translationX(plan.endTranslationX)
+            .translationY(plan.endTranslationY)
+            .setDuration(durationMs)
+            .setInterpolator(LinearInterpolator())
+            .withLayer()
+            .start()
+    }
+
+    /** Stops the motion where it is, without resetting the transform. */
+    fun freeze(view: View) {
+        view.animate().cancel()
     }
 
     /** Applies the start state at once, then animates to the end state. */

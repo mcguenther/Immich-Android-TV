@@ -129,8 +129,12 @@ class MediaSliderController(
     // Slideshow
     // -------------------------------------------------------------------------
 
+    /** Called after the slideshow was started (true) or paused (false); drives the photo motion. */
+    var onSlideshowPlayingChanged: ((Boolean) -> Unit)? = null
+
     fun toggleSlideshow(showPlayIndicator: Boolean, reverseSlideShowDirection: Boolean = false) {
         slideShowPlaying = !slideShowPlaying
+        onSlideshowPlayingChanged?.invoke(slideShowPlaying)
         this.reverseSlideShowDirection = reverseSlideShowDirection
         val itemType = currentItemTypeOrNull()
         if (slideShowPlaying) {

@@ -41,20 +41,4 @@ class MediaSliderConfiguration(
     /** TRANSITIONAL (loading rework): use [loading]. */
     val isOnlyUseThumbnails: Boolean
         get() = !loading.useFullResolution
-
-    /** TRANSITIONAL (transition rework): use [transition]. */
-    val animationSpeedMillis: Int
-        get() = transition.durationMillis
-
-    /** TRANSITIONAL (motion rework): use [motion]. */
-    val zoomAndScrollPanorama: Boolean
-        get() = motion.enabled || motion.panoramaScroll
-
-    /** TRANSITIONAL (motion rework): use [motion]. */
-    val zoomEffectPercent: Int
-        get() = if (motion.enabled) motion.zoomPercent else 0
-
-    /** TRANSITIONAL (motion rework): use [motion]. */
-    val panEffectPercent: Int
-        get() = if (motion.enabled) motion.panPercent else 0
 }

@@ -107,4 +107,37 @@ class KenBurnsPlannerTest {
         assertEquals(0f, CrossfadePageTransformer.alphaFor(-1.2f, false), 1e-5f)
         assertEquals(1f, CrossfadePageTransformer.alphaFor(0f, true), 1e-5f)
     }
+
+    @Test
+    fun panoramaCoversShortAxisAndScrollsEndToEnd() {
+        val seen = mutableSetOf<Float>()
+        for (seed in 0L..100L) {
+            // wide panorama fitted into a 16:9 slot: 1920 x 480
+            val p = KenBurnsPlanner.planPanorama(1920f, 1080f, 1920f, 480f, Random(seed))!!
+            assertEquals(2.25f, p.startScale, 1e-4f)
+            assertEquals(p.startScale, p.endScale, 0f)
+            assertEquals(0f, p.startTranslationY, 0f)
+            assertEquals(0f, p.endTranslationY, 0f)
+            assertEquals(-p.endTranslationX, p.startTranslationX, 1e-3f)
+            assertEquals((1920f * 2.25f - 1920f) / 2, abs(p.endTranslationX), 0.01f)
+            // slot covered vertically at this scale
+            assertTrue(480f * p.startScale >= 1080f - 0.01f)
+            seen.add(kotlin.math.sign(p.endTranslationX))
+        }
+        assertEquals(setOf(-1f, 1f), seen)
+    }
+
+    @Test
+    fun tallPanoramaScrollsVertically() {
+        val p = KenBurnsPlanner.planPanorama(960f, 1080f, 400f, 1080f, Random(3))!!
+        assertEquals(2.4f, p.startScale, 1e-4f)
+        assertEquals(0f, p.endTranslationX, 0f)
+        assertTrue(abs(p.endTranslationY) > 0f)
+        assertValid(p, listOf(960f, 1080f, 400f, 1080f))
+    }
+
+    @Test
+    fun panoramaWithNothingToScrollIsNull() {
+        assertNull(KenBurnsPlanner.planPanorama(1920f, 1080f, 1920f, 1080f, Random(1)))
+    }
 }
