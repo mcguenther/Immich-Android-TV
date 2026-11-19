@@ -364,6 +364,25 @@ data object SLIDESHOW_TRANSITION_DURATION : IntListPref(1000,
     override fun key() = "slideshow_transition_duration"
 }
 
+data object SLIDESHOW_VIDEO_CLIP_LENGTH : IntListPref(-1,
+    str(R.string.slideshow_video_clip_length), str(R.string.slideshow_video_clip_length_desc),
+    R.array.slideshow_video_clip_length_titles, R.array.slideshow_video_clip_length_values) {
+    override fun key() = "slideshow_video_clip_length"
+}
+
+data object SLIDESHOW_VIDEO_CLIP_POSITION : EnumByTitlePref<VideoClipPosition>(VideoClipPosition.START,
+    str(R.string.slideshow_video_clip_position), str(R.string.slideshow_video_clip_position_desc)) {
+    override fun key() = "slideshow_video_clip_position"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = VideoClipPosition.entries.toTypedArray()
+}
+
+data object SLIDESHOW_VIDEO_TRIM_END : IntListPref(1,
+    str(R.string.slideshow_video_trim_end), str(R.string.slideshow_video_trim_end_desc),
+    R.array.slideshow_video_trim_end_titles, R.array.slideshow_video_trim_end_values) {
+    override fun key() = "slideshow_video_trim_end"
+}
+
 data object SLIDESHOW_VIDEO_CINEMA_FPS : EnumByTitlePref<CinemaFrameRateOption>(CinemaFrameRateOption.OFF,
     str(R.string.slideshow_video_cinema_fps), str(R.string.slideshow_video_cinema_fps_desc)) {
     override fun key() = "slideshow_video_cinema_fps"
@@ -612,13 +631,11 @@ data object SlideshowDisplayPrefScreen : PrefScreen(str(R.string.slideshow_displ
         PrefCategory("", listOf(
             SLIDESHOW_FILL_MODE,
             SLIDESHOW_MAX_CROP,
-            SLIDESHOW_FILL_VIDEOS,
             SLIDESHOW_EDGE_FILL
         ))
     ),
     visibility = mapOf(
-        SLIDESHOW_MAX_CROP to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL },
-        SLIDESHOW_FILL_VIDEOS to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL }
+        SLIDESHOW_MAX_CROP to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL }
     )
 )
 
@@ -642,9 +659,30 @@ data object SlideshowMotionPrefScreen : PrefScreen(str(R.string.slideshow_motion
 data object SlideshowPairsPrefScreen : PrefScreen(str(R.string.slideshow_pairs), "slideshow_pairs",
     listOf(
         PrefCategory("", listOf(
-            SLIDESHOW_PORTRAIT_PAIRING,
-            SLIDESHOW_SHOW_PORTRAIT_VIDEOS
+            SLIDESHOW_PORTRAIT_PAIRING
         ))
+    )
+)
+
+data object SlideshowVideosPrefScreen : PrefScreen(str(R.string.slideshow_videos), "slideshow_videos",
+    listOf(
+        PrefCategory("", listOf(
+            SLIDESHOW_VIDEO_CLIP_LENGTH,
+            SLIDESHOW_VIDEO_CLIP_POSITION,
+            SLIDESHOW_VIDEO_TRIM_END,
+            SLIDESHOW_VIDEO_CINEMA_FPS,
+            SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED,
+            SLIDESHOW_SHOW_PORTRAIT_VIDEOS,
+            SLIDESHOW_FILL_VIDEOS,
+            SLIDER_FORCE_ORIGINAL_VIDEO,
+            SLIDER_DPAD_SEEK_IN_VIDEO,
+            SLIDESHOW_VIDEO_CACHE_MB
+        ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_VIDEO_CLIP_POSITION to { prefs -> SLIDESHOW_VIDEO_CLIP_LENGTH.getValue(prefs) != 0 },
+        SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED to { prefs -> SLIDESHOW_VIDEO_CINEMA_FPS.getValue(prefs) != CinemaFrameRateOption.OFF },
+        SLIDESHOW_FILL_VIDEOS to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL }
     )
 )
 
@@ -653,14 +691,11 @@ data object SlideshowTimingPrefScreen : PrefScreen(str(R.string.slideshow_timing
         PrefCategory("", listOf(
             SLIDER_INTERVAL,
             SLIDESHOW_TRANSITION,
-            SLIDESHOW_TRANSITION_DURATION,
-            SLIDESHOW_VIDEO_CINEMA_FPS,
-            SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED
+            SLIDESHOW_TRANSITION_DURATION
         ))
     ),
     visibility = mapOf(
-        SLIDESHOW_TRANSITION_DURATION to { prefs -> SLIDESHOW_TRANSITION.getValue(prefs) != SlideshowTransition.NONE },
-        SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED to { prefs -> SLIDESHOW_VIDEO_CINEMA_FPS.getValue(prefs) != CinemaFrameRateOption.OFF }
+        SLIDESHOW_TRANSITION_DURATION to { prefs -> SLIDESHOW_TRANSITION.getValue(prefs) != SlideshowTransition.NONE }
     )
 )
 
@@ -678,10 +713,7 @@ data object SlideshowQualityPrefScreen : PrefScreen(str(R.string.slideshow_quali
         PrefCategory("", listOf(
             SLIDESHOW_IMAGE_SOURCE,
             SLIDESHOW_PREFETCH_COUNT,
-            SLIDESHOW_VIDEO_CACHE_MB,
-            SLIDER_FORCE_ORIGINAL_VIDEO,
-            SLIDER_LOAD_EDITED_PHOTO,
-            SLIDER_DPAD_SEEK_IN_VIDEO
+            SLIDER_LOAD_EDITED_PHOTO
         ))
     )
 )
@@ -693,6 +725,7 @@ data object SlideshowPrefScreen : PrefScreen(str(R.string.slideshow), "slideshow
             settingsLink("slideshow_display", str(R.string.slideshow_display), str(R.string.slideshow_display_desc)),
             settingsLink("slideshow_motion", str(R.string.slideshow_motion), str(R.string.slideshow_motion_desc)),
             settingsLink("slideshow_pairs", str(R.string.slideshow_pairs), str(R.string.slideshow_pairs_desc)),
+            settingsLink("slideshow_videos", str(R.string.slideshow_videos), str(R.string.slideshow_videos_desc)),
             settingsLink("slideshow_timing", str(R.string.slideshow_timing), str(R.string.slideshow_timing_desc)),
             settingsLink("slideshow_overlays", str(R.string.slideshow_overlays), str(R.string.slideshow_overlays_desc)),
             settingsLink("slideshow_quality", str(R.string.slideshow_quality), str(R.string.slideshow_quality_desc))

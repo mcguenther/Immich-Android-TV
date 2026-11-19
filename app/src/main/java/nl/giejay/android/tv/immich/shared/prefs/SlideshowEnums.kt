@@ -3,6 +3,7 @@ package nl.giejay.android.tv.immich.shared.prefs
 import androidx.annotation.StringRes
 import nl.giejay.android.tv.immich.ImmichApplication
 import nl.giejay.android.tv.immich.R
+import nl.giejay.mediaslider.config.ClipPosition
 import nl.giejay.mediaslider.config.EdgeFill
 import nl.giejay.mediaslider.config.FillMode
 import nl.giejay.mediaslider.config.MotionStyle
@@ -50,6 +51,15 @@ enum class CinemaFrameRateOption(@StringRes private val titleRes: Int, val fps: 
     OFF(R.string.slideshow_video_cinema_fps_off, null),
     FPS_24(R.string.slideshow_video_cinema_fps_24, 24f),
     FPS_23_976(R.string.slideshow_video_cinema_fps_23976, 23.976f);
+
+    override fun getTitle() = title(titleRes)
+}
+
+/** Which part of a video longer than the clip length the slideshow shows. */
+enum class VideoClipPosition(@StringRes private val titleRes: Int, val value: ClipPosition) : EnumWithTitle {
+    START(R.string.slideshow_video_clip_position_start, ClipPosition.START),
+    MIDDLE(R.string.slideshow_video_clip_position_middle, ClipPosition.MIDDLE),
+    RANDOM(R.string.slideshow_video_clip_position_random, ClipPosition.RANDOM);
 
     override fun getTitle() = title(titleRes)
 }

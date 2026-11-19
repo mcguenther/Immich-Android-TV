@@ -163,8 +163,20 @@ fun Asset.toSliderItem(): SliderItem {
         isPanorama = this.isPanoramaImage(),
         isFavorite = this.isFavorite,
         width = if (swap) exifH else exifW,
-        height = if (swap) exifW else exifH
+        height = if (swap) exifW else exifH,
+        durationMs = if (itemType == SliderItemType.VIDEO) parseImmichDurationMs(this.duration) else null
     )
+}
+
+/** Parses Immich's "H:MM:SS.ffffff" duration into milliseconds; null when absent, malformed or zero. */
+internal fun parseImmichDurationMs(duration: String?): Long? {
+    val parts = duration?.trim()?.split(":") ?: return null
+    if (parts.size != 3) return null
+    val h = parts[0].toLongOrNull() ?: return null
+    val m = parts[1].toLongOrNull() ?: return null
+    val sec = parts[2].toDoubleOrNull() ?: return null
+    val ms = h * 3_600_000L + m * 60_000L + Math.round(sec * 1000)
+    return ms.takeIf { it > 0 }
 }
 
 internal fun formatAssetDate(date: Date): String {

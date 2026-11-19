@@ -33,5 +33,7 @@ data class Asset(
     val tags: List<Tag>?,
     val originalPath: String?,
     val originalFileName: String?,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    /** Video length as Immich reports it ("0:00:12.345000"), null for photos or unknown. */
+    val duration: String? = null
 )
