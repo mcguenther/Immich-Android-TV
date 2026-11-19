@@ -18,7 +18,11 @@ class SliderItem(
     private val metaData: Map<MetaDataType, MetaDataProvider>,
     val thumbnailUrl: String?,
     val isPanorama: Boolean,
-    var isFavorite: Boolean = false
+    var isFavorite: Boolean = false,
+    /** Display width in pixels (after EXIF rotation) when known, so the slider can lay out before loading. */
+    val width: Int? = null,
+    /** Display height in pixels (after EXIF rotation) when known. */
+    val height: Int? = null
 ) {
     suspend fun get(metaDataType: MetaDataType): String? {
         return this.metaData[metaDataType]?.getValue()

@@ -2,14 +2,28 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-    <nl.giejay.mediaslider.view.TouchImageView
-        android:id="@+id/mBigImage"
+    <!-- Slot: clips the "mover" so a covering photo (laid out larger than the slot) is cropped by layout. -->
+    <FrameLayout
+        android:id="@+id/slot_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerInside"
-        android:src="@drawable/images"
-        android:layout_centerInParent="true"
-        />
+        android:background="@color/blackDark"
+        android:clipChildren="true">
+        <ImageView
+            android:id="@+id/edge_main"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+        <nl.giejay.mediaslider.view.TouchImageView
+            android:id="@+id/mBigImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:scaleType="fitCenter" />
+    </FrameLayout>
     <ProgressBar
         android:id="@+id/mProgressBar"
         android:visibility="visible"

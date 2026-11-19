@@ -5,7 +5,6 @@ import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.plugin.SliderControllerPlugin
 import nl.giejay.mediaslider.plugin.SliderKeyEventPlugin
 import nl.giejay.mediaslider.plugin.SliderViewPlugin
-import nl.giejay.mediaslider.transformations.GlideTransformations
 import nl.giejay.mediaslider.util.LoadMore
 
 class MediaSliderConfiguration(
@@ -50,18 +49,6 @@ class MediaSliderConfiguration(
     /** TRANSITIONAL (transition rework): use [transition]. */
     val enableSlideAnimation: Boolean
         get() = transition.type != TransitionType.NONE
-
-    /** TRANSITIONAL (fill rework): use [display]. */
-    val maxCutOffHeight: Int
-        get() = display.maxCropPercent
-
-    /** TRANSITIONAL (fill rework): use [display]. */
-    val maxCutOffWidth: Int
-        get() = display.maxCropPercent
-
-    /** TRANSITIONAL (fill rework): use [display]. */
-    val glideTransformation: GlideTransformations
-        get() = if (display.fillMode == FillMode.FILL) GlideTransformations.SAFE_CENTER_CROP else GlideTransformations.CENTER_INSIDE
 
     /** TRANSITIONAL (motion rework): use [motion]. */
     val zoomAndScrollPanorama: Boolean
