@@ -69,3 +69,11 @@ data class LoadingOptions(
     /** Disk cache size for pre-buffered video starts. */
     val videoCacheMb: Int = 500
 )
+
+/** Video playback tweaks. */
+data class VideoPlaybackOptions(
+    /** Target frame rate (e.g. 24f or 23.976f) faster videos are slowed down to; null plays at normal speed. */
+    val cinemaFrameRate: Float? = null,
+    /** Apply [cinemaFrameRate] only while the video plays without sound. */
+    val cinemaOnlyWhenMuted: Boolean = true
+)

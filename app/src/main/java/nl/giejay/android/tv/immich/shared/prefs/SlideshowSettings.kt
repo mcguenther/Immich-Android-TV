@@ -5,6 +5,7 @@ import nl.giejay.mediaslider.config.DisplayOptions
 import nl.giejay.mediaslider.config.LoadingOptions
 import nl.giejay.mediaslider.config.MotionOptions
 import nl.giejay.mediaslider.config.TransitionOptions
+import nl.giejay.mediaslider.config.VideoPlaybackOptions
 
 /**
  * The single place that turns the slideshow preferences into slider option values. Every
@@ -37,6 +38,11 @@ object SlideshowSettings {
         useFullResolution = PreferenceManager.get(SLIDESHOW_IMAGE_SOURCE) == SlideshowImageSource.FULL_RESOLUTION,
         prefetchCount = PreferenceManager.get(SLIDESHOW_PREFETCH_COUNT),
         videoCacheMb = PreferenceManager.get(SLIDESHOW_VIDEO_CACHE_MB)
+    )
+
+    fun videoPlayback(): VideoPlaybackOptions = VideoPlaybackOptions(
+        cinemaFrameRate = PreferenceManager.get(SLIDESHOW_VIDEO_CINEMA_FPS).fps,
+        cinemaOnlyWhenMuted = PreferenceManager.get(SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED)
     )
 
     /** Options for building slider items from assets; [pairing] can be forced off by callers. */
