@@ -6,6 +6,7 @@ import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.android.tv.immich.api.util.ApiUtil
 import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.card.Card
+import nl.giejay.android.tv.immich.shared.prefs.PortraitPairing
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_LOAD_EDITED_PHOTO
@@ -14,7 +15,17 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-fun List<Asset>.toSliderItems(keepOrder: Boolean, mergePortrait: Boolean): List<SliderItemViewHolder> {
+/**
+ * Turns assets into slider pages, pairing portrait photos per [options].
+ *
+ * @param keepOrder keep the given order (albums, folders, timeline) instead of shuffling
+ * @param keepAssetId an asset the user explicitly opened; it is never filtered out
+ */
+fun List<Asset>.toSliderItems(keepOrder: Boolean,
+                              options: SliderItemOptions,
+                              keepAssetId: String? = null): List<SliderItemViewHolder> {
+    // TODO(pairing rework): apply options.pairing rules and options.showPortraitVideos/keepAssetId.
+    val mergePortrait = options.pairing != PortraitPairing.OFF
     if (!mergePortrait) {
         return this.map { SliderItemViewHolder(it.toSliderItem()) }
     }

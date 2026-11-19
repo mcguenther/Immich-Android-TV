@@ -11,21 +11,16 @@ import nl.giejay.mediaslider.util.LoadMore
 class MediaSliderConfiguration(
     val startPosition: Int,
     val interval: Int,
-    val isOnlyUseThumbnails: Boolean,
     var isVideoSoundEnable: Boolean,
     var items: List<SliderItemViewHolder>,
     var loadMore: LoadMore?,
     var onAssetSelected: (SliderItemViewHolder) -> Unit = {},
-    val animationSpeedMillis: Int,
-    val maxCutOffHeight: Int,
-    val maxCutOffWidth: Int,
-    val glideTransformation: GlideTransformations,
     val gradiantOverlay: Boolean,
-    val enableSlideAnimation: Boolean,
     val metaDataConfig: List<MetaDataItem>,
-    val zoomAndScrollPanorama: Boolean,
-    val zoomEffectPercent: Int,
-    val panEffectPercent: Int,
+    val display: DisplayOptions = DisplayOptions(),
+    val motion: MotionOptions = MotionOptions(),
+    val transition: TransitionOptions = TransitionOptions(),
+    val loading: LoadingOptions = LoadingOptions(),
     val useLargeVideoBuffer: Boolean = false,
     /** When true, D-pad Left/Right seek in video; when false (default), they change assets. */
     val dpadSeeksInVideo: Boolean = false,
@@ -37,4 +32,46 @@ class MediaSliderConfiguration(
 ) {
     val isGradiantOverlayVisible: Boolean
         get() = (metaDataConfig.isNotEmpty()) && this.gradiantOverlay
+
+    // ---------------------------------------------------------------------------------------
+    // Transitional accessors: they map the new option groups onto the names the slider code
+    // used before the redesign, so it keeps compiling while each area is reworked. Remove an
+    // accessor together with its last caller.
+    // ---------------------------------------------------------------------------------------
+
+    /** TRANSITIONAL (loading rework): use [loading]. */
+    val isOnlyUseThumbnails: Boolean
+        get() = !loading.useFullResolution
+
+    /** TRANSITIONAL (transition rework): use [transition]. */
+    val animationSpeedMillis: Int
+        get() = transition.durationMillis
+
+    /** TRANSITIONAL (transition rework): use [transition]. */
+    val enableSlideAnimation: Boolean
+        get() = transition.type != TransitionType.NONE
+
+    /** TRANSITIONAL (fill rework): use [display]. */
+    val maxCutOffHeight: Int
+        get() = display.maxCropPercent
+
+    /** TRANSITIONAL (fill rework): use [display]. */
+    val maxCutOffWidth: Int
+        get() = display.maxCropPercent
+
+    /** TRANSITIONAL (fill rework): use [display]. */
+    val glideTransformation: GlideTransformations
+        get() = if (display.fillMode == FillMode.FILL) GlideTransformations.SAFE_CENTER_CROP else GlideTransformations.CENTER_INSIDE
+
+    /** TRANSITIONAL (motion rework): use [motion]. */
+    val zoomAndScrollPanorama: Boolean
+        get() = motion.enabled || motion.panoramaScroll
+
+    /** TRANSITIONAL (motion rework): use [motion]. */
+    val zoomEffectPercent: Int
+        get() = if (motion.enabled) motion.zoomPercent else 0
+
+    /** TRANSITIONAL (motion rework): use [motion]. */
+    val panEffectPercent: Int
+        get() = if (motion.enabled) motion.panPercent else 0
 }

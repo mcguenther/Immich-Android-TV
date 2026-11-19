@@ -193,17 +193,22 @@ sealed class StringSetPref(defaultValue: Set<String>, title: String, summary: St
     }
 }
 
-sealed class IntSeekbarPref(defaultValue: Int, title: String, summary: String) : Pref<Int, SeekBarPreference, Int>(defaultValue, title, summary) {
+sealed class IntSeekbarPref(defaultValue: Int, title: String, summary: String,
+                             val min: Int = 0, val max: Int = 100) : Pref<Int, SeekBarPreference, Int>(defaultValue, title, summary) {
     override fun save(sharedPreferences: SharedPreferences, value: Int) {
-        sharedPreference.edit().putInt(key(), value).apply()
+        sharedPreference.edit().putInt(key(), value.coerceIn(min, max)).apply()
     }
 
     override fun createPref(context: Context): SeekBarPreference {
-        return SeekBarPreference(context)
+        val seekBar = SeekBarPreference(context)
+        seekBar.min = min
+        seekBar.max = max
+        seekBar.showSeekBarValue = true
+        return seekBar
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): Int {
-        return sharedPreferences.getInt(key(), defaultValue)
+        return sharedPreferences.getInt(key(), defaultValue).coerceIn(min, max)
     }
 }
 

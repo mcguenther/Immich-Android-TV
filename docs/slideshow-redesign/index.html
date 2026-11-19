@@ -324,7 +324,8 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
       <h3>Hochkant-Paare mit Regel</h3>
       <ul>
         <li><b>Gleicher Tag</b> (Standard): beide Fotos am selben Kalendertag aufgenommen, nach lokaler Aufnahmezeit.</li>
-        <li><b>Gleicher Tag oder Ort</b>: zusätzlich Paare vom selben Ort, auch an verschiedenen Tagen. Ort = gleiche Stadt laut EXIF oder wahlweise ein Umkreis per GPS (2 / 10 / 50 km).</li>
+        <li><b>Gleicher Tag oder Ort</b>: zusätzlich Paare vom selben Ort, auch an verschiedenen Tagen. Ort = gleiche Stadt und gleiches Land laut EXIF.</li>
+        <li><b>Hochkant-Videos</b> werden nie beschnitten, sondern aufrecht mit Unschärfe-Rand gezeigt; per Schalter lassen sie sich in der Diashow ganz ausblenden.</li>
         <li>Unter den passenden Kandidaten wird das zeitlich <em>nächste</em> Foto gewählt. Heute nimmt die App das zeitlich entfernteste.</li>
         <li>Findet sich kein Partner, kommt das Hochkantbild allein (eingepasst, mit Unschärfe-Rand).</li>
         <li>Bei Alben in fester Reihenfolge werden nur direkt aufeinanderfolgende Fotos gepaart, wenn sie die Regel erfüllen.</li>
@@ -388,8 +389,8 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
     <div class="phase"><div class="n">Schritt 4<small>Hochkant-Paare</small></div><div>
       <ul>
         <li><code>toSliderItems(keepOrder, mergePortrait)</code> wird zu <code>toSliderItems(keepOrder, PortraitPairing)</code> mit Modus und Ortsregel; Auswahl des zeitlich nächsten passenden Partners.</li>
-        <li>Asset-Modell um <code>localDateTime</code> sowie <code>exifInfo.latitude/longitude</code> ergänzen (liefert die Immich-API bereits), Entfernung per Haversine.</li>
-        <li>Unit-Tests für gleicher Tag, Stadt, Umkreis, kein Partner, feste Reihenfolge.</li>
+        <li>Tag nach lokaler Aufnahmezeit, Ort über Stadt + Land aus EXIF. Hochkant-Videos optional herausfiltern (nie das Video, das du gezielt geöffnet hast).</li>
+        <li>Unit-Tests für gleicher Tag, gleiche Stadt, kein Partner, feste Reihenfolge, Video-Filter.</li>
       </ul>
       <div class="files"><code>shared/util/AssetUtil.kt</code><code>api/model/Asset.kt</code><code>test/…/AssetUtilPairingTest.kt (neu)</code></div>
     </div></div>
@@ -437,13 +438,13 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
       </ul>
     </div>
     <div class="card">
-      <span class="eyebrow">Offene Fragen an dich</span>
+      <span class="eyebrow">Entschieden</span>
       <ol class="q">
-        <li><b>Bildschirmschoner eigenständig?</b> Vorschlag: Darstellung und Bewegung gelten für beide. Eigene Werte für den Bildschirmschoner ließen sich später als Schalter „Eigene Darstellung“ ergänzen.</li>
-        <li><b>Ortsregel-Standard:</b> „Gleiche Stadt“ oder ein Umkreis wie 10 km? Im Mockup paart „Gleiche Stadt“ Kirchzarten und Freiburg nicht, „10 km“ schon.</li>
-        <li><b>Übergang:</b> Überblenden als neuer Standard für beide, oder in der normalen Ansicht beim Schieben bleiben?</li>
-        <li><b>Sprache:</b> Deutsche Übersetzung gleich mitmachen?</li>
-        <li><b>Hochformat-Videos:</b> auch füllen (würde stark beschneiden), oder immer eingepasst mit Unschärfe-Rand?</li>
+        <li><b>Gemeinsam:</b> Darstellung und Bewegung gelten für Diashow und Bildschirmschoner.</li>
+        <li><b>Gleicher Ort</b> = gleiche Stadt laut Bilddaten. Kein GPS-Umkreis.</li>
+        <li><b>Überblenden</b> ist der Standard-Übergang.</li>
+        <li><b>Deutsche Übersetzung</b> kommt mit.</li>
+        <li><b>Hochkant-Videos</b> werden aufrecht gezeigt, nie beschnitten, und lassen sich ganz ausblenden.</li>
       </ol>
     </div>
   </div>
@@ -539,7 +540,7 @@ const META_DEF = () => [
 const S = {
   fill:'fill', maxCrop:30, fillVideos:true, edge:'blur',
   motion:true, zoom:5, pan:3, style:'mixed', panoramas:true,
-  pairs:'day', place:'city',
+  pairs:'day', place:'city', portraitVideos:true,
   intervalV:8, intervalS:12, transition:'fade', transDur:1000,
   dateTLV:false, dateTLS:true,
   metaV:META_DEF(), metaS:META_DEF().map(m=>({...m,on:['date','city','album','clock'].includes(m.k)})),
@@ -593,7 +594,7 @@ const screens = {
     note('Gilt für die Diashow in Alben, der Zeitleiste und für den Bildschirmschoner.'),
     nav('disp','Darstellung', S.fill==='fill' ? `Füllen · max. ${lbl('maxCrop',S.maxCrop)} Beschnitt` : 'Einpassen','disp','new'),
     nav('motion','Bewegung', S.motion ? `Zoom ${S.zoom} % · Schwenk ${S.pan} % · ${lbl('style',S.style)}` : 'Aus','motion','chg'),
-    nav('pairs','Hochkant-Paare', lbl('pairs',S.pairs) + (S.pairs==='dayplace'?' · '+lbl('place',S.place):''),'pairs','chg'),
+    nav('pairs','Hochkant-Paare', lbl('pairs',S.pairs) + (S.portraitVideos?'':' · ohne Hochkant-Videos'),'pairs','chg'),
     nav('timing','Ablauf', `${lbl('interval',S.intervalV)} · ${lbl('transition',S.transition)}`,'timing'),
     nav('overlay','Einblendungen','Datum oben links, Metadaten','overlay','moved'),
     nav('quality','Qualität & Laden', `${lbl('source',S.source)} · ${S.prefetch?S.prefetch+' vorladen':'kein Vorladen'}`,'quality','new')]},
@@ -611,8 +612,8 @@ const screens = {
     tog('panoramas','Panoramen durchfahren',()=>'Sehr breite oder hohe Bilder füllend von einer Seite zur anderen')]},
   pairs:{title:'Hochkant-Paare', items:()=>[
     ch('pairs','Zwei Hochkantbilder nebeneinander',null,()=>({off:'Hochkantbilder kommen immer einzeln',day:'Nur wenn beide am selben Tag aufgenommen wurden',dayplace:'Selber Tag oder selber Ort, auch an verschiedenen Tagen'})[S.pairs],'chg'),
-    ...(S.pairs==='dayplace'?[ch('place','Als „gleicher Ort“ gilt',null,()=>S.place==='city'?'Gleicher Ortsname in den Bilddaten':'Entfernung der GPS-Koordinaten','new')]:[]),
-    note('Gewählt wird das zeitlich nächste passende Foto. Ohne Partner erscheint das Bild allein.')]},
+    tog('portraitVideos','Hochkant-Videos anzeigen',()=>S.portraitVideos?'Werden aufrecht und nie beschnitten gezeigt':'Werden in der Diashow übersprungen','new'),
+    note('„Gleicher Ort“ heißt gleiche Stadt laut Bilddaten. Gewählt wird das zeitlich nächste passende Foto. Ohne Partner erscheint das Bild allein.')]},
   timing:{title:'Ablauf', items:()=>[
     ch('intervalV','Intervall','interval',()=>'Anzeigedauer pro Bild in der Diashow'),
     ch('transition','Übergang',null,()=>'Überblenden wirkt am ruhigsten','new'),
@@ -730,7 +731,7 @@ const fmtShort=d=>new Date(d+'T12:00:00').toLocaleDateString('de-DE',{day:'2-dig
 function km(a,b){const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lon-a.lon)*Math.PI/180;const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function pairReason(a,b){
   if(a.date===b.date) return 'gleicher Tag ('+fmtShort(a.date)+')';
-  if(S.pairs==='dayplace'){ if(S.place==='city'){ if(a.city===b.city) return 'gleiche Stadt ('+a.city+')'; } else { const d=km(a,b); if(d<=S.place) return `Umkreis ${S.place} km (${d.toFixed(1).replace('.',',')} km)`; } }
+  if(S.pairs==='dayplace' && a.city===b.city) return 'gleiche Stadt ('+a.city+')';
   return null;
 }
 function buildSlides(){

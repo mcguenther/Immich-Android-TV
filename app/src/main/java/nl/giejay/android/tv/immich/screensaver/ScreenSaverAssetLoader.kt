@@ -20,25 +20,17 @@ import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.EXCLUDE_ASSETS_IN_ALBUM
 import nl.giejay.android.tv.immich.shared.prefs.MetaDataScreen
+import nl.giejay.android.tv.immich.shared.prefs.SlideshowSettings
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_ALBUMS
-import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_ANIMATE_ASSET_SLIDE
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_INCLUDE_VIDEOS
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_INTERVAL
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_PEOPLE
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_PLAY_SOUND
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_SHOW_DATE_TOP_LEFT
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_TYPE
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ANIMATION_SPEED
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_GLIDE_TRANSFORMATION
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MAX_CUT_OFF_HEIGHT
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MERGE_PORTRAIT_PHOTOS
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ONLY_USE_THUMBNAILS
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_PAN_EFFECT
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_EFFECT
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_SCROLL_PANORAMAS
 import nl.giejay.android.tv.immich.shared.util.Utils.pmap
 import nl.giejay.android.tv.immich.shared.util.toSliderItems
 import nl.giejay.android.tv.immich.slider.FavoriteService
@@ -81,20 +73,15 @@ internal fun buildScreenSaverConfiguration(
     return MediaSliderConfiguration(
         0,
         PreferenceManager.get(SCREENSAVER_INTERVAL),
-        PreferenceManager.get(SLIDER_ONLY_USE_THUMBNAILS),
         PreferenceManager.get(SCREENSAVER_PLAY_SOUND),
-        assets.toSliderItems(keepOrder = false, mergePortrait = PreferenceManager.get(SLIDER_MERGE_PORTRAIT_PHOTOS)),
+        assets.toSliderItems(keepOrder = false, options = SlideshowSettings.sliderItems()),
         loadMore,
-        animationSpeedMillis = PreferenceManager.get(SLIDER_ANIMATION_SPEED),
-        maxCutOffHeight = PreferenceManager.get(SLIDER_MAX_CUT_OFF_HEIGHT),
-        maxCutOffWidth = PreferenceManager.get(SLIDER_MAX_CUT_OFF_HEIGHT),
-        glideTransformation = PreferenceManager.get(SLIDER_GLIDE_TRANSFORMATION),
-        enableSlideAnimation = PreferenceManager.get(SCREENSAVER_ANIMATE_ASSET_SLIDE),
         gradiantOverlay = true,
         metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.SCREENSAVER),
-        zoomAndScrollPanorama = PreferenceManager.get(SLIDER_ZOOM_SCROLL_PANORAMAS),
-        zoomEffectPercent = PreferenceManager.get(SLIDER_ZOOM_EFFECT),
-        panEffectPercent = PreferenceManager.get(SLIDER_PAN_EFFECT),
+        display = SlideshowSettings.display(),
+        motion = SlideshowSettings.motion(),
+        transition = SlideshowSettings.transition(),
+        loading = SlideshowSettings.loading(),
         useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
         dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
         showDateTopLeft = PreferenceManager.get(SCREENSAVER_SHOW_DATE_TOP_LEFT),
@@ -196,7 +183,7 @@ class ScreenSaverAssetLoader(
             },
             { response ->
                 LoadMoreResult(
-                    response.assets.toSliderItems(false, PreferenceManager.get(SLIDER_MERGE_PORTRAIT_PHOTOS)),
+                    response.assets.toSliderItems(false, SlideshowSettings.sliderItems()),
                     response.canLoadMore
                 )
             }

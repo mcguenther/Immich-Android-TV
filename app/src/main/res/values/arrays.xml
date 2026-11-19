@@ -182,4 +182,64 @@
         <item>100</item>
     </string-array>
 
+    <!-- Slideshow redesign -->
+    <string-array name="slideshow_max_crop_titles">
+        <item>15%</item>
+        <item>20%</item>
+        <item>25%</item>
+        <item>30%</item>
+        <item>40%</item>
+        <item>50%</item>
+        <item>@string/slideshow_max_crop_unlimited</item>
+    </string-array>
+    <string-array name="slideshow_max_crop_values" translatable="false">
+        <item>15</item>
+        <item>20</item>
+        <item>25</item>
+        <item>30</item>
+        <item>40</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
+    <string-array name="slideshow_transition_duration_titles">
+        <item>0.3 s</item>
+        <item>0.5 s</item>
+        <item>0.8 s</item>
+        <item>1 s</item>
+        <item>1.5 s</item>
+        <item>2 s</item>
+    </string-array>
+    <string-array name="slideshow_transition_duration_values" translatable="false">
+        <item>300</item>
+        <item>500</item>
+        <item>800</item>
+        <item>1000</item>
+        <item>1500</item>
+        <item>2000</item>
+    </string-array>
+    <string-array name="slideshow_prefetch_titles">
+        <item>@string/slideshow_prefetch_off</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>5</item>
+    </string-array>
+    <string-array name="slideshow_prefetch_values" translatable="false">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>5</item>
+    </string-array>
+    <string-array name="slideshow_video_cache_titles" translatable="false">
+        <item>250 MB</item>
+        <item>500 MB</item>
+        <item>1 GB</item>
+    </string-array>
+    <string-array name="slideshow_video_cache_values" translatable="false">
+        <item>250</item>
+        <item>500</item>
+        <item>1000</item>
+    </string-array>
+
 </resources>

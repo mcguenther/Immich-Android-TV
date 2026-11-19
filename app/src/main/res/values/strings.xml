@@ -320,4 +320,86 @@
     <string name="favorite_removed">Removed from favorites</string>
     <string name="favorite_add_failed">Failed to add to favorites</string>
     <string name="favorite_remove_failed">Failed to remove from favorites</string>
+    <!-- Slideshow redesign: menu -->
+    <string name="slideshow_settings_desc">Display, motion, portrait pairs, timing, loading</string>
+    <string name="browse_settings">Browse</string>
+    <string name="browse_settings_desc">General, ordering, content</string>
+    <string name="slideshow_shared_note">Applies to slideshows in albums, the timeline and the screensaver.</string>
+    <string name="slideshow_display">Display</string>
+    <string name="slideshow_display_desc">Fill the screen, crop limit, edges</string>
+    <string name="slideshow_motion">Motion</string>
+    <string name="slideshow_motion_desc">Slow zoom and pan on photos</string>
+    <string name="slideshow_pairs">Portrait pairs</string>
+    <string name="slideshow_pairs_desc">When two portrait photos are shown side by side</string>
+    <string name="slideshow_timing">Timing</string>
+    <string name="slideshow_timing_desc">Interval and transition</string>
+    <string name="slideshow_overlays">Overlays</string>
+    <string name="slideshow_overlays_desc">Date in the top left, metadata</string>
+    <string name="slideshow_quality">Quality &amp; loading</string>
+    <string name="slideshow_quality_desc">Image source, preloading, video cache</string>
+    <string name="screensaver_content">Content</string>
+    <string name="screensaver_content_desc">Source, albums, people, videos</string>
+    <string name="screensaver_timing_desc">Interval and sound</string>
+    <string name="screensaver_appearance_link">Display, motion &amp; portrait pairs</string>
+    <string name="screensaver_appearance_link_desc">Taken from Slideshow so both look the same</string>
+
+    <!-- Slideshow redesign: display -->
+    <string name="slideshow_fill_mode">Fill mode</string>
+    <string name="slideshow_fill_mode_desc">Fill the whole screen or always show the whole photo</string>
+    <string name="slideshow_fill_mode_fit">Fit (show whole photo)</string>
+    <string name="slideshow_fill_mode_fill">Fill (crop edges)</string>
+    <string name="slideshow_max_crop">Maximum crop</string>
+    <string name="slideshow_max_crop_desc">Photos that would lose more of an edge are fitted instead. 4:3 needs 25%, 1:1 needs 44%</string>
+    <string name="slideshow_max_crop_unlimited">Unlimited</string>
+    <string name="slideshow_fill_videos">Fill with landscape videos</string>
+    <string name="slideshow_fill_videos_desc">Zoom landscape videos the same way. Portrait videos are never cropped</string>
+    <string name="slideshow_edge_fill">Fill empty edges with</string>
+    <string name="slideshow_edge_fill_desc">For photos that do not fill the screen, such as single portrait photos</string>
+    <string name="slideshow_edge_fill_blur">Blurred photo</string>
+    <string name="slideshow_edge_fill_black">Black</string>
+
+    <!-- Slideshow redesign: motion -->
+    <string name="slideshow_motion_enabled">Camera motion</string>
+    <string name="slideshow_motion_enabled_desc">One slow, steady zoom or pan per photo</string>
+    <string name="slideshow_motion_zoom">Zoom amount %</string>
+    <string name="slideshow_motion_zoom_desc">Total zoom over one photo. 5% is calm</string>
+    <string name="slideshow_motion_pan">Pan amount %</string>
+    <string name="slideshow_motion_pan_desc">Total travel over one photo, as a share of the screen width. 3% is calm</string>
+    <string name="slideshow_motion_style">Motion style</string>
+    <string name="slideshow_motion_style_desc">Mixed alternates between zooming in, zooming out and panning</string>
+    <string name="slideshow_motion_style_mixed">Mixed</string>
+    <string name="slideshow_motion_style_zoom">Zoom only</string>
+    <string name="slideshow_motion_style_pan">Pan only</string>
+    <string name="slideshow_panorama_scroll">Scroll panoramas</string>
+    <string name="slideshow_panorama_scroll_desc">Fill the screen with very wide or tall photos and scroll from one side to the other</string>
+
+    <!-- Slideshow redesign: portrait pairs -->
+    <string name="slideshow_pairing">Show two portrait photos side by side</string>
+    <string name="slideshow_pairing_desc">Only photos that belong together are paired; the closest in time is chosen</string>
+    <string name="slideshow_pairing_off">Off</string>
+    <string name="slideshow_pairing_same_day">Same day</string>
+    <string name="slideshow_pairing_same_day_or_place">Same day or same place</string>
+    <string name="slideshow_show_portrait_videos">Show portrait videos</string>
+    <string name="slideshow_show_portrait_videos_desc">Portrait videos are shown upright and never cropped. Turn off to skip them</string>
+
+    <!-- Slideshow redesign: timing -->
+    <string name="slideshow_transition">Transition</string>
+    <string name="slideshow_transition_desc">Crossfade is the calmest</string>
+    <string name="slideshow_transition_crossfade">Crossfade</string>
+    <string name="slideshow_transition_slide">Slide</string>
+    <string name="slideshow_transition_none">None</string>
+    <string name="slideshow_transition_duration">Transition duration</string>
+    <string name="slideshow_transition_duration_desc">Motion keeps going during the transition</string>
+
+    <!-- Slideshow redesign: quality & loading -->
+    <string name="slideshow_image_source">Image source</string>
+    <string name="slideshow_image_source_desc">Full resolution looks sharpest; the preview loads faster</string>
+    <string name="slideshow_image_source_full">Full resolution</string>
+    <string name="slideshow_image_source_preview">Preview (faster)</string>
+    <string name="slideshow_prefetch">Preload</string>
+    <string name="slideshow_prefetch_desc">Load upcoming photos and video starts in the background so they show instantly</string>
+    <string name="slideshow_prefetch_off">Off</string>
+    <string name="slideshow_prefetch_n">%d upcoming</string>
+    <string name="slideshow_video_cache">Video cache</string>
+    <string name="slideshow_video_cache_desc">Storage for preloaded video starts</string>
 </resources>
