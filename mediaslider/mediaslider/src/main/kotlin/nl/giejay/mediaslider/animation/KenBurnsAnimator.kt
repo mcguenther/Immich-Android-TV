@@ -133,11 +133,22 @@ object KenBurnsPlanner {
 /**
  * Plays a [MotionPlan] on a view at constant speed.
  *
- * The integrator should pass `durationMs = interval * 1000 + transitionDurationMillis`: the motion
- * keeps running while the slide fades/slides out, so it never stops visibly before the next slide.
+ * Callers should pass [MotionTiming.fullDurationMs]: the motion starts with the incoming transition
+ * and keeps running while the slide fades/slides out, so it never stops visibly before the next slide.
  * There is deliberately no end or reset animation; call [cancel] when the page is recycled.
  */
 object KenBurnsAnimator {
+    /**
+     * A hardware layer is rasterised once at the view's layout size and then only scaled, which turns
+     * a strongly scaled photo (a scrolled panorama is ~2-3x) into a blurry texture. Plans that scale
+     * beyond this stay on the normal render path, where the bitmap is drawn at its real scale.
+     */
+    private const val MAX_LAYER_SCALE = 1.5f
+
+    /** True when [plan] scales little enough that a hardware layer stays sharp. */
+    internal fun useHardwareLayer(plan: MotionPlan): Boolean =
+        max(plan.startScale, plan.endScale) <= MAX_LAYER_SCALE
+
     /**
      * Plans (with `Random(seed)`, so both halves of a portrait pair can share a seed) and starts.
      * The view must already be laid out (its size is the display size). Returns false when the
@@ -172,7 +183,7 @@ object KenBurnsAnimator {
             .translationY(plan.endTranslationY)
             .setDuration(durationMs)
             .setInterpolator(LinearInterpolator())
-            .withLayer()
+            .also { if (useHardwareLayer(plan)) it.withLayer() }
             .start()
     }
 
@@ -197,7 +208,7 @@ object KenBurnsAnimator {
             .translationY(plan.endTranslationY)
             .setDuration(durationMs)
             .setInterpolator(LinearInterpolator())
-            .withLayer()
+            .also { if (useHardwareLayer(plan)) it.withLayer() }
             .start()
     }
 

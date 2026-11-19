@@ -27,14 +27,15 @@ object VideoCache {
 
     /** Takes a reference; the cache is created on first use with room for [maxMb] megabytes. Null if it cannot be opened. */
     fun acquire(context: Context, maxMb: Int): Cache? = synchronized(lock) {
-        holders++
-        cache ?: try {
+        // Only a successful acquire counts as a holder, so the caller (which releases only when it got a
+        // cache) always has a matching release.
+        cache?.also { holders++ } ?: try {
             val app = context.applicationContext
             SimpleCache(
                 File(app.cacheDir, DIR_NAME),
                 LeastRecentlyUsedCacheEvictor(maxMb.coerceAtLeast(1) * 1024L * 1024L),
                 StandaloneDatabaseProvider(app)
-            ).also { cache = it }
+            ).also { cache = it; holders++ }
         } catch (e: Exception) {
             Timber.e(e, "Could not open the video cache, playing without it")
             null

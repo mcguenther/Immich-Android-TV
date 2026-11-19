@@ -23,6 +23,12 @@ object SliderImageRequests {
     /** Longest edge (px) ever requested from Glide, so a 4K-reporting display does not decode ~4400 px bitmaps. */
     const val MAX_DECODE_LONG_EDGE = 2880
 
+    /**
+     * Long-edge cap for a fitted panorama that is scrolled (see [panoramaDecodeSize]): such a photo is
+     * shown scaled up until it covers the slot's short axis, so its long edge is several screens wide.
+     */
+    const val PANORAMA_MAX_DECODE_LONG_EDGE = 4096
+
     /** Width in pixels of the blurred edge-fill source before [BlurDarkenTransformation] shrinks it. */
     private const val BACKDROP_DECODE_WIDTH = 112
 
@@ -34,7 +40,8 @@ object SliderImageRequests {
      * Decode size: covering items use the cover size x [MOTION_HEADROOM] with CENTER_OUTSIDE, fitted
      * items the slot size with CENTER_INSIDE, items of unknown size slot x [MOTION_HEADROOM] with
      * CENTER_OUTSIDE. The long edge is capped at
-     * [MAX_DECODE_LONG_EDGE]. The original is used when [LoadingOptions.useFullResolution] (with the
+     * [MAX_DECODE_LONG_EDGE]. Fitted panoramas with scrolling enabled are decoded at the scaled-up size
+     * ([panoramaDecodeSize]) with the long edge capped at [PANORAMA_MAX_DECODE_LONG_EDGE]. The original is used when [LoadingOptions.useFullResolution] (with the
      * thumbnail shown first as a placeholder, and as the fallback if the original cannot be decoded),
      * otherwise just the thumbnail.
      */
@@ -52,7 +59,16 @@ object SliderImageRequests {
             Triple(scaled(slotW), scaled(slotH), DownsampleStrategy.CENTER_OUTSIDE)
         }
         val (rawW, rawH, strategy) = target
-        val (tw, th) = capLongEdge(rawW, rawH, MAX_DECODE_LONG_EDGE)
+        val panorama = item.isPanorama && config.motion.enabled && config.motion.panoramaScroll
+        val (tw, th) = if (panorama && w != null && h != null && w > 0 && h > 0) {
+            // The scrolling panorama is scaled up by the animator; decode at that size so it stays sharp.
+            val fit = FitCalculator.compute(w, h, slotW, slotH, config.display)
+            panoramaDecodeSize(fit, slotW, slotH)
+                ?.let { capLongEdge(it.first, it.second, PANORAMA_MAX_DECODE_LONG_EDGE) }
+                ?: capLongEdge(rawW, rawH, MAX_DECODE_LONG_EDGE)
+        } else {
+            capLongEdge(rawW, rawH, MAX_DECODE_LONG_EDGE)
+        }
         val full = config.loading.useFullResolution
         var builder = Glide.with(context)
             .load(if (full) item.url else item.thumbnailUrl)
@@ -83,6 +99,17 @@ object SliderImageRequests {
             .override(BACKDROP_DECODE_WIDTH, BACKDROP_DECODE_WIDTH)
             .downsample(DownsampleStrategy.CENTER_OUTSIDE)
             .transform(BlurDarkenTransformation())
+
+    /**
+     * Size a fitted (non-covering) panorama must be decoded at to stay sharp while it scrolls: the fitted
+     * size scaled by the factor `KenBurnsPlanner.planPanorama` uses (it covers the slot on its short
+     * axis). Null for covering results, which are already decoded at cover size.
+     */
+    fun panoramaDecodeSize(fit: nl.giejay.mediaslider.view.FitResult, slotW: Int, slotH: Int): Pair<Int, Int>? {
+        if (fit.fills || fit.displayW <= 0 || fit.displayH <= 0) return null
+        val scale = maxOf(1f, slotW.toFloat() / fit.displayW, slotH.toFloat() / fit.displayH)
+        return (fit.displayW * scale).roundToInt().coerceAtLeast(1) to (fit.displayH * scale).roundToInt().coerceAtLeast(1)
+    }
 
     /** Scales [w] x [h] down, keeping the aspect ratio, so that the longer side is at most [max]. */
     fun capLongEdge(w: Int, h: Int, max: Int): Pair<Int, Int> {

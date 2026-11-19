@@ -47,6 +47,12 @@ class ScreenSlidePagerAdapter(private val context: Context,
     private val progressBars: MutableMap<Int, ProgressBar> = HashMap()
     private val failedPositions = mutableSetOf<String>()
 
+    /** Called with a page root right before it is removed, so motion state referring to its views can be dropped. */
+    var onPageDestroyed: ((View) -> Unit)? = null
+
+    /** Called with the page position when a photo's real size changed its layout after it was shown (running motion is stale). */
+    var onFitChanged: ((Int) -> Unit)? = null
+
     fun setItems(items: List<SliderItemViewHolder>) {
         this.items = items
         notifyDataSetChanged()
@@ -159,6 +165,9 @@ class ScreenSlidePagerAdapter(private val context: Context,
         fun applyFit() {
             val fit = FitCalculator.compute(imageW, imageH, slotW, slotH, config.display)
             mover.setTag(R.id.slider_fit_result, fit)
+            // A covering mover must fill its own bounds even if the real aspect differs slightly from the
+            // metadata (no sliver at an edge); a fitted one shows the whole photo.
+            mover.scaleType = if (fit.fills) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
             val lp = mover.layoutParams as FrameLayout.LayoutParams
             if (lp.width != fit.displayW || lp.height != fit.displayH) {
                 lp.width = fit.displayW
@@ -208,6 +217,8 @@ class ScreenSlidePagerAdapter(private val context: Context,
                             imageW = rw
                             imageH = rh
                             applyFit()
+                            // The mover is re-laid out; a motion planned for the old size is stale.
+                            onFitChanged?.invoke(position)
                         }
                     }
                     hideProgressBar(position)
@@ -228,6 +239,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
 
     override fun destroyItem(container: ViewGroup, position: Int, `object`: Any) {
         val view = `object` as View
+        onPageDestroyed?.invoke(view)
         if (view is ExoPlayerView) {
             view.releasePlayer()
         } else {
