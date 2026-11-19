@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
+import nl.giejay.mediaslider.config.LoadingOptions
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.model.SliderItem
 import nl.giejay.mediaslider.transformations.BlurDarkenTransformation
@@ -19,6 +20,9 @@ object SliderImageRequests {
     /** Decode this much larger than the covering size so slow zoom/pan motion has pixels to spare. */
     const val MOTION_HEADROOM = 1.15f
 
+    /** Longest edge (px) ever requested from Glide, so a 4K-reporting display does not decode ~4400 px bitmaps. */
+    const val MAX_DECODE_LONG_EDGE = 2880
+
     /** Width in pixels of the blurred edge-fill source before [BlurDarkenTransformation] shrinks it. */
     private const val BACKDROP_DECODE_WIDTH = 112
 
@@ -29,8 +33,10 @@ object SliderImageRequests {
      *
      * Decode size: covering items use the cover size x [MOTION_HEADROOM] with CENTER_OUTSIDE, fitted
      * items the slot size with CENTER_INSIDE, items of unknown size slot x [MOTION_HEADROOM] with
-     * CENTER_OUTSIDE. Unless [MediaSliderConfiguration.isOnlyUseThumbnails], the preview thumbnail
-     * is requested first as a placeholder.
+     * CENTER_OUTSIDE. The long edge is capped at
+     * [MAX_DECODE_LONG_EDGE]. The original is used when [LoadingOptions.useFullResolution] (with the
+     * thumbnail shown first as a placeholder, and as the fallback if the original cannot be decoded),
+     * otherwise just the thumbnail.
      */
     fun request(context: Context, config: MediaSliderConfiguration, item: SliderItem, slotW: Int, slotH: Int): RequestBuilder<Drawable> {
         val w = item.width
@@ -45,21 +51,24 @@ object SliderImageRequests {
         } else {
             Triple(scaled(slotW), scaled(slotH), DownsampleStrategy.CENTER_OUTSIDE)
         }
-        val (tw, th, strategy) = target
+        val (rawW, rawH, strategy) = target
+        val (tw, th) = capLongEdge(rawW, rawH, MAX_DECODE_LONG_EDGE)
+        val full = config.loading.useFullResolution
         var builder = Glide.with(context)
-            .load(if (config.isOnlyUseThumbnails) item.thumbnailUrl else item.url)
+            .load(if (full) item.url else item.thumbnailUrl)
             .override(tw, th)
             .downsample(strategy)
             // Without this, `into(ImageView)` would add a scale-type transformation (and its own downsample
             // strategy) that a plain `preload()` does not have, so both would use different cache entries.
             .dontTransform()
-        if (!config.isOnlyUseThumbnails) {
-            builder = builder.thumbnail(
-                Glide.with(context)
-                    .load(item.thumbnailUrl)
-                    .override(tw, th)
-                    .downsample(strategy)
-            )
+        if (full) {
+            val thumb = Glide.with(context)
+                .load(item.thumbnailUrl)
+                .override(tw, th)
+                .downsample(strategy)
+            builder = builder.thumbnail(thumb)
+            // An original the TV cannot decode (HEIC, RAW) must not leave the slide empty.
+            if (item.thumbnailUrl != null) builder = builder.error(thumb)
         }
         return builder
     }
@@ -74,6 +83,14 @@ object SliderImageRequests {
             .override(BACKDROP_DECODE_WIDTH, BACKDROP_DECODE_WIDTH)
             .downsample(DownsampleStrategy.CENTER_OUTSIDE)
             .transform(BlurDarkenTransformation())
+
+    /** Scales [w] x [h] down, keeping the aspect ratio, so that the longer side is at most [max]. */
+    fun capLongEdge(w: Int, h: Int, max: Int): Pair<Int, Int> {
+        val longEdge = maxOf(w, h)
+        if (longEdge <= max) return w to h
+        val f = max.toDouble() / longEdge
+        return (w * f).roundToInt().coerceAtLeast(1) to (h * f).roundToInt().coerceAtLeast(1)
+    }
 
     private fun scaled(px: Int): Int = (px * MOTION_HEADROOM).roundToInt().coerceAtLeast(1)
 }

@@ -19,13 +19,18 @@ import androidx.core.view.children
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.Cache
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.viewpager.widget.ViewPager
 import com.google.common.collect.Iterables
 import com.google.common.collect.Lists
 import com.zeuskartik.mediaslider.R
+import nl.giejay.mediaslider.player.VideoCache
+import nl.giejay.mediaslider.player.VideoPrecacher
+import nl.giejay.mediaslider.util.SlidePrefetcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -78,6 +83,9 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     protected val controller: MediaSliderController
     private var defaultExoFactory = DefaultHttpDataSource.Factory()
     private var pagerAdapter: ScreenSlidePagerAdapter? = null
+    private var videoCache: Cache? = null
+    private var prefetcher: SlidePrefetcher? = null
+    private var videoPrecacher: VideoPrecacher? = null
     private var loading = false
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
     private data class ViewPluginEntry(val plugin: SliderViewPlugin<Any?>, val state: Any?)
@@ -207,6 +215,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         )
 
         applyTransition()
+        setUpPrefetching()
 
         mPager.setAdapter(pagerAdapter)
         mPager.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
@@ -247,7 +256,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                     controller.setCurrentPlayer(player)
                     player.seekTo(0, 0)
                     if (player.playbackState == Player.STATE_IDLE && sliderItem.url != null) {
-                        prepareMedia(sliderItem.url!!, player, defaultExoFactory)
+                        prepareMedia(sliderItem.url!!, player, playbackDataSourceFactory())
                     }
                     if (!config.isVideoSoundEnable) {
                         player.volume = 0f
@@ -272,6 +281,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
             override fun onPageSelected(i: Int) {
                 viewPlugins.forEach { it.plugin.onPageSelected(viewPluginContext, i, it.state) }
+                prefetcher?.onPageChanged(i, config.items)
                 if (!controller.isControllerVisible) {
                     controller.restorePagerFocus()
                 }
@@ -282,9 +292,37 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         // Register the listener before selecting the start page so the first asset
         // still gets onPageSelected / onPageSettled (metadata, date overlay, etc.).
         setStartPosition()
+        prefetcher?.onPageChanged(mPager.currentItem, config.items)
+    }
+
+    /** Authenticated HTTP factory, wrapped in the shared video cache when that could be opened. */
+    private fun playbackDataSourceFactory(): DataSource.Factory =
+        videoCache?.let { VideoCache.cacheDataSourceFactory(it, defaultExoFactory) } ?: defaultExoFactory
+
+    private fun setUpPrefetching() {
+        videoCache = VideoCache.acquire(context, config.loading.videoCacheMb)
+        val precacher = videoCache?.let { cache ->
+            VideoPrecacher { VideoCache.cacheDataSourceFactory(cache, defaultExoFactory) }
+        }
+        videoPrecacher = precacher
+        prefetcher = SlidePrefetcher(context, config, precacher) { paired ->
+            pagerAdapter?.slotSize(mPager, paired) ?: (width to height)
+        }
+    }
+
+    private fun tearDownPrefetching() {
+        prefetcher?.clear()
+        prefetcher = null
+        videoPrecacher?.shutdown()
+        videoPrecacher = null
+        if (videoCache != null) {
+            videoCache = null
+            VideoCache.release()
+        }
     }
 
     fun onDestroy() {
+        tearDownPrefetching()
         ioScope.cancel()
         viewPlugins.forEach { it.plugin.onDestroy(viewPluginContext, it.state) }
         controller.onDestroy()
@@ -313,6 +351,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         }
         config.items = items
         pagerAdapter!!.setItems(items)
+        prefetcher?.onPageChanged(mPager.currentItem, items)
         if (controller.slideShowPlaying && currentItemType() == SliderItemType.IMAGE) {
             controller.startTimerNextAsset()
         }
@@ -329,7 +368,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
     companion object {
         @SuppressLint("UnsafeOptInUsageError")
-        fun prepareMedia(mediaUrl: String, player: ExoPlayer, factory: DefaultHttpDataSource.Factory) {
+        fun prepareMedia(mediaUrl: String, player: ExoPlayer, factory: DataSource.Factory) {
             val mediaUri = Uri.parse(mediaUrl)
             val mediaItem = MediaItem.fromUri(mediaUri)
             val mediaSource = ProgressiveMediaSource.Factory(factory).createMediaSource(mediaItem)
