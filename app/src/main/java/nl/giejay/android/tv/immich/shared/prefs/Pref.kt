@@ -18,6 +18,13 @@ import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager.sharedPreferen
  * @param visibility optional rules that show a preference only while the rule returns true. The rules are evaluated when
  * the screen opens and re-evaluated every time a preference changes, so dependent options appear and disappear live.
  */
+/**
+ * [ListPreference.getSummary] runs its summary through [String.format], so a literal '%' (e.g. "30%" or
+ * "4:3 needs 25%, ...") throws UnknownFormatConversionException and crashes the settings screen.
+ * Always set ListPreference summaries through this escape.
+ */
+fun listSummary(text: CharSequence?): String? = text?.toString()?.replace("%", "%%")
+
 sealed class PrefScreen(val title: String,
                         val key: String,
                         val children: List<PrefCategory>,
@@ -57,7 +64,7 @@ sealed class Pref<T, PREF : Preference, PREFTYPE>(val defaultValue: T, val title
         createPref.key = key()
         createPref.title = title
         createPref.setDefaultValue(toPrefValue(defaultValue))
-        createPref.summary = summary
+        createPref.summary = if (createPref is ListPreference) listSummary(summary) else summary
         return createPref
     }
 

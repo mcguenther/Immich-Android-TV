@@ -476,7 +476,7 @@ data class PHOTOS_SORTING_FOR_SPECIFIC_ALBUM(val albumId: String, val albumName:
 
     override fun createPreference(context: Context): ListPreference {
         val createPref = super.createPreference(context)
-        createPref.summary = PreferenceManager.get(this).getTitle()
+        createPref.summary = listSummary(PreferenceManager.get(this).getTitle())
         return createPref
     }
 }
@@ -499,7 +499,7 @@ data class FILTER_CONTENT_TYPE_FOR_SPECIFIC_ALBUM(val albumId: String, val album
 
     override fun createPreference(context: Context): ListPreference {
         val createPref = super.createPreference(context)
-        createPref.summary = PreferenceManager.get(this).getTitle()
+        createPref.summary = listSummary(PreferenceManager.get(this).getTitle())
         return createPref
     }
 }
@@ -522,7 +522,7 @@ object FILTER_CONTENT_TYPE : EnumByTitlePref<ContentType>(ContentType.ALL,
 
     override fun createPreference(context: Context): ListPreference {
         val createPref = super.createPreference(context)
-        createPref.summary = PreferenceManager.get(this).getTitle()
+        createPref.summary = listSummary(PreferenceManager.get(this).getTitle())
         return createPref
     }
 }

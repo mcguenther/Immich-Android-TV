@@ -14,6 +14,7 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceScreen
 import arrow.core.Either
 import nl.giejay.android.tv.immich.R
+import nl.giejay.android.tv.immich.shared.prefs.listSummary
 import nl.giejay.android.tv.immich.shared.prefs.EnumByTitlePref
 import nl.giejay.android.tv.immich.shared.prefs.EnumPref
 import nl.giejay.android.tv.immich.shared.prefs.EnumWithTitle
@@ -99,9 +100,9 @@ abstract class SettingsScreenFragment : LeanbackSettingsFragmentCompat() {
                     when (pref) {
                         is EnumByTitlePref<*> -> {
                             val value = pref.getValue(PreferenceManager.sharedPreference) as EnumWithTitle
-                            preference.summary = value.getTitle()
+                            preference.summary = if (preference is ListPreference) listSummary(value.getTitle()) else value.getTitle()
                         }
-                        is IntListPref, is EnumPref<*> -> (preference as? ListPreference)?.entry?.let { preference.summary = it }
+                        is IntListPref, is EnumPref<*> -> (preference as? ListPreference)?.entry?.let { preference.summary = listSummary(it) }
                         else -> {}
                     }
                 }
