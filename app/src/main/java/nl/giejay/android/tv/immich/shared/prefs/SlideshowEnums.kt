@@ -45,6 +45,15 @@ enum class SlideshowTransition(@StringRes private val titleRes: Int, val value: 
     override fun getTitle() = title(titleRes)
 }
 
+/** Target frame rate for cinema-style video playback; [fps] null means off. */
+enum class CinemaFrameRateOption(@StringRes private val titleRes: Int, val fps: Float?) : EnumWithTitle {
+    OFF(R.string.slideshow_video_cinema_fps_off, null),
+    FPS_24(R.string.slideshow_video_cinema_fps_24, 24f),
+    FPS_23_976(R.string.slideshow_video_cinema_fps_23976, 23.976f);
+
+    override fun getTitle() = title(titleRes)
+}
+
 /** Which two portrait photos may be shown side by side. */
 enum class PortraitPairing(@StringRes private val titleRes: Int) : EnumWithTitle {
     /** Portraits are always shown alone. */

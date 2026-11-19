@@ -20,6 +20,7 @@ class MediaSliderConfiguration(
     val motion: MotionOptions = MotionOptions(),
     val transition: TransitionOptions = TransitionOptions(),
     val loading: LoadingOptions = LoadingOptions(),
+    val videoPlayback: VideoPlaybackOptions = VideoPlaybackOptions(),
     val useLargeVideoBuffer: Boolean = false,
     /** When true, D-pad Left/Right seek in video; when false (default), they change assets. */
     val dpadSeeksInVideo: Boolean = false,

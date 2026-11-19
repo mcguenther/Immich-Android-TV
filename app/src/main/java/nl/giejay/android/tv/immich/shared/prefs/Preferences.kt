@@ -364,6 +364,18 @@ data object SLIDESHOW_TRANSITION_DURATION : IntListPref(1000,
     override fun key() = "slideshow_transition_duration"
 }
 
+data object SLIDESHOW_VIDEO_CINEMA_FPS : EnumByTitlePref<CinemaFrameRateOption>(CinemaFrameRateOption.OFF,
+    str(R.string.slideshow_video_cinema_fps), str(R.string.slideshow_video_cinema_fps_desc)) {
+    override fun key() = "slideshow_video_cinema_fps"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = CinemaFrameRateOption.entries.toTypedArray()
+}
+
+data object SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED : BooleanPref(true,
+    str(R.string.slideshow_video_cinema_only_muted), str(R.string.slideshow_video_cinema_only_muted_desc)) {
+    override fun key() = "slideshow_video_cinema_only_muted"
+}
+
 // slideshow: quality & loading
 data object SLIDESHOW_IMAGE_SOURCE : EnumByTitlePref<SlideshowImageSource>(SlideshowImageSource.FULL_RESOLUTION,
     str(R.string.slideshow_image_source), str(R.string.slideshow_image_source_desc)) {
@@ -641,11 +653,14 @@ data object SlideshowTimingPrefScreen : PrefScreen(str(R.string.slideshow_timing
         PrefCategory("", listOf(
             SLIDER_INTERVAL,
             SLIDESHOW_TRANSITION,
-            SLIDESHOW_TRANSITION_DURATION
+            SLIDESHOW_TRANSITION_DURATION,
+            SLIDESHOW_VIDEO_CINEMA_FPS,
+            SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED
         ))
     ),
     visibility = mapOf(
-        SLIDESHOW_TRANSITION_DURATION to { prefs -> SLIDESHOW_TRANSITION.getValue(prefs) != SlideshowTransition.NONE }
+        SLIDESHOW_TRANSITION_DURATION to { prefs -> SLIDESHOW_TRANSITION.getValue(prefs) != SlideshowTransition.NONE },
+        SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED to { prefs -> SLIDESHOW_VIDEO_CINEMA_FPS.getValue(prefs) != CinemaFrameRateOption.OFF }
     )
 )
 

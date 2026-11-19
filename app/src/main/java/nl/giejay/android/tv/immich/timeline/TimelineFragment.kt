@@ -1078,6 +1078,7 @@ class TimelineFragment : BrandedSupportFragment(), BrowseSupportFragment.MainFra
                     motion = SlideshowSettings.motion(),
                     transition = SlideshowSettings.transition(),
                     loading = SlideshowSettings.loading(),
+                    videoPlayback = SlideshowSettings.videoPlayback(),
                     useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
                     dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
                     showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)
@@ -1118,6 +1119,7 @@ class TimelineFragment : BrandedSupportFragment(), BrowseSupportFragment.MainFra
             motion = SlideshowSettings.motion(),
             transition = SlideshowSettings.transition(),
             loading = SlideshowSettings.loading(),
+            videoPlayback = SlideshowSettings.videoPlayback(),
             useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
             dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
             showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)

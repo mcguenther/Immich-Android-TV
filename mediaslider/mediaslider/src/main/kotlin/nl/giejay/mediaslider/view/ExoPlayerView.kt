@@ -11,7 +11,12 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.ProgressBar
 import androidx.annotation.OptIn
+import androidx.media3.common.C
+import androidx.media3.common.Format
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -25,6 +30,8 @@ import nl.giejay.mediaslider.adapter.SliderImageRequests
 import nl.giejay.mediaslider.config.DisplayOptions
 import nl.giejay.mediaslider.config.EdgeFill
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
+import nl.giejay.mediaslider.config.VideoPlaybackOptions
+import nl.giejay.mediaslider.player.playbackSpeedFor
 
 /**
  * Fullscreen video surface + ExoPlayer. Transport controls live in [MediaSliderView]'s
@@ -43,6 +50,8 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
     private var display = DisplayOptions()
     private var videoSize: VideoSize? = null
     private var backdropUrl: String? = null
+    private var videoPlayback = VideoPlaybackOptions()
+    private var sourceFps = Format.NO_VALUE.toFloat()
 
     init {
         LayoutInflater.from(context).inflate(resourceId, this, true)
@@ -91,6 +100,8 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
             .setLoadControl(createLoadControl(config))
             .build()
         display = config.display
+        videoPlayback = config.videoPlayback
+        sourceFps = Format.NO_VALUE.toFloat()
         playerView.player = player
         if (!config.isVideoSoundEnable) player?.volume = 0f
 
@@ -107,6 +118,25 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
                     }
                 }
                 listener.onPlaybackStateChanged(playbackState)
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                sourceFps = tracks.groups
+                    .firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
+                    ?.let { group ->
+                        (0 until group.length).firstOrNull { group.isTrackSelected(it) }
+                            ?.let { group.getTrackFormat(it).frameRate }
+                    } ?: Format.NO_VALUE.toFloat()
+                applyCinemaSpeed()
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                sourceFps = Format.NO_VALUE.toFloat()
+                applyCinemaSpeed()
+            }
+
+            override fun onVolumeChanged(volume: Float) {
+                applyCinemaSpeed()
             }
 
             override fun onVideoSizeChanged(size: VideoSize) {
@@ -130,6 +160,22 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
                 }
             }
         })
+    }
+
+    /**
+     * Slows the video to the cinema frame rate when configured and applicable (see
+     * [playbackSpeedFor]); resets to normal speed otherwise. Media3 hints the display with
+     * `frameRate * speed`, so a 30 fps clip at 0.8x asks for 24 Hz.
+     */
+    private fun applyCinemaSpeed() {
+        val p = player ?: return
+        val muted = p.volume == 0f
+        val target = videoPlayback.cinemaFrameRate
+            ?.takeIf { muted || !videoPlayback.cinemaOnlyWhenMuted }
+        val speed = playbackSpeedFor(sourceFps, target)
+        if (p.playbackParameters.speed != speed) {
+            p.playbackParameters = PlaybackParameters(speed, 1f)
+        }
     }
 
     /**

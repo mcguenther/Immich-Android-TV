@@ -385,6 +385,13 @@
     <string name="slideshow_transition_none">None</string>
     <string name="slideshow_transition_duration">Transition duration</string>
     <string name="slideshow_transition_duration_desc">Motion keeps going during the transition</string>
+    <string name="slideshow_video_cinema_fps">Cinema frame rate for videos</string>
+    <string name="slideshow_video_cinema_fps_desc">Play videos at 24 fps. Faster videos are slowed down slightly for a calm slow-motion look (30 fps plays at 80% speed)</string>
+    <string name="slideshow_video_cinema_fps_off">Off</string>
+    <string name="slideshow_video_cinema_fps_24">24 fps</string>
+    <string name="slideshow_video_cinema_fps_23976">23.976 fps</string>
+    <string name="slideshow_video_cinema_only_muted">Only for muted videos</string>
+    <string name="slideshow_video_cinema_only_muted_desc">Keep normal speed when a video plays with sound</string>
 
     <!-- Slideshow redesign: quality & loading -->
     <string name="slideshow_image_source">Image source</string>

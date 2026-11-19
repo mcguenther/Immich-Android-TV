@@ -367,6 +367,13 @@
     <string name="slideshow_transition_none">Keiner</string>
     <string name="slideshow_transition_duration">Dauer des Übergangs</string>
     <string name="slideshow_transition_duration_desc">Die Bewegung läuft während des Übergangs weiter</string>
+    <string name="slideshow_video_cinema_fps">Kino-Bildrate für Videos</string>
+    <string name="slideshow_video_cinema_fps_desc">Videos mit 24 fps abspielen. Schnellere Videos laufen leicht verlangsamt für einen ruhigen Zeitlupen-Effekt (30 fps mit 80 % Tempo)</string>
+    <string name="slideshow_video_cinema_fps_off">Aus</string>
+    <string name="slideshow_video_cinema_fps_24">24 fps</string>
+    <string name="slideshow_video_cinema_fps_23976">23,976 fps</string>
+    <string name="slideshow_video_cinema_only_muted">Nur bei stummen Videos</string>
+    <string name="slideshow_video_cinema_only_muted_desc">Videos mit Ton laufen in normalem Tempo</string>
 
     <!-- Slideshow redesign: quality & loading -->
     <string name="slideshow_image_source">Bildquelle</string>
