@@ -18,11 +18,14 @@ class SliderItem(
     private val metaData: Map<MetaDataType, MetaDataProvider>,
     val thumbnailUrl: String?,
     val isPanorama: Boolean,
-    var isFavorite: Boolean = false
+    var isFavorite: Boolean = false,
+    private val geoLocationProvider: GeoLocationProvider? = null
 ) {
     suspend fun get(metaDataType: MetaDataType): String? {
         return this.metaData[metaDataType]?.getValue()
     }
+
+    suspend fun getGeoLocation(): GeoLocation? = geoLocationProvider?.getLocation()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

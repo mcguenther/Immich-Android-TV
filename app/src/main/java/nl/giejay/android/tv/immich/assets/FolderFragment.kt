@@ -25,6 +25,7 @@ import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MERGE_PORTRAIT_PHOTOS
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ONLY_USE_THUMBNAILS
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_PAN_EFFECT
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_DATE_TOP_LEFT
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_LOCATION_MAP
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_EFFECT
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_SCROLL_PANORAMAS
 import nl.giejay.android.tv.immich.shared.util.toCard
@@ -112,7 +113,8 @@ class FolderFragment : VerticalCardGridFragment<Item>() {
                 panEffectPercent = PreferenceManager.get(SLIDER_PAN_EFFECT),
                 useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
                 dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
-                showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)
+                showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT),
+                showLocationMap = PreferenceManager.get(SLIDER_SHOW_LOCATION_MAP)
             )
             sliderViewModel.configuration = config
             findNavController().navigate(
