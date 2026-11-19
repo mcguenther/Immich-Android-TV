@@ -10,13 +10,18 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.bumptech.glide.Glide
 import com.zeuskartik.mediaslider.R
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
+import nl.giejay.mediaslider.adapter.SliderImageRequests
+import nl.giejay.mediaslider.config.DisplayOptions
+import nl.giejay.mediaslider.config.EdgeFill
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 
 /**
@@ -31,13 +36,45 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
     private val posterView: ImageView
     private val loadingView: ProgressBar
     private var player: ExoPlayer? = null
+    private val backdropView: ImageView
     private var awaitingFirstFrame = false
+    private var display = DisplayOptions()
+    private var videoSize: VideoSize? = null
+    private var backdropUrl: String? = null
 
     init {
         LayoutInflater.from(context).inflate(resourceId, this, true)
         playerView = findViewById(R.id.video_view)
         posterView = findViewById(R.id.video_poster)
         loadingView = findViewById(R.id.video_loading)
+        backdropView = findViewById(R.id.video_backdrop)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        applyVideoFit()
+    }
+
+    /**
+     * Chooses between cover and fit once the video size is known. Portrait videos (after the
+     * unapplied rotation) are always fitted; landscape ones are zoomed to cover the view when
+     * [DisplayOptions] allow it ([FitCalculator] holds the rules). A fitted video shows the blurred
+     * thumbnail behind it when the edge fill is BLUR.
+     */
+    private fun applyVideoFit() {
+        val size = videoSize ?: return
+        if (size.width <= 0 || size.height <= 0 || width <= 0 || height <= 0) return
+        var w = size.width * (if (size.pixelWidthHeightRatio > 0f) size.pixelWidthHeightRatio else 1f)
+        var h = size.height.toFloat()
+        if (size.unappliedRotationDegrees == 90 || size.unappliedRotationDegrees == 270) {
+            val t = w
+            w = h
+            h = t
+        }
+        val fit = FitCalculator.compute(Math.round(w), Math.round(h), width, height, display, isVideo = true)
+        playerView.resizeMode = if (fit.fills) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
+        posterView.scaleType = if (fit.fills) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
+        backdropView.visibility = if (!fit.fills && display.edgeFill == EdgeFill.BLUR && backdropUrl != null) View.VISIBLE else View.GONE
     }
 
     @OptIn(UnstableApi::class)
@@ -51,6 +88,7 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
             .setRenderersFactory(renderersFactory)
             .setLoadControl(createLoadControl(config))
             .build()
+        display = config.display
         playerView.player = player
         if (!config.isVideoSoundEnable) player?.volume = 0f
 
@@ -67,6 +105,11 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
                     }
                 }
                 listener.onPlaybackStateChanged(playbackState)
+            }
+
+            override fun onVideoSizeChanged(size: VideoSize) {
+                videoSize = size
+                applyVideoFit()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -94,6 +137,11 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
     fun showLoadingPoster(thumbnailUrl: String?) {
         awaitingFirstFrame = true
         showPosterOverlay()
+        if (!thumbnailUrl.isNullOrBlank() && thumbnailUrl != backdropUrl && display.edgeFill == EdgeFill.BLUR) {
+            backdropUrl = thumbnailUrl
+            SliderImageRequests.blurredBackdrop(context, thumbnailUrl).into(backdropView)
+            applyVideoFit()
+        }
         if (thumbnailUrl.isNullOrBlank()) {
             posterView.setImageDrawable(null)
             return
@@ -126,6 +174,8 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
 
     fun releasePlayer() {
         clearPoster()
+        Glide.with(backdropView).clear(backdropView)
+        backdropUrl = null
         player?.release()
         player = null
     }

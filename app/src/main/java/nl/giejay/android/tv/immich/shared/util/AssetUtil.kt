@@ -144,6 +144,10 @@ private fun captureDistance(a: Asset, b: Asset): Long {
 
 fun Asset.toSliderItem(): SliderItem {
     val itemType = SliderItemType.valueOf(this.type.uppercase())
+    // EXIF width/height are stored before rotation; orientations 5..8 are rotated by 90 degrees.
+    val exifW = this.exifInfo?.exifImageWidth?.takeIf { it > 0 }
+    val exifH = this.exifInfo?.exifImageHeight?.takeIf { it > 0 }
+    val swap = (this.exifInfo?.orientation ?: 1) in 5..8
     return SliderItem(
         this.id,
         ApiUtil.getFileUrl(
@@ -157,7 +161,9 @@ fun Asset.toSliderItem(): SliderItem {
         AssetMetaDataMapping.providersFor(this),
         ApiUtil.getThumbnailUrl(this.id, "preview", PreferenceManager.get(SLIDER_LOAD_EDITED_PHOTO)),
         isPanorama = this.isPanoramaImage(),
-        isFavorite = this.isFavorite
+        isFavorite = this.isFavorite,
+        width = if (swap) exifH else exifW,
+        height = if (swap) exifW else exifH
     )
 }
 
