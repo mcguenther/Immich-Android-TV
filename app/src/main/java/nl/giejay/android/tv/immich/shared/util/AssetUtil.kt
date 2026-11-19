@@ -57,38 +57,166 @@ internal fun groupForSlider(assets: List<Asset>,
     if (pairing == PortraitPairing.OFF) {
         return visible.map { listOf(it) }
     }
+    val keys = pairKeys(visible)
     if (keepOrder) {
         val groups = mutableListOf<List<Asset>>()
         var index = 0
-        while (index < visible.size) {
-            val first = visible[index]
-            val second = visible.getOrNull(index + 1)
+        while (index < keys.size) {
+            val first = keys[index]
+            val second = keys.getOrNull(index + 1)
             if (second != null && first.canPairWith(second, pairing)) {
-                groups.add(listOf(first, second))
+                groups.add(listOf(first.asset, second.asset))
                 index += 2
             } else {
-                groups.add(listOf(first))
+                groups.add(listOf(first.asset))
                 index += 1
             }
         }
         return groups
     }
-    val others = visible.filter { !it.isPortraitImage() }
-    val queue = visible.filter { it.isPortraitImage() }.toMutableList()
-    val portraitGroups = mutableListOf<List<Asset>>()
-    while (queue.isNotEmpty()) {
-        val first = queue.removeAt(0)
-        val partnerIndex = queue.indices
-            .filter { first.canPairWith(queue[it], pairing) }
-            .minByOrNull { captureDistance(first, queue[it]) }
-        if (partnerIndex != null) {
-            portraitGroups.add(listOf(first, queue.removeAt(partnerIndex)))
-        } else {
-            portraitGroups.add(listOf(first))
+    val others = keys.filter { !it.portrait }.map { listOf(it.asset) }
+    return others + pairPortraits(keys.filter { it.portrait }, pairing)
+}
+
+/**
+ * Pairing facts of one asset, computed once per [groupForSlider] call so the pairing never parses
+ * dates or place names again.
+ *
+ * @param portrait the asset is a portrait photo (only those can be paired)
+ * @param timeMs capture time in milliseconds, null without a capture time
+ * @param day local calendar day as yyyymmdd, null without a capture time
+ * @param city trimmed, lowercased city; null when missing or blank
+ * @param country trimmed, lowercased country; null when missing or blank
+ */
+private class PairKey(
+    val asset: Asset,
+    val portrait: Boolean,
+    val timeMs: Long?,
+    val day: Int?,
+    val city: String?,
+    val country: String?
+) {
+    /** Two portrait photos may share a page only if both are portrait photos and they match the pairing mode. */
+    fun canPairWith(other: PairKey, pairing: PortraitPairing): Boolean {
+        if (!portrait || !other.portrait) return false
+        return when (pairing) {
+            PortraitPairing.OFF -> false
+            PortraitPairing.SAME_DAY -> isSameDay(other)
+            PortraitPairing.SAME_DAY_OR_PLACE -> isSameDay(other) || isSamePlace(other)
         }
     }
-    return others.map { listOf(it) } + portraitGroups
+
+    private fun isSameDay(other: PairKey): Boolean = day != null && day == other.day
+
+    /** Same city; a missing country on either side still allows the match. */
+    private fun isSamePlace(other: PairKey): Boolean {
+        if (city == null || city != other.city) return false
+        return country == null || other.country == null || country == other.country
+    }
+
+    /** Distance in milliseconds between capture times; assets without a time sort last. */
+    fun captureDistanceTo(other: PairKey): Long {
+        val a = timeMs ?: return Long.MAX_VALUE
+        val b = other.timeMs ?: return Long.MAX_VALUE
+        return abs(a - b)
+    }
 }
+
+/** Builds the [PairKey]s with one reused calendar in the device time zone. */
+private fun pairKeys(assets: List<Asset>): List<PairKey> {
+    val calendar = Calendar.getInstance()
+    return assets.map { asset ->
+        val time = asset.captureTime()
+        val day = time?.let {
+            calendar.time = it
+            calendar.get(Calendar.YEAR) * 10_000 +
+                    (calendar.get(Calendar.MONTH) + 1) * 100 +
+                    calendar.get(Calendar.DAY_OF_MONTH)
+        }
+        PairKey(
+            asset = asset,
+            portrait = asset.isPortraitImage(),
+            timeMs = time?.time,
+            day = day,
+            city = asset.exifInfo?.city?.normalizedPlace(),
+            country = asset.exifInfo?.country?.normalizedPlace()
+        )
+    }
+}
+
+/**
+ * Pairs portrait photos in list order: each remaining photo takes the matching remaining photo
+ * closest in capture time (on a tie, the earlier one). Candidates come from a day bucket and a
+ * city bucket, so no pass scans all remaining photos.
+ */
+private fun pairPortraits(portraits: List<PairKey>, pairing: PortraitPairing): List<List<Asset>> {
+    val byDay = HashMap<Int, MutableList<Int>>()
+    val byCity = HashMap<String, MutableList<Int>>()
+    portraits.forEachIndexed { index, key ->
+        key.day?.let { byDay.getOrPut(it) { ArrayList() }.add(index) }
+        key.city?.let { byCity.getOrPut(it) { ArrayList() }.add(index) }
+    }
+    val removed = BooleanArray(portraits.size)
+    val groups = ArrayList<List<Asset>>(portraits.size)
+    for (index in portraits.indices) {
+        if (removed[index]) continue
+        removed[index] = true
+        val first = portraits[index]
+        var partner = -1
+        first.day?.let { day ->
+            byDay[day]?.let { partner = closestPartner(first, it, portraits, removed, pairing, partner) }
+        }
+        if (pairing == PortraitPairing.SAME_DAY_OR_PLACE) {
+            first.city?.let { city ->
+                byCity[city]?.let { partner = closestPartner(first, it, portraits, removed, pairing, partner) }
+            }
+        }
+        if (partner >= 0) {
+            removed[partner] = true
+            groups.add(listOf(first.asset, portraits[partner].asset))
+        } else {
+            groups.add(listOf(first.asset))
+        }
+    }
+    return groups
+}
+
+/**
+ * Returns the index of the matching remaining portrait in [bucket] closest to [first], compared
+ * with [current] (-1 for none) by distance and then by index. Removed entries are dropped from
+ * [bucket] during the scan.
+ */
+private fun closestPartner(
+    first: PairKey,
+    bucket: MutableList<Int>,
+    portraits: List<PairKey>,
+    removed: BooleanArray,
+    pairing: PortraitPairing,
+    current: Int
+): Int {
+    var best = current
+    var bestDistance = if (current >= 0) first.captureDistanceTo(portraits[current]) else Long.MAX_VALUE
+    var kept = 0
+    for (position in bucket.indices) {
+        val candidate = bucket[position]
+        if (removed[candidate]) continue
+        bucket[kept++] = candidate
+        val key = portraits[candidate]
+        if (!first.canPairWith(key, pairing)) continue
+        val distance = first.captureDistanceTo(key)
+        if (best < 0 || distance < bestDistance || (distance == bestDistance && candidate < best)) {
+            best = candidate
+            bestDistance = distance
+        }
+    }
+    bucket.subList(kept, bucket.size).clear()
+    return best
+}
+
+/** Capture time: EXIF date taken, falling back to the file creation date. */
+private fun Asset.captureTime(): Date? = this.exifInfo?.dateTimeOriginal ?: this.fileCreatedAt
+
+private fun String.normalizedPlace(): String? = this.trim().lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
 
 /** True when the asset is a video whose displayed orientation (EXIF rotation 5-8 swaps width/height) is portrait. */
 fun Asset.isPortraitVideo(): Boolean {
@@ -100,46 +228,6 @@ fun Asset.isPortraitVideo(): Boolean {
     val displayWidth = if (rotated) height else width
     val displayHeight = if (rotated) width else height
     return displayHeight > displayWidth
-}
-
-/** Two portrait photos may share a page only if both are portrait photos and they match the pairing mode. */
-private fun Asset.canPairWith(other: Asset, pairing: PortraitPairing): Boolean {
-    if (!this.isPortraitImage() || !other.isPortraitImage()) return false
-    return when (pairing) {
-        PortraitPairing.OFF -> false
-        PortraitPairing.SAME_DAY -> isSameLocalDay(this, other)
-        PortraitPairing.SAME_DAY_OR_PLACE -> isSameLocalDay(this, other) || isSamePlace(this, other)
-    }
-}
-
-/** Capture time: EXIF date taken, falling back to the file creation date. */
-private fun Asset.captureTime(): Date? = this.exifInfo?.dateTimeOriginal ?: this.fileCreatedAt
-
-private fun isSameLocalDay(a: Asset, b: Asset): Boolean {
-    val timeA = a.captureTime() ?: return false
-    val timeB = b.captureTime() ?: return false
-    val calendarA = Calendar.getInstance().apply { time = timeA }
-    val calendarB = Calendar.getInstance().apply { time = timeB }
-    return calendarA.get(Calendar.YEAR) == calendarB.get(Calendar.YEAR) &&
-            calendarA.get(Calendar.DAY_OF_YEAR) == calendarB.get(Calendar.DAY_OF_YEAR)
-}
-
-private fun isSamePlace(a: Asset, b: Asset): Boolean {
-    val cityA = a.exifInfo?.city?.normalizedPlace() ?: return false
-    val cityB = b.exifInfo?.city?.normalizedPlace() ?: return false
-    if (cityA != cityB) return false
-    val countryA = a.exifInfo?.country?.normalizedPlace()
-    val countryB = b.exifInfo?.country?.normalizedPlace()
-    return countryA == null || countryB == null || countryA == countryB
-}
-
-private fun String.normalizedPlace(): String? = this.trim().lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
-
-/** Distance in milliseconds between capture times; assets without a time sort last. */
-private fun captureDistance(a: Asset, b: Asset): Long {
-    val timeA = a.captureTime()?.time ?: return Long.MAX_VALUE
-    val timeB = b.captureTime()?.time ?: return Long.MAX_VALUE
-    return abs(timeA - timeB)
 }
 
 fun Asset.toSliderItem(): SliderItem {
