@@ -31,14 +31,4 @@ class MediaSliderConfiguration(
 ) {
     val isGradiantOverlayVisible: Boolean
         get() = (metaDataConfig.isNotEmpty()) && this.gradiantOverlay
-
-    // ---------------------------------------------------------------------------------------
-    // Transitional accessors: they map the new option groups onto the names the slider code
-    // used before the redesign, so it keeps compiling while each area is reworked. Remove an
-    // accessor together with its last caller.
-    // ---------------------------------------------------------------------------------------
-
-    /** TRANSITIONAL (loading rework): use [loading]. */
-    val isOnlyUseThumbnails: Boolean
-        get() = !loading.useFullResolution
 }
