@@ -17,6 +17,9 @@ import nl.giejay.android.tv.immich.shared.prefs.SlideshowDisplayPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.SlideshowFillMode
 import nl.giejay.android.tv.immich.shared.prefs.SlideshowMotionPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.SlideshowTimingPrefScreen
+import nl.giejay.android.tv.immich.shared.prefs.SlideshowVideosPrefScreen
+import nl.giejay.android.tv.immich.shared.prefs.SLIDESHOW_VIDEO_CLIP_LENGTH
+import nl.giejay.android.tv.immich.shared.prefs.SLIDESHOW_VIDEO_CLIP_POSITION
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -78,5 +81,15 @@ class SettingsMenuTest {
         assertThat(SlideshowDisplayPrefScreen.visibility.getValue(SLIDESHOW_MAX_CROP)(prefs)).isTrue()
         assertThat(SlideshowTimingPrefScreen.visibility.getValue(SLIDESHOW_TRANSITION_DURATION)(prefs)).isTrue()
         assertThat(SlideshowMotionPrefScreen.visibility.getValue(SLIDESHOW_MOTION_ZOOM)(prefs)).isTrue()
+    }
+
+    @Test
+    fun clipPositionIsOnlyVisibleWhenAClipLengthIsSet() {
+        val prefs: SharedPreferences = mock()
+        val visible = SlideshowVideosPrefScreen.visibility.getValue(SLIDESHOW_VIDEO_CLIP_POSITION)
+        whenever(prefs.getString(eq(SLIDESHOW_VIDEO_CLIP_LENGTH.key()), any())).thenReturn("0")
+        assertThat(visible(prefs)).isFalse()
+        whenever(prefs.getString(eq(SLIDESHOW_VIDEO_CLIP_LENGTH.key()), any())).thenReturn("-1")
+        assertThat(visible(prefs)).isTrue()
     }
 }

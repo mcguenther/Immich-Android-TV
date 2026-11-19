@@ -22,7 +22,9 @@ class SliderItem(
     /** Display width in pixels (after EXIF rotation) when known, so the slider can lay out before loading. */
     val width: Int? = null,
     /** Display height in pixels (after EXIF rotation) when known. */
-    val height: Int? = null
+    val height: Int? = null,
+    /** Video length in milliseconds when known ahead of playback (null for photos or unknown). */
+    val durationMs: Long? = null
 ) {
     suspend fun get(metaDataType: MetaDataType): String? {
         return this.metaData[metaDataType]?.getValue()

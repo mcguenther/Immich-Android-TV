@@ -42,7 +42,10 @@ object SlideshowSettings {
 
     fun videoPlayback(): VideoPlaybackOptions = VideoPlaybackOptions(
         cinemaFrameRate = PreferenceManager.get(SLIDESHOW_VIDEO_CINEMA_FPS).fps,
-        cinemaOnlyWhenMuted = PreferenceManager.get(SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED)
+        cinemaOnlyWhenMuted = PreferenceManager.get(SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED),
+        clipLengthSeconds = PreferenceManager.get(SLIDESHOW_VIDEO_CLIP_LENGTH),
+        clipPosition = PreferenceManager.get(SLIDESHOW_VIDEO_CLIP_POSITION).value,
+        trimEndSeconds = PreferenceManager.get(SLIDESHOW_VIDEO_TRIM_END)
     )
 
     /** Options for building slider items from assets; [pairing] can be forced off by callers. */

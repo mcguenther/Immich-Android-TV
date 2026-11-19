@@ -75,5 +75,20 @@ data class VideoPlaybackOptions(
     /** Target frame rate (e.g. 24f or 23.976f) faster videos are slowed down to; null plays at normal speed. */
     val cinemaFrameRate: Float? = null,
     /** Apply [cinemaFrameRate] only while the video plays without sound. */
-    val cinemaOnlyWhenMuted: Boolean = true
+    val cinemaOnlyWhenMuted: Boolean = true,
+    /**
+     * Screen time of a video while the slideshow plays: -1 = twice [MediaSliderConfiguration.interval],
+     * 0 = the whole video, otherwise seconds. Shorter videos always play completely.
+     */
+    val clipLengthSeconds: Int = -1,
+    /** Which part of a video longer than the clip is shown. */
+    val clipPosition: ClipPosition = ClipPosition.START,
+    /**
+     * Seconds cut off the end of every video while the slideshow plays (the camera often shakes when
+     * recording stops). Not applied to videos barely longer than this.
+     */
+    val trimEndSeconds: Int = 1
 )
+
+/** Which excerpt of a long video the slideshow shows. */
+enum class ClipPosition { START, MIDDLE, RANDOM }

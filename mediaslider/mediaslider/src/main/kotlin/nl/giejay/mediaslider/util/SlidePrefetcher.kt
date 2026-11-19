@@ -22,6 +22,7 @@ class SlidePrefetcher(
     private val context: Context,
     private val config: MediaSliderConfiguration,
     private val precacher: VideoPrecacher?,
+    private val clipPlanner: ClipPlanner,
     private val slotSize: (paired: Boolean) -> Pair<Int, Int>
 ) {
     private class Entry(val targets: List<Target<Drawable>>, val videoUrl: String?)
@@ -45,7 +46,7 @@ class SlidePrefetcher(
             val k = key(slide)
             if (active.containsKey(k)) return@forEach
             active[k] = if (slide.type == SliderItemType.VIDEO) {
-                slide.url?.let { precacher?.precache(it) }
+                slide.url?.let { precacher?.precache(it, clipStartFraction(slide)) }
                 Entry(emptyList(), slide.url)
             } else {
                 val (w, h) = slotSize(slide.hasSecondaryItem())
@@ -66,6 +67,19 @@ class SlidePrefetcher(
         val entry = active.remove(key) ?: return
         entry.targets.forEach { Glide.with(context).clear(it) }
         entry.videoUrl?.let { precacher?.cancel(it) }
+    }
+
+    /**
+     * Where the excerpt of an upcoming video starts (fraction of its length), 0 when it starts at the
+     * beginning, plays completely or the duration is unknown. Uses the planner the player uses.
+     */
+    private fun clipStartFraction(slide: SliderItemViewHolder): Double {
+        val video = config.videoPlayback
+        val duration = slide.mainItem.durationMs ?: return 0.0
+        val window = clipPlanner.excerpt(
+            slide.mainItem.id, duration, video.clipLengthSeconds, config.interval, 1f, video.clipPosition, video.trimEndSeconds
+        ) ?: return 0.0
+        return window.startMs.toDouble() / duration
     }
 
     private fun key(slide: SliderItemViewHolder) = slide.ids().joinToString("+") + "|" + slide.type

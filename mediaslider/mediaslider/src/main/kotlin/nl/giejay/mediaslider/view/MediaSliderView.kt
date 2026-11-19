@@ -52,6 +52,7 @@ import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.plugin.MetadataViewPlugin
 import nl.giejay.mediaslider.plugin.SliderViewPlugin
 import nl.giejay.mediaslider.plugin.SliderViewPluginContext
+import nl.giejay.mediaslider.util.ClipPlanner
 import nl.giejay.mediaslider.util.FixedSpeedScroller
 import nl.giejay.mediaslider.util.LoadMoreResult
 import timber.log.Timber
@@ -91,6 +92,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     private var defaultExoFactory = DefaultHttpDataSource.Factory()
     private var pagerAdapter: ScreenSlidePagerAdapter? = null
     private var videoCache: Cache? = null
+    private val clipPlanner = ClipPlanner()
     private var prefetcher: SlidePrefetcher? = null
     private var videoPrecacher: VideoPrecacher? = null
     private var loading = false
@@ -177,6 +179,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
         }
         controller.initialize(config)
+        controller.clipPlanner = clipPlanner
         viewPlugins.forEach { it.plugin.attachView(viewPluginContext.rootView, it.state) }
         viewPlugins.forEach { it.plugin.onLoadConfig(viewPluginContext, config, it.state) }
         initViewsAndSetAdapter(listener)
@@ -277,9 +280,11 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                     }
                     val player = viewTag.getPlayer()!!
                     controller.setCurrentPlayer(player)
-                    player.seekTo(0, 0)
+                    // Where the clip starts (0 outside clip mode); known before anything is shown.
+                    val clipStartMs = controller.beginVideoClip(sliderItem.mainItem, player)
+                    player.seekTo(0, clipStartMs)
                     if (player.playbackState == Player.STATE_IDLE && sliderItem.url != null) {
-                        prepareMedia(sliderItem.url!!, player, playbackDataSourceFactory())
+                        prepareMedia(sliderItem.url!!, player, playbackDataSourceFactory(), clipStartMs)
                     }
                     if (!config.isVideoSoundEnable) {
                         player.volume = 0f
@@ -329,7 +334,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             VideoPrecacher { VideoCache.cacheDataSourceFactory(cache, defaultExoFactory) }
         }
         videoPrecacher = precacher
-        prefetcher = SlidePrefetcher(context, config, precacher) { paired ->
+        prefetcher = SlidePrefetcher(context, config, precacher, clipPlanner) { paired ->
             pagerAdapter?.slotSize(mPager, paired) ?: (width to height)
         }
     }
@@ -647,11 +652,11 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         private const val MIN_MOTION_INTERVAL = 4
 
         @SuppressLint("UnsafeOptInUsageError")
-        fun prepareMedia(mediaUrl: String, player: ExoPlayer, factory: DataSource.Factory) {
+        fun prepareMedia(mediaUrl: String, player: ExoPlayer, factory: DataSource.Factory, startPositionMs: Long = 0L) {
             val mediaUri = Uri.parse(mediaUrl)
             val mediaItem = MediaItem.fromUri(mediaUri)
             val mediaSource = ProgressiveMediaSource.Factory(factory).createMediaSource(mediaItem)
-            player.setMediaSource(mediaSource, 0L)
+            player.setMediaSource(mediaSource, startPositionMs)
             player.prepare()
         }
     }
