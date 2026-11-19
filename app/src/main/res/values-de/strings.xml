@@ -90,7 +90,8 @@
     <string name="screensaver_not_possible">Der Bildschirmschoner für Immich konnte wegen eines ungültigen Hostnamens oder API-Schlüssels nicht gestartet werden</string>
     <string name="close">Schließen</string>
     <string name="interval">Intervall</string>
-    <string name="screensaver_interval_desc">Intervall des Bildschirmschoners</string>
+    <string name="screensaver_interval_desc">Sekunden pro Foto im Bildschirmschoner.</string>
+    <string name="interval_screensaver">Intervall (Bildschirmschoner)</string>
     <string name="show_media_count">Anzahl der Medien anzeigen</string>
     <string name="show_media_count_desc_screensaver">Gesamtzahl der Medien und aktuelle Position anzeigen</string>
     <string name="show_description">Beschreibung anzeigen</string>
@@ -121,8 +122,8 @@
     <string name="screensaver_start_now_desc">Bildschirmschoner jetzt starten</string>
 
     <!-- Slider/viewer preferences -->
-    <string name="interval_slideshow">Diashow-Intervall</string>
-    <string name="interval_slideshow_desc">Sekunden pro Foto in der Diashow. Videos laufen vollständig, danach geht es weiter.</string>
+    <string name="interval_slideshow">Intervall (Diashow)</string>
+    <string name="interval_slideshow_desc">Sekunden pro Foto in der Diashow (Alben, Zeitleiste). Videos richten sich nach der Cliplänge.</string>
     <string name="slide_animation_speed_ms">Geschwindigkeit der Wischanimation (ms)</string>
     <string name="slide_animation_speed_desc">Geschwindigkeit der Wischanimation in Millisekunden</string>
     <string name="show_description_slideshow">Beschreibung anzeigen</string>

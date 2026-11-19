@@ -108,7 +108,8 @@
     <string name="screensaver_not_possible">Could not start screensaver for Immich because of invalid Hostname/API key</string>
     <string name="close">Close</string>
     <string name="interval">Interval</string>
-    <string name="screensaver_interval_desc">Interval of the screensaver</string>
+    <string name="screensaver_interval_desc">Seconds per photo in the screensaver.</string>
+    <string name="interval_screensaver">Interval (screensaver)</string>
     <string name="show_media_count">Show media count</string>
     <string name="show_media_count_desc_screensaver">Show the number of total items and currently selected item</string>
     <string name="show_description">Show description</string>
@@ -139,8 +140,8 @@
     <string name="screensaver_start_now_desc">Start the screensaver now</string>
 
     <!-- Slider/viewer preferences -->
-    <string name="interval_slideshow">Slideshow interval</string>
-    <string name="interval_slideshow_desc">Seconds per photo during slideshow. Videos play in full, then advance.</string>
+    <string name="interval_slideshow">Interval (slideshow)</string>
+    <string name="interval_slideshow_desc">Seconds per photo in slideshows (albums, timeline). Videos follow the clip length setting.</string>
     <string name="slide_animation_speed_ms">Slide animation speed (ms)</string>
     <string name="slide_animation_speed_desc">Slide animation speed in milliseconds</string>
     <string name="show_description_slideshow">Show description</string>
