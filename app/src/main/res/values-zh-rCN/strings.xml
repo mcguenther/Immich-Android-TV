@@ -193,11 +193,6 @@
     <string name="excluded_albums_desc">在随机/往年同期视图中排除指定相册内的媒体项</string>
 
     <!-- Preference screens and categories -->
-    <string name="view_settings">视图设置</string>
-    <string name="display">显示</string>
-    <string name="display_desc">更改媒体的显示方式</string>
-    <string name="effects">效果</string>
-    <string name="effects_desc">缩放、平移和裁剪效果</string>
     <string name="content">内容</string>
     <string name="content_desc">配置要显示的内容</string>
     <string name="general">通用</string>

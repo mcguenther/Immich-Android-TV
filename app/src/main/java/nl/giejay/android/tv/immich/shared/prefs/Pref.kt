@@ -12,7 +12,17 @@ import androidx.preference.SeekBarPreference
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager.sharedPreference
 
 
-sealed class PrefScreen(val title: String, val key: String, val children: List<PrefCategory>, val onViewCreated: (PreferenceManager) -> Unit = {}) {
+/**
+ * A screen of preferences.
+ *
+ * @param visibility optional rules that show a preference only while the rule returns true. The rules are evaluated when
+ * the screen opens and re-evaluated every time a preference changes, so dependent options appear and disappear live.
+ */
+sealed class PrefScreen(val title: String,
+                        val key: String,
+                        val children: List<PrefCategory>,
+                        val onViewCreated: (PreferenceManager) -> Unit = {},
+                        val visibility: Map<Pref<*, *, *>, (SharedPreferences) -> Boolean> = emptyMap()) {
     fun findByKey(key: String): Pref<*, *, *>? {
         return children.firstNotNullOfOrNull { it.findByKey(key) }
     }

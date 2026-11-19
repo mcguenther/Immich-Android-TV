@@ -164,7 +164,7 @@ data object SCREENSAVER_ALBUMS : StringSetPref(mutableSetOf(),
             AlbumFragmentDirections.actionGlobalAlbumFragment(
                 true,
                 SelectionType.SET_SCREENSAVER.toString(),
-                "screensaver"
+                "screensaver_content"
             )
         )
         return true
@@ -179,7 +179,7 @@ data object SCREENSAVER_PEOPLE : StringSetPref(mutableSetOf(),
             PeopleFragmentDirections.actionGlobalPeopleFragment(
                 true,
                 SelectionType.SET_SCREENSAVER.toString(),
-                "screensaver"
+                "screensaver_content"
             )
         )
         return true
@@ -588,27 +588,29 @@ data object EXCLUDE_ASSETS_IN_ALBUM : StringSetPref(emptySet(),
 }
 
 // Building the view
-// TEMPORARY layout until the menu restructure: keeps every new option reachable.
-data object ViewSlideshowDisplayPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.display), "view_slideshow_display",
+/** Opens the settings screen with the given [screenKey]. */
+private fun settingsLink(screenKey: String, title: String, summary: String) =
+    ActionPref(screenKey, title, summary) { _, navController ->
+        navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog(screenKey))
+        true
+    }
+
+data object SlideshowDisplayPrefScreen : PrefScreen(str(R.string.slideshow_display), "slideshow_display",
     listOf(
         PrefCategory("", listOf(
-            SLIDESHOW_IMAGE_SOURCE,
-            SLIDESHOW_PREFETCH_COUNT,
-            SLIDESHOW_VIDEO_CACHE_MB,
-            SLIDER_FORCE_ORIGINAL_VIDEO,
-            SLIDER_DPAD_SEEK_IN_VIDEO,
-            SLIDER_LOAD_EDITED_PHOTO,
-            SLIDESHOW_PORTRAIT_PAIRING,
-            SLIDESHOW_SHOW_PORTRAIT_VIDEOS,
             SLIDESHOW_FILL_MODE,
             SLIDESHOW_MAX_CROP,
             SLIDESHOW_FILL_VIDEOS,
             SLIDESHOW_EDGE_FILL
         ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_MAX_CROP to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL },
+        SLIDESHOW_FILL_VIDEOS to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL }
     )
 )
 
-data object ViewSlideshowEffectsPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.effects), "view_slideshow_effects",
+data object SlideshowMotionPrefScreen : PrefScreen(str(R.string.slideshow_motion), "slideshow_motion",
     listOf(
         PrefCategory("", listOf(
             SLIDESHOW_MOTION_ENABLED,
@@ -617,25 +619,68 @@ data object ViewSlideshowEffectsPrefScreen : PrefScreen(ImmichApplication.appCon
             SLIDESHOW_MOTION_STYLE,
             SLIDESHOW_PANORAMA_SCROLL
         ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_MOTION_ZOOM to { prefs -> SLIDESHOW_MOTION_ENABLED.getValue(prefs) },
+        SLIDESHOW_MOTION_PAN to { prefs -> SLIDESHOW_MOTION_ENABLED.getValue(prefs) },
+        SLIDESHOW_MOTION_STYLE to { prefs -> SLIDESHOW_MOTION_ENABLED.getValue(prefs) }
     )
 )
 
-data object ViewSlideshowPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.slideshow), "view_slideshow",
+data object SlideshowPairsPrefScreen : PrefScreen(str(R.string.slideshow_pairs), "slideshow_pairs",
     listOf(
         PrefCategory("", listOf(
-            ActionPref("view_slideshow_display", ImmichApplication.appContext!!.getString(R.string.display), ImmichApplication.appContext!!.getString(R.string.display_desc)) { _, navController ->
-                navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_slideshow_display"))
-                true
-            },
-            ActionPref("view_slideshow_effects", ImmichApplication.appContext!!.getString(R.string.effects), ImmichApplication.appContext!!.getString(R.string.effects_desc)) { _, navController ->
-                navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_slideshow_effects"))
-                true
-            },
+            SLIDESHOW_PORTRAIT_PAIRING,
+            SLIDESHOW_SHOW_PORTRAIT_VIDEOS
+        ))
+    )
+)
+
+data object SlideshowTimingPrefScreen : PrefScreen(str(R.string.slideshow_timing), "slideshow_timing",
+    listOf(
+        PrefCategory("", listOf(
             SLIDER_INTERVAL,
             SLIDESHOW_TRANSITION,
-            SLIDESHOW_TRANSITION_DURATION,
+            SLIDESHOW_TRANSITION_DURATION
+        ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_TRANSITION_DURATION to { prefs -> SLIDESHOW_TRANSITION.getValue(prefs) != SlideshowTransition.NONE }
+    )
+)
+
+data object SlideshowOverlaysPrefScreen : PrefScreen(str(R.string.slideshow_overlays), "slideshow_overlays",
+    listOf(
+        PrefCategory("", listOf(
             SLIDER_SHOW_DATE_TOP_LEFT,
             SLIDER_METADATA_CUSTOMIZER
+        ))
+    )
+)
+
+data object SlideshowQualityPrefScreen : PrefScreen(str(R.string.slideshow_quality), "slideshow_quality",
+    listOf(
+        PrefCategory("", listOf(
+            SLIDESHOW_IMAGE_SOURCE,
+            SLIDESHOW_PREFETCH_COUNT,
+            SLIDESHOW_VIDEO_CACHE_MB,
+            SLIDER_FORCE_ORIGINAL_VIDEO,
+            SLIDER_LOAD_EDITED_PHOTO,
+            SLIDER_DPAD_SEEK_IN_VIDEO
+        ))
+    )
+)
+
+/** Slideshow settings, shared by the viewer slideshow and the screensaver. */
+data object SlideshowPrefScreen : PrefScreen(str(R.string.slideshow), "slideshow",
+    listOf(
+        PrefCategory("", listOf(
+            settingsLink("slideshow_display", str(R.string.slideshow_display), str(R.string.slideshow_display_desc)),
+            settingsLink("slideshow_motion", str(R.string.slideshow_motion), str(R.string.slideshow_motion_desc)),
+            settingsLink("slideshow_pairs", str(R.string.slideshow_pairs), str(R.string.slideshow_pairs_desc)),
+            settingsLink("slideshow_timing", str(R.string.slideshow_timing), str(R.string.slideshow_timing_desc)),
+            settingsLink("slideshow_overlays", str(R.string.slideshow_overlays), str(R.string.slideshow_overlays_desc)),
+            settingsLink("slideshow_quality", str(R.string.slideshow_quality), str(R.string.slideshow_quality_desc))
         ))
     )
 )
@@ -660,7 +705,7 @@ data object ViewGeneralPrefScreen : PrefScreen(ImmichApplication.appContext!!.ge
     )
 )
 
-data object ViewPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.view_settings), "view",
+data object ViewPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.browse_settings), "view",
     listOf(
         PrefCategory("",
             listOf(
@@ -670,10 +715,6 @@ data object ViewPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString
                 },
                 ActionPref("view_ordering", ImmichApplication.appContext!!.getString(R.string.ordering), ImmichApplication.appContext!!.getString(R.string.ordering)) { _, navController ->
                     navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_ordering"))
-                    true
-                },
-                ActionPref("view_slideshow", ImmichApplication.appContext!!.getString(R.string.slideshow), ImmichApplication.appContext!!.getString(R.string.slideshow)) { _, navController ->
-                    navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_slideshow"))
                     true
                 },
                 ActionPref("view_content", ImmichApplication.appContext!!.getString(R.string.content), ImmichApplication.appContext!!.getString(R.string.content_desc)) { _, navController ->
@@ -696,20 +737,46 @@ data object ViewOrderingPrefScreen : PrefScreen(ImmichApplication.appContext!!.g
     )
 )
 
-data object ScreensaverPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.screensaver_settings), "screensaver",
+data object ScreensaverContentPrefScreen : PrefScreen(str(R.string.screensaver_content), "screensaver_content",
+    listOf(
+        PrefCategory("", listOf(
+            SCREENSAVER_TYPE,
+            SCREENSAVER_ALBUMS,
+            SCREENSAVER_PEOPLE,
+            SCREENSAVER_INCLUDE_VIDEOS
+        ))
+    )
+)
+
+data object ScreensaverTimingPrefScreen : PrefScreen(str(R.string.slideshow_timing), "screensaver_timing",
+    listOf(
+        PrefCategory("", listOf(
+            SCREENSAVER_INTERVAL,
+            SCREENSAVER_PLAY_SOUND
+        ))
+    )
+)
+
+data object ScreensaverOverlaysPrefScreen : PrefScreen(str(R.string.slideshow_overlays), "screensaver_overlays",
+    listOf(
+        PrefCategory("", listOf(
+            SCREENSAVER_SHOW_DATE_TOP_LEFT,
+            SCREENSAVER_METADATA_CUSTOMIZER
+        ))
+    )
+)
+
+data object ScreensaverPrefScreen : PrefScreen(str(R.string.screensaver_settings), "screensaver",
     listOf(
         PrefCategory("",
             listOf(
                 SCREENSAVER_START_NOW,
                 SCREENSAVER_SET,
-                SCREENSAVER_INTERVAL,
-                SCREENSAVER_TYPE,
-                SCREENSAVER_ALBUMS,
-                SCREENSAVER_PEOPLE,
-                SCREENSAVER_SHOW_DATE_TOP_LEFT,
-                SCREENSAVER_METADATA_CUSTOMIZER,
-                SCREENSAVER_INCLUDE_VIDEOS,
-                SCREENSAVER_PLAY_SOUND)
+                settingsLink("screensaver_content", str(R.string.screensaver_content), str(R.string.screensaver_content_desc)),
+                settingsLink("screensaver_timing", str(R.string.slideshow_timing), str(R.string.screensaver_timing_desc)),
+                settingsLink("screensaver_overlays", str(R.string.slideshow_overlays), str(R.string.slideshow_overlays_desc)),
+                settingsLink("slideshow", str(R.string.screensaver_appearance_link), str(R.string.screensaver_appearance_link_desc))
+            )
         )
     )
 )
