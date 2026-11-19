@@ -71,8 +71,8 @@ class SettingsFragment : RowsSupportFragment() {
                             ImmichApplication.appContext!!.getString(R.string.slideshow),
                             null,
                             "slideshow",
-                            "screensaver",
-                            "screensaver"
+                            "icon_slideshow",
+                            "icon_slideshow"
                         ) {
                             findNavController().navigate(
                                 HomeFragmentDirections.actionGlobalToSettingsDialog(SlideshowPrefScreen.key)
