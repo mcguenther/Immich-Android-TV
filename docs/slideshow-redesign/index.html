@@ -264,9 +264,10 @@ td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
             <li><span class="k">Darstellung</span>: Bildfüllung · Max. Beschnitt · Videos füllen · Ränder</li>
             <li><span class="k">Bewegung</span>: Kamerafahrt · Zoom 0–12 % · Schwenk 0–8 % · Bewegungsart · Panoramen</li>
             <li><span class="k">Hochkant-Paare</span>: Aus / Gleicher Tag / Tag oder Ort · Ortsregel</li>
-            <li><span class="k">Ablauf</span>: Intervall · Übergang (Überblenden/Schieben/Ohne) · Dauer · Kino-Bildrate für Videos</li>
+            <li><span class="k">Ablauf</span>: Intervall · Übergang (Überblenden/Schieben/Ohne) · Dauer</li>
             <li><span class="k">Einblendungen</span>: Datum oben links · Metadaten anpassen</li>
-            <li><span class="k">Qualität &amp; Laden</span>: Bildquelle <span class="flag good">Standard: volle Auflösung</span> · Vorladen (3) · Video-Cache · Original-Video · Bearbeitete Fotos · D-Pad</li>
+            <li><span class="k">Videos</span> <span class="flag new">neu</span>: Cliplänge (Standard doppelte Bilddauer) · Ausschnitt Anfang/Mitte/Zufall · Ende abschneiden (1 s) · Kino-Bildrate · Hochkant-Videos · Füllen · Original-Video · D-Pad · Video-Cache</li>
+            <li><span class="k">Qualität &amp; Laden</span>: Bildquelle <span class="flag good">Standard: volle Auflösung</span> · Vorladen (3) · Bearbeitete Fotos</li>
           </ul></li>
         <li><span class="k">Bildschirmschoner</span>
           <ul>
@@ -540,7 +541,7 @@ const META_DEF = () => [
 const S = {
   fill:'fill', maxCrop:30, fillVideos:true, edge:'blur',
   motion:true, zoom:5, pan:3, style:'mixed', panoramas:true,
-  pairs:'day', place:'city', portraitVideos:true,
+  pairs:'day', place:'city', portraitVideos:true, clipLen:-1, clipPos:'start', trimEnd:1,
   intervalV:8, intervalS:12, transition:'fade', transDur:1000, cinemaFps:'off', cinemaMuted:true,
   dateTLV:false, dateTLS:true,
   metaV:META_DEF(), metaS:META_DEF().map(m=>({...m,on:['date','city','album','clock'].includes(m.k)})),
@@ -564,6 +565,9 @@ const O = {
   source:opt([['full','Volle Auflösung'],['preview','Vorschau (schneller)']]),
   prefetch:opt([[0,'Aus'],[1,'1 Ansicht'],[2,'2 Ansichten'],[3,'3 Ansichten'],[5,'5 Ansichten']]),
   videoCache:opt([[250,'250 MB'],[500,'500 MB'],[1000,'1 GB']]),
+  clipLen:opt([[-1,'Doppelte Bilddauer'],[0,'Ganzes Video'],...Array.from({length:30},(_,i)=>[2*(i+1),2*(i+1)+' s'])]),
+  clipPos:opt([['start','Anfang'],['middle','Mitte'],['random','Zufälliger Ausschnitt']]),
+  trimEnd:opt([[0,'Aus'],[1,'1 s'],[2,'2 s']]),
   ssType:opt([['recent','Zuletzt hinzugefügt'],['albums','Alben'],['people','Personen'],['seasonal','Saisonal'],['random','Zufällig']])
 };
 const lbl=(key,v)=>{const o=(O[key]||[]).find(x=>x.v===v);return o?o.l:String(v)};
@@ -595,14 +599,14 @@ const screens = {
     note('Gilt für die Diashow in Alben, der Zeitleiste und für den Bildschirmschoner.'),
     nav('disp','Darstellung', S.fill==='fill' ? `Füllen · max. ${lbl('maxCrop',S.maxCrop)} Beschnitt` : 'Einpassen','disp','new'),
     nav('motion','Bewegung', S.motion ? `Zoom ${S.zoom} % · Schwenk ${S.pan} % · ${lbl('style',S.style)}` : 'Aus','motion','chg'),
-    nav('pairs','Hochkant-Paare', lbl('pairs',S.pairs) + (S.portraitVideos?'':' · ohne Hochkant-Videos'),'pairs','chg'),
+    nav('pairs','Hochkant-Paare', lbl('pairs',S.pairs),'pairs','chg'),
+    nav('videos','Videos', `${lbl('clipLen',S.clipLen)}${S.clipLen!==0?' · '+lbl('clipPos',S.clipPos):''} · Ende −${S.trimEnd} s`.replace(' · Ende −0 s',''),'videos','new'),
     nav('timing','Ablauf', `${lbl('interval',S.intervalV)} · ${lbl('transition',S.transition)}`,'timing'),
     nav('overlay','Einblendungen','Datum oben links, Metadaten','overlay','moved'),
     nav('quality','Qualität & Laden', `${lbl('source',S.source)} · ${S.prefetch?S.prefetch+' vorladen':'kein Vorladen'}`,'quality','new')]},
   disp:{title:'Darstellung', items:()=>[
     ch('fill','Bildfüllung',null,()=>S.fill==='fill'?'Bild füllt den ganzen Bildschirm, Ränder werden beschnitten':'Ganzes Bild sichtbar, ggf. mit Rändern','new'),
-    ...(S.fill==='fill'?[ch('maxCrop','Maximaler Beschnitt',null,()=>'Mehr Beschnitt nötig? Dann wird eingepasst. 4:3 braucht 25 %, 1:1 44 %','new'),
-      tog('fillVideos','Videos bildfüllend',()=>'Querformat-Videos ebenfalls zoomen, gleiche Grenze','new')]:[]),
+    ...(S.fill==='fill'?[ch('maxCrop','Maximaler Beschnitt',null,()=>'Mehr Beschnitt nötig? Dann wird eingepasst. 4:3 braucht 25 %, 1:1 44 %','new')]:[]),
     ch('edge','Ränder füllen mit',null,()=>'Für Bilder, die nicht füllen (z. B. einzelne Hochkantbilder)','new')]},
   motion:{title:'Bewegung', items:()=>[
     tog('motion','Kamerafahrt',()=>'Langsamer Zoom und Schwenk, eine Bewegung pro Bild','chg'),
@@ -613,14 +617,22 @@ const screens = {
     tog('panoramas','Panoramen durchfahren',()=>'Sehr breite oder hohe Bilder füllend von einer Seite zur anderen')]},
   pairs:{title:'Hochkant-Paare', items:()=>[
     ch('pairs','Zwei Hochkantbilder nebeneinander',null,()=>({off:'Hochkantbilder kommen immer einzeln',day:'Nur wenn beide am selben Tag aufgenommen wurden',dayplace:'Selber Tag oder selber Ort, auch an verschiedenen Tagen'})[S.pairs],'chg'),
-    tog('portraitVideos','Hochkant-Videos anzeigen',()=>S.portraitVideos?'Werden aufrecht und nie beschnitten gezeigt':'Werden in der Diashow übersprungen','new'),
     note('„Gleicher Ort“ heißt gleiche Stadt laut Bilddaten. Gewählt wird das zeitlich nächste passende Foto. Ohne Partner erscheint das Bild allein.')]},
   timing:{title:'Ablauf', items:()=>[
     ch('intervalV','Intervall','interval',()=>'Anzeigedauer pro Bild in der Diashow'),
     ch('transition','Übergang',null,()=>'Überblenden wirkt am ruhigsten','new'),
-    ...(S.transition!=='none'?[ch('transDur','Übergangsdauer',null,()=>'Bewegung läuft während des Übergangs weiter')]:[]),
+    ...(S.transition!=='none'?[ch('transDur','Übergangsdauer',null,()=>'Bewegung läuft während des Übergangs weiter')]:[])]},
+  videos:{title:'Videos', items:()=>[
+    ch('clipLen','Cliplänge',null,()=>S.clipLen===-1?`Doppelte Bilddauer (${2*(ctx()==='ss'?S.intervalS:S.intervalV)} s). Kürzere Videos laufen ganz`:S.clipLen===0?'Videos laufen bis zum Ende':'Wie lange ein Video in der Diashow läuft. Kürzere Videos laufen ganz','new'),
+    ...(S.clipLen!==0?[ch('clipPos','Ausschnitt',null,()=>'Welcher Teil eines längeren Videos gezeigt wird','new')]:[]),
+    ch('trimEnd','Videoende abschneiden',null,()=>'Die letzten Sekunden überspringen, die beim Beenden der Aufnahme oft verwackelt sind','new'),
     ch('cinemaFps','Kino-Bildrate für Videos',null,()=>S.cinemaFps==='off'?'Videos laufen in ihrem eigenen Tempo':'Schnellere Videos laufen leicht verlangsamt (30 fps mit '+(S.cinemaFps==='24'?'80':'79,9')+' % Tempo, höchstens auf 40 % gebremst)','new'),
-    ...(S.cinemaFps!=='off'?[tog('cinemaMuted','Nur bei stummen Videos',()=>'Videos mit Ton laufen in normalem Tempo','new')]:[])]},
+    ...(S.cinemaFps!=='off'?[tog('cinemaMuted','Nur bei stummen Videos',()=>'Videos mit Ton laufen in normalem Tempo','new')]:[]),
+    tog('portraitVideos','Hochkant-Videos anzeigen',()=>S.portraitVideos?'Werden aufrecht und nie beschnitten gezeigt':'Werden in der Diashow übersprungen','moved'),
+    ...(S.fill==='fill'?[tog('fillVideos','Querformat-Videos bildfüllend',()=>'Gleiche Grenze wie bei Fotos','moved')]:[]),
+    tog('origVideo','Original-Video erzwingen',()=>'Statt der transkodierten Fassung','moved'),
+    tog('dpad','Steuerkreuz spult im Video',()=>'Links/Rechts spult statt Bild zu wechseln','moved'),
+    ch('videoCache','Video-Cache',null,()=>'Speicher für vorgeladene Videoanfänge','moved')]},
   overlay:{title:'Einblendungen', items:()=>[
     tog('dateTLV','Datum oben links',()=>'Aufnahmedatum zusätzlich oben links anzeigen'),
     nav('metaV','Metadaten anpassen','Welche Infos unten stehen und wo','metaV')]},
@@ -628,10 +640,7 @@ const screens = {
   quality:{title:'Qualität & Laden', items:()=>[
     ch('source','Bildquelle',null,()=>S.source==='full'?'Originalauflösung, auf Bildschirmgröße dekodiert':'Immich-Vorschau (ca. 1440 px), lädt schneller','new'),
     ch('prefetch','Vorladen',null,()=>S.prefetch?`Die nächsten ${S.prefetch} Ansichten liegen schon im Speicher; Videos starten sofort`:'Bilder werden erst geladen, wenn sie dran sind','new'),
-    ch('videoCache','Video-Cache',null,()=>'Speicher für vorgeladene Videoanfänge','new'),
-    tog('origVideo','Original-Video erzwingen',()=>'Statt der transkodierten Fassung','moved'),
-    tog('edited','Bearbeitete Fotos laden',()=>'In Immich bearbeitete Version zeigen','moved'),
-    tog('dpad','Steuerkreuz spult im Video',()=>'Links/Rechts spult statt Bild zu wechseln','moved')]},
+    tog('edited','Bearbeitete Fotos laden',()=>'In Immich bearbeitete Version zeigen','moved')]},
   ss:{title:'Bildschirmschoner', items:()=>[
     {type:'action',t:'Jetzt starten',s:'Vorschau mit den Einstellungen unten',act:()=>{restartShow();toast('Bildschirmschoner-Vorschau neu gestartet')}},
     {type:'action',t:'Als Bildschirmschoner festlegen',s:'Öffnet die Android-Einstellungen',act:()=>toast('Würde jetzt die Android-Bildschirmschoner-Einstellungen öffnen')},
