@@ -47,10 +47,6 @@ class MediaSliderConfiguration(
     val animationSpeedMillis: Int
         get() = transition.durationMillis
 
-    /** TRANSITIONAL (transition rework): use [transition]. */
-    val enableSlideAnimation: Boolean
-        get() = transition.type != TransitionType.NONE
-
     /** TRANSITIONAL (fill rework): use [display]. */
     val maxCutOffHeight: Int
         get() = display.maxCropPercent

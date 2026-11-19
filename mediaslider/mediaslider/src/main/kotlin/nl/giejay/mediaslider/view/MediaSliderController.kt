@@ -18,6 +18,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.viewpager.widget.ViewPager
 import com.zeuskartik.mediaslider.R
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
+import nl.giejay.mediaslider.config.TransitionType
 import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.plugin.ControllerButtonPlacement
@@ -194,11 +195,15 @@ class MediaSliderController(
     // Navigation
     // -------------------------------------------------------------------------
 
+    /** False when the transition is NONE (or has no duration): paging then jumps without animation. */
+    private val smoothScroll: Boolean
+        get() = config.transition.type != TransitionType.NONE && config.transition.durationMillis > 0
+
     fun goToNextAsset() {
         if (pager.currentItem < pager.adapter!!.count - 1) {
-            pager.setCurrentItem(pager.currentItem + 1, config.enableSlideAnimation)
+            pager.setCurrentItem(pager.currentItem + 1, smoothScroll)
         } else {
-            pager.setCurrentItem(0, config.enableSlideAnimation)
+            pager.setCurrentItem(0, smoothScroll)
         }
         // Keep controller focus if the overlay is open (e.g. mid D-pad to pause during slideshow).
         if (!isControllerVisible) {
@@ -209,7 +214,7 @@ class MediaSliderController(
     fun goToPreviousAsset() {
         pager.setCurrentItem(
             (if (0 == pager.currentItem) pager.adapter!!.count else pager.currentItem) - 1,
-            config.enableSlideAnimation
+            smoothScroll
         )
         if (!isControllerVisible) {
             restorePagerFocus()
