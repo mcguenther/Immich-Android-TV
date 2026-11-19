@@ -1,0 +1,886 @@
+<title>Immich TV Diashow-Umbau</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: page = plan document; hero block = TV mock (16:9 stage + Leanback-style settings panel side by side), then structure, specs, phases. */
+:root{
+  --bg:#F2F3F7; --surface:#FFFFFF; --surface-2:#E9EBF1; --fg:#151821; --muted:#5A6072; --line:#D8DCE5;
+  --accent:#3B5BDB; --accent-soft:#E3E8FB; --good:#2B8A3E; --warn:#C2410C; --bad:#B42318;
+  --tv-bezel:#0B0C0F; --tv-panel:#202124; --tv-row-focus:#3C4043; --tv-fg:#E8EAED; --tv-muted:#9AA0A6; --tv-accent:#8AB4F8;
+  --font-display:"Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body:"Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1014; --surface:#161920; --surface-2:#1E222B; --fg:#E7E9EF; --muted:#9BA1B0; --line:#2A2F3A;
+  --accent:#8199F7; --accent-soft:#1F2850; --good:#5BC27A; --warn:#F2994A; --bad:#F87171; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0E1014; --surface:#161920; --surface-2:#1E222B; --fg:#E7E9EF; --muted:#9BA1B0; --line:#2A2F3A;
+  --accent:#8199F7; --accent-soft:#1F2850; --good:#5BC27A; --warn:#F2994A; --bad:#F87171; color-scheme:dark;}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.55;}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:32px 64px;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(28px,4vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:600}
+h3{font-size:18px;font-weight:600}
+p{margin:0}
+code,kbd,.mono{font-family:var(--font-mono);font-size:.86em}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface)}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+.lede{max-width:70ch;color:var(--muted);font-size:16px}
+header.top{display:flex;flex-direction:column;gap:14px}
+.reqs{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.req{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px}
+.req b{color:var(--accent);font-weight:600}
+section{display:flex;flex-direction:column;gap:18px}
+.sec-head{display:flex;flex-direction:column;gap:6px;max-width:80ch}
+.sec-head p{color:var(--muted)}
+
+/* ---------- Mock ---------- */
+.mock{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(300px,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.mock{grid-template-columns:minmax(0,1fr)}}
+.tvcol{display:flex;flex-direction:column;gap:10px;min-width:0}
+.bezel{background:var(--tv-bezel);padding:10px;border-radius:14px;box-shadow:0 18px 40px -22px rgba(0,0,0,.55)}
+#stage{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;overflow:hidden;background:#000;border-radius:4px;color:#fff;isolation:isolate}
+.slide{position:absolute;inset:0;overflow:hidden;background:#000}
+.backdrop{position:absolute;inset:-6%;width:112%;height:112%;object-fit:cover;filter:blur(26px) brightness(.5) saturate(1.1);}
+.pane{position:absolute;overflow:hidden}
+.mover{position:absolute;will-change:transform;transform-origin:50% 50%}
+.mover img,.mover canvas{display:block;width:100%;height:100%}
+.shade{position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(to top,rgba(0,0,0,.62),rgba(0,0,0,0));pointer-events:none}
+.meta{position:absolute;bottom:4.2%;left:4%;right:4%;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;pointer-events:none;font-family:var(--font-body);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.meta .col{display:flex;flex-direction:column;gap:1px;min-width:0}
+.meta .col.r{text-align:right;align-items:flex-end}
+.meta .big{font-size:clamp(10px,1.5cqw,19px);font-weight:500}
+.meta .sm{font-size:clamp(9px,1.15cqw,15px);opacity:.88;font-weight:300}
+#stage{container-type:inline-size}
+.clock{position:absolute;top:4%;right:3.5%;font-size:clamp(18px,4cqw,52px);font-weight:300;letter-spacing:.01em;text-shadow:0 2px 6px rgba(0,0,0,.5);z-index:5;font-variant-numeric:tabular-nums}
+.datetl{position:absolute;top:4.5%;left:3.5%;font-size:clamp(10px,1.6cqw,20px);font-weight:400;text-shadow:0 1px 4px rgba(0,0,0,.6);z-index:5}
+.badge-video{position:absolute;top:4.5%;left:50%;transform:translateX(-50%);font:500 clamp(9px,1.1cqw,13px) var(--font-body);background:rgba(0,0,0,.45);padding:3px 9px;border-radius:999px;z-index:5;letter-spacing:.04em}
+.tech{position:absolute;left:1.5%;top:1.5%;z-index:9;display:flex;flex-direction:column;gap:4px;align-items:flex-start;pointer-events:none}
+.tech span{font:500 clamp(9px,1.05cqw,12px)/1.35 var(--font-mono);background:rgba(10,12,18,.78);color:#E8EAED;padding:3px 7px;border-radius:4px;border-left:3px solid var(--tv-accent)}
+.tech span.w{border-left-color:#F2994A}
+.ctxlabel{position:absolute;right:1.5%;bottom:1.5%;z-index:9;font:500 11px var(--font-mono);color:rgba(255,255,255,.55)}
+.compare-flag{position:absolute;top:0;left:0;right:0;z-index:10;background:#B42318;color:#fff;text-align:center;font:600 12px var(--font-body);padding:3px;letter-spacing:.04em}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:500 13px var(--font-body);border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px;border-radius:8px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.row:focus-visible,#panel:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger[aria-pressed="true"]{background:var(--bad);border-color:var(--bad)}
+.spacer{flex:1}
+.hint{font-size:12px;color:var(--muted)}
+
+.prefetch{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px}
+@media (max-width:560px){.prefetch{grid-template-columns:repeat(3,minmax(0,1fr))}.prefetch .pf-label{grid-column:1/-1}}
+.pf-label{display:flex;flex-direction:column;justify-content:center;gap:2px;font-size:12px;color:var(--muted);max-width:170px}
+.pf-label b{color:var(--fg);font-size:13px}
+.pf{display:flex;gap:8px;align-items:center;min-width:0}
+.pf .th{width:56px;aspect-ratio:16/9;flex:none;border-radius:4px;overflow:hidden;background:#000;position:relative}
+.pf .th img{width:100%;height:100%;object-fit:cover;display:block}
+.pf .th.pair{display:grid;grid-template-columns:1fr 1fr;gap:1px}
+.pf .info{min-width:0;font-size:12px;line-height:1.3}
+.pf .info .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.pf .st{color:var(--muted);font-variant-numeric:tabular-nums}
+.pf .st.ok{color:var(--good)}
+.pf .st.load{color:var(--warn)}
+.pf .bar{height:3px;background:var(--surface-2);border-radius:2px;margin-top:3px;overflow:hidden}
+.pf .bar i{display:block;height:100%;background:var(--accent);width:0}
+
+/* Leanback-style panel */
+#panel{background:var(--tv-panel);color:var(--tv-fg);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;font-family:"Roboto",var(--font-body);min-height:420px;box-shadow:0 18px 40px -24px rgba(0,0,0,.6)}
+.p-head{padding:22px 24px 12px;display:flex;flex-direction:column;gap:4px}
+.crumb{font-size:12px;color:var(--tv-muted);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.crumb button{all:unset;cursor:pointer;color:var(--tv-muted)}
+.crumb button:hover{color:var(--tv-fg)}
+.p-title{font:600 24px var(--font-display);color:#fff}
+.p-list{flex:1;overflow-y:auto;padding:4px 0 8px;scrollbar-width:thin}
+.row{display:flex;align-items:center;gap:12px;padding:11px 24px;cursor:pointer;outline:none;min-height:58px}
+.row .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.row .t{font-size:15px;color:var(--tv-fg);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row .s{font-size:12.5px;color:var(--tv-muted);line-height:1.35}
+.row.focus{background:var(--tv-row-focus)}
+.row.disabled .t{color:#7d8186}
+.row.disabled{cursor:default}
+.row.cat{min-height:0;padding:16px 24px 4px;cursor:default}
+.row.cat .t{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--tv-accent);font-weight:600}
+.row.note{min-height:0;cursor:default}
+.row.note .s{color:#c5c9ce;background:rgba(138,180,248,.1);border-left:3px solid var(--tv-accent);padding:8px 10px;border-radius:4px}
+.tag{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:3px;font-weight:600}
+.tag.new{background:#8AB4F8;color:#0b1a33}
+.tag.moved{background:#5f6368;color:#fff}
+.tag.chg{background:#F2C14E;color:#2a1d00}
+.chev{color:var(--tv-muted);font-size:20px;line-height:1}
+.cb{width:20px;height:20px;border:2px solid #bdc1c6;border-radius:3px;flex:none;display:grid;place-items:center}
+.cb.on{background:#8AB4F8;border-color:#8AB4F8}
+.cb.on::after{content:"";width:5px;height:10px;border:solid #202124;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.val{display:flex;align-items:center;gap:4px;font-size:13px;color:#fff;flex:none}
+.val .arr{all:unset;cursor:pointer;color:var(--tv-muted);padding:2px 6px;font-size:16px}
+.val .arr:hover{color:#fff}
+.val .v{min-width:0;text-align:center}
+.slider{display:flex;flex-direction:column;gap:6px;width:100%}
+.slider input{width:100%;accent-color:#8AB4F8}
+.ticks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--tv-muted);font-family:var(--font-mono)}
+.p-foot{border-top:1px solid #303134;padding:10px 24px;font-size:11.5px;color:var(--tv-muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.p-foot kbd{background:#303134;border-color:#4a4d51;color:#e8eaed}
+.toast{position:relative;margin:0 24px 10px;background:#8AB4F8;color:#0b1a33;font-size:13px;padding:8px 12px;border-radius:6px;font-weight:500}
+
+/* ---------- Structure compare ---------- */
+.trees{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.trees{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.tree,.tree ul{list-style:none;margin:0;padding:0}
+.tree ul{padding-left:18px;border-left:1px solid var(--line);margin-left:6px}
+.tree li{padding:3px 0;font-size:14px}
+.tree .k{font-weight:600}
+.tree .x{color:var(--muted)}
+.tree .flag{font-size:11px;font-weight:600;padding:0 6px;border-radius:3px;margin-left:6px;white-space:nowrap}
+.flag.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.flag.good{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.flag.new{background:var(--accent-soft);color:var(--accent)}
+
+/* ---------- Specs ---------- */
+.specs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:860px){.specs{grid-template-columns:minmax(0,1fr)}}
+.spec h3{display:flex;gap:10px;align-items:baseline}
+.spec ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.spec li{font-size:14px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:13.5px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:620px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- Phases ---------- */
+.phases{display:flex;flex-direction:column;gap:12px}
+.phase{display:grid;grid-template-columns:120px minmax(0,1fr);gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+@media (max-width:640px){.phase{grid-template-columns:minmax(0,1fr);gap:8px}}
+.phase .n{font:600 13px var(--font-mono);color:var(--accent)}
+.phase .n small{display:block;color:var(--muted);font-family:var(--font-body);font-weight:400;font-size:12px;margin-top:2px}
+.phase ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14px}
+.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.files code{font-size:11.5px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
+.q{display:flex;flex-direction:column;gap:10px;margin:0;padding-left:20px;font-size:14px}
+.q li b{font-weight:600}
+@media (prefers-reduced-motion: reduce){.mover{will-change:auto}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Immich Android TV · Plan &amp; Mockup · Stand 19.11.2026</span>
+  <h1>Diashow neu sortiert, ruhiger und bildfüllend</h1>
+  <p class="lede">Ein eigener Menüpunkt „Diashow“ bündelt alles, was die Darstellung betrifft. Bilder füllen den Fernseher von Anfang an, die Kamerafahrt bleibt dezent, Hochkant-Paare entstehen nur noch aus zusammengehörigen Fotos, und die nächsten drei Ansichten liegen schon im Speicher, bevor sie dran sind.</p>
+  <div class="reqs">
+    <span class="req"><b>1</b> Menü logisch ordnen</span>
+    <span class="req"><b>2</b> Bildfüllend (Cover) für Fotos &amp; Videos</span>
+    <span class="req"><b>3</b> Ruhige Zoom-/Schwenkbewegung</span>
+    <span class="req"><b>4</b> Hochkant-Paare nur gleicher Tag / Ort</span>
+    <span class="req"><b>5</b> Volle Auflösung + 3 Ansichten vorladen</span>
+  </div>
+</header>
+
+<section id="mockup">
+  <div class="sec-head">
+    <span class="eyebrow">Interaktives Mockup</span>
+    <h2>Menü bedienen, Vorschau reagiert sofort</h2>
+    <p>Klick ins Menü und steuere es wie mit der Fernbedienung (<kbd>↑</kbd><kbd>↓</kbd> wählen, <kbd>←</kbd><kbd>→</kbd> ändern, <kbd>Enter</kbd> öffnen, <kbd>Esc</kbd> zurück). Die Fotos sind gezeichnete Platzhalter in echten Seitenverhältnissen (4:3, 3:2, 1:1, 3:4, 2:3, ein 4:3-Video). Mit „Heute“ siehst du zum Vergleich das aktuelle Verhalten der App.</p>
+  </div>
+  <div class="mock">
+    <div class="tvcol">
+      <div class="bezel"><div id="stage" aria-label="Diashow-Vorschau"></div></div>
+      <div class="controls">
+        <button class="btn" id="bPrev" title="Vorheriges Bild">◀</button>
+        <button class="btn" id="bPlay" title="Pause/Weiter">❚❚ Pause</button>
+        <button class="btn" id="bNext" title="Nächstes Bild">▶</button>
+        <span class="spacer"></span>
+        <button class="btn" id="bTech" aria-pressed="true">Technik-Infos</button>
+        <button class="btn danger" id="bCompare" aria-pressed="false">Heute (zum Vergleich)</button>
+      </div>
+      <div class="prefetch" id="prefetch" aria-live="polite"></div>
+    </div>
+    <div id="panel" tabindex="0" aria-label="Einstellungen (Mockup)">
+      <div class="p-head"><div class="crumb" id="crumb"></div><div class="p-title" id="ptitle"></div></div>
+      <div class="p-list" id="plist" role="listbox"></div>
+      <div id="toastHost"></div>
+      <div class="p-foot"><span><kbd>↑</kbd><kbd>↓</kbd> wählen</span><span><kbd>←</kbd><kbd>→</kbd> ändern</span><span><kbd>Enter</kbd> öffnen</span><span><kbd>Esc</kbd> zurück</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="struktur">
+  <div class="sec-head">
+    <span class="eyebrow">Menüstruktur</span>
+    <h2>Vorher und nachher</h2>
+    <p>Heute steckt die Diashow drei Ebenen tief unter „Ansicht“, und der Bildschirmschoner nutzt dieselben Darstellungs-Einstellungen, ohne dass man sie von dort aus erreicht. Neu gibt es eine Stelle für das Aussehen und eine für das, was nur der Bildschirmschoner braucht.</p>
+  </div>
+  <div class="trees">
+    <div class="card">
+      <h3>Heute</h3>
+      <ul class="tree">
+        <li><span class="k">Ansicht</span>
+          <ul>
+            <li>Allgemein · Sortierung · Inhalt</li>
+            <li><span class="k">Diashow</span>
+              <ul>
+                <li><span class="k">Anzeige</span>
+                  <ul>
+                    <li class="x">HD-Vorschaubilder <span class="flag bad">Standard an</span></li>
+                    <li class="x">Original-Video · D-Pad spult · Bearbeitete Fotos</li>
+                    <li class="x">Hochkant zusammenführen <span class="flag bad">beliebige Paare</span></li>
+                    <li class="x">Foto-Transformation (Center Inside / Crop / Safe Crop)</li>
+                  </ul></li>
+                <li><span class="k">Effekte</span>
+                  <ul>
+                    <li class="x">Zoom- &amp; Schwenkeffekt (an/aus, inkl. Panoramen)</li>
+                    <li class="x">Zoom 0–100 % <span class="flag bad">50 % = 1,25×–2×</span></li>
+                    <li class="x">Schwenk 0–100 % <span class="flag bad">bis ±25 % Bildbreite</span></li>
+                    <li class="x">Safe-Crop max. Breite / Höhe <span class="flag bad">Titel vertauscht</span></li>
+                  </ul></li>
+                <li class="x">Intervall · Animationsdauer · Datum oben links · Metadaten</li>
+              </ul></li>
+          </ul></li>
+        <li><span class="k">Bildschirmschoner</span>
+          <ul><li class="x">Starten · Festlegen · Intervall · Typ · Alben · Personen · Datum oben links · Metadaten · Videos · Ton · Übergang animieren</li>
+          <li class="x">Darstellung &amp; Effekte <span class="flag bad">nur über Ansicht › Diashow erreichbar</span></li></ul></li>
+        <li class="x">Server · Home-Kanäle · Debug · Spenden</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Neu</h3>
+      <ul class="tree">
+        <li><span class="k">Diashow</span> <span class="flag new">eigener Hauptpunkt</span>
+          <ul>
+            <li><span class="k">Darstellung</span>: Bildfüllung · Max. Beschnitt · Videos füllen · Ränder</li>
+            <li><span class="k">Bewegung</span>: Kamerafahrt · Zoom 0–12 % · Schwenk 0–8 % · Bewegungsart · Panoramen</li>
+            <li><span class="k">Hochkant-Paare</span>: Aus / Gleicher Tag / Tag oder Ort · Ortsregel</li>
+            <li><span class="k">Ablauf</span>: Intervall · Übergang (Überblenden/Schieben/Ohne) · Dauer</li>
+            <li><span class="k">Einblendungen</span>: Datum oben links · Metadaten anpassen</li>
+            <li><span class="k">Qualität &amp; Laden</span>: Bildquelle <span class="flag good">Standard: volle Auflösung</span> · Vorladen (3) · Video-Cache · Original-Video · Bearbeitete Fotos · D-Pad</li>
+          </ul></li>
+        <li><span class="k">Bildschirmschoner</span>
+          <ul>
+            <li class="x">Jetzt starten · Als Bildschirmschoner festlegen</li>
+            <li><span class="k">Inhalt</span>: Quelle · Alben · Personen · Videos einbeziehen</li>
+            <li><span class="k">Ablauf</span>: Intervall · Ton</li>
+            <li><span class="k">Einblendungen</span>: Datum oben links · Metadaten anpassen</li>
+            <li class="x">Darstellung, Bewegung, Paare → Verweis auf „Diashow“ <span class="flag good">eine Quelle</span></li>
+          </ul></li>
+        <li><span class="k">Durchsuchen</span> <span class="x">(bisher „Ansicht“)</span>: Allgemein · Sortierung · Inhalt</li>
+        <li class="x">Server · Home-Kanäle · Debug · Spenden (unverändert)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="details">
+  <div class="sec-head">
+    <span class="eyebrow">Verhalten im Detail</span>
+    <h2>Was die neuen Optionen genau tun</h2>
+  </div>
+  <div class="specs">
+    <div class="card spec">
+      <h3>Bildfüllung (Cover)</h3>
+      <ul>
+        <li>Das Bild wird so skaliert, dass es den Bildschirm komplett ausfüllt; Seitenverhältnis bleibt erhalten, der Überstand wird abgeschnitten. Das ist schon im ersten Frame so, nicht erst nach einer Animation.</li>
+        <li><b>Max. Beschnitt</b> schützt vor zu viel Verlust: Müsste mehr als z. B. 30 % einer Bildkante wegfallen, wird eingepasst und der Rand mit einer unscharfen Kopie des Bildes gefüllt (oder schwarz).</li>
+        <li>Hochkant-Paare füllen jeweils ihre Bildhälfte, damit das Paar als Ganzes den Schirm ausfüllt.</li>
+        <li>Videos: gleiches Prinzip über ExoPlayers Zoom-Modus, separat abschaltbar.</li>
+      </ul>
+      <dl class="kv">
+        <dt>4:3 auf 16:9</dt><dd>25 % der Höhe beschnitten → füllt</dd>
+        <dt>3:2 auf 16:9</dt><dd>16 % → füllt</dd>
+        <dt>1:1 auf 16:9</dt><dd>44 % → eingepasst mit Unschärfe-Rand</dd>
+        <dt>3:4 in Bildhälfte</dt><dd>15 % → füllt die Hälfte</dd>
+        <dt>3:4 allein</dt><dd>58 % → eingepasst mit Unschärfe-Rand</dd>
+      </dl>
+    </div>
+    <div class="card spec">
+      <h3>Ruhige Kamerafahrt</h3>
+      <ul>
+        <li>Eine einzige, durchgehende Bewegung pro Bild mit konstanter Geschwindigkeit. Kein Zwei-Phasen-Wechsel, kein Halten und Springen, kein Zurückfedern am Ende.</li>
+        <li>Die Fahrt beginnt mit dem Einblenden und läuft während des Übergangs weiter, damit nichts sichtbar anhält.</li>
+        <li>Zoom und Schwenk werden immer innerhalb des Bildes begrenzt, es tauchen nie schwarze Ränder auf.</li>
+        <li>Umsetzung über Hardware-Layer (<code>ViewPropertyAnimator</code> + <code>LinearInterpolator</code>), damit es auch auf schwachen TV-Boxen nicht ruckelt.</li>
+      </ul>
+      <dl class="kv">
+        <dt>Zoom</dt><dd>0–12 %, Standard 5 % (heute 25–100 %)</dd>
+        <dt>Schwenk</dt><dd>0–8 % der Bildbreite, Standard 3 % (heute bis 25 %)</dd>
+        <dt>Bei 10 s Intervall</dt><dd>≈ 0,5 % Zoom pro Sekunde</dd>
+        <dt>Bewegungsart</dt><dd>Gemischt · Nur Zoom · Nur Schwenk</dd>
+      </dl>
+    </div>
+    <div class="card spec">
+      <h3>Hochkant-Paare mit Regel</h3>
+      <ul>
+        <li><b>Gleicher Tag</b> (Standard): beide Fotos am selben Kalendertag aufgenommen, nach lokaler Aufnahmezeit.</li>
+        <li><b>Gleicher Tag oder Ort</b>: zusätzlich Paare vom selben Ort, auch an verschiedenen Tagen. Ort = gleiche Stadt laut EXIF oder wahlweise ein Umkreis per GPS (2 / 10 / 50 km).</li>
+        <li>Unter den passenden Kandidaten wird das zeitlich <em>nächste</em> Foto gewählt. Heute nimmt die App das zeitlich entfernteste.</li>
+        <li>Findet sich kein Partner, kommt das Hochkantbild allein (eingepasst, mit Unschärfe-Rand).</li>
+        <li>Bei Alben in fester Reihenfolge werden nur direkt aufeinanderfolgende Fotos gepaart, wenn sie die Regel erfüllen.</li>
+      </ul>
+    </div>
+    <div class="card spec">
+      <h3>Volle Auflösung &amp; Vorladen</h3>
+      <ul>
+        <li><b>Bildquelle</b> standardmäßig „Volle Auflösung“. Dekodiert wird auf Bildschirmgröße plus Zoom-Reserve, damit 24-MP-Fotos keinen Speicher sprengen.</li>
+        <li>Fotos in HEIC/RAW, die der Fernseher nicht dekodiert, laden automatisch Immichs Vollbild-JPEG (<code>thumbnail?size=fullsize</code>), sonst die Vorschau.</li>
+        <li><b>Vorladen</b>: Die nächsten 3 Ansichten (ein Paar zählt als eine) werden im Hintergrund geladen und dekodiert. Bilder liegen im Glide-Speicher, wenn sie dran sind.</li>
+        <li>Videos werden über Media3 <code>DefaultPreloadManager</code> mit einem Festplatten-Cache vorbereitet: die ersten Sekunden sind gepuffert, der Decoder ist bereit, das Video startet ohne Ladekreis.</li>
+        <li>Auf Geräten mit wenig RAM (<code>isLowRamDevice</code>) automatisch nur 1 Ansicht vorladen.</li>
+      </ul>
+      <dl class="kv">
+        <dt>Vorladen</dt><dd>Aus · 1 · 2 · 3 (Standard) · 5 Ansichten</dd>
+        <dt>Video-Cache</dt><dd>250 MB · 500 MB (Standard) · 1 GB</dd>
+        <dt>RAM je Bild</dt><dd>≈ 9 MB bei 1920×1080 + 15 % Reserve</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section id="plan">
+  <div class="sec-head">
+    <span class="eyebrow">Umsetzungsplan</span>
+    <h2>In fünf Schritten zur eigenen Version</h2>
+    <p>Die Reihenfolge ist so gewählt, dass nach jedem Schritt eine lauffähige App entsteht, die du auf dem Fernseher testen kannst.</p>
+  </div>
+  <div class="phases">
+    <div class="phase"><div class="n">Schritt 0<small>Eigenen Build aufsetzen</small></div><div>
+      <p>Repo forken, in Android Studio öffnen, <code>./gradlew assembleDebug</code>, per <code>adb install</code> auf den Fernseher. Eigene <code>applicationId</code>-Endung (z. B. <code>.dev</code>), damit die Play-Store-Version parallel installiert bleibt.</p>
+    </div></div>
+    <div class="phase"><div class="n">Schritt 1<small>Menü umbauen</small></div><div>
+      <ul>
+        <li>Neue PrefScreens <code>SlideshowPrefScreen</code> mit Unterseiten Darstellung, Bewegung, Hochkant-Paare, Ablauf, Einblendungen, Qualität &amp; Laden; eigene Karte „Diashow“ in den Einstellungen.</li>
+        <li>„Ansicht“ wird „Durchsuchen“ und verliert den Diashow-Zweig. Bildschirmschoner bekommt Unterseiten Inhalt / Ablauf / Einblendungen und einen Verweis auf „Diashow“.</li>
+        <li><code>IntSeekbarPref</code> um min/max/Schritt und Wertanzeige erweitern (heute fest 0–100). Abhängige Einträge ausblenden, z. B. Max. Beschnitt nur bei „Füllen“.</li>
+        <li>Deutsche Übersetzung <code>values-de/strings.xml</code> anlegen (gibt es bisher nicht).</li>
+      </ul>
+      <div class="files"><code>shared/prefs/Preferences.kt</code><code>shared/prefs/Pref.kt</code><code>settings/SettingsFragment.kt</code><code>settings/SettingsDialogFragment.kt</code><code>res/values*/strings.xml</code></div>
+    </div></div>
+    <div class="phase"><div class="n">Schritt 2<small>Bildfüllung</small></div><div>
+      <ul>
+        <li>Neue Einstellungen <code>FillMode</code> (Einpassen/Füllen), <code>maxCropPercent</code>, <code>fillVideos</code>, <code>edgeFill</code> (Schwarz/Unschärfe) in <code>MediaSliderConfiguration</code>; ersetzen <code>GlideTransformations</code> und SafeCenterCrop.</li>
+        <li>Bild wird ungeschnitten geladen; das ImageView sitzt in einem beschneidenden Container und bekommt die Cover-Größe. So bleibt der abgeschnittene Teil für den Schwenk erreichbar.</li>
+        <li>Unschärfe-Rand: Vorschaubild stark verkleinert und wieder hochskaliert (läuft auf allen API-Stufen, ohne RenderEffect).</li>
+        <li>Video: <code>PlayerView.resizeMode = RESIZE_MODE_ZOOM</code>, sobald die Videogröße bekannt ist und unter dem Max. Beschnitt liegt.</li>
+      </ul>
+      <div class="files"><code>adapter/ScreenSlidePagerAdapter.kt</code><code>res/layout/image_item.xml</code><code>res/layout/image_double_item.xml</code><code>view/ExoPlayerView.kt</code><code>config/MediaSliderConfiguration.kt</code></div>
+    </div></div>
+    <div class="phase"><div class="n">Schritt 3<small>Ruhige Bewegung + Übergang</small></div><div>
+      <ul>
+        <li>Neuer <code>KenBurnsAnimator</code> ersetzt <code>zoomAndPanEffect</code> (14 Zufallsaktionen, zwei Phasen). Dauer = Intervall + Übergangsdauer, linear, Begrenzung auf den Bildüberstand.</li>
+        <li>Paare: beide Hälften bewegen sich synchron mit identischen Parametern.</li>
+        <li>Panorama-Fahrt bleibt, wird aber vom allgemeinen Effekt-Schalter getrennt.</li>
+        <li>Übergang „Überblenden“ als <code>PageTransformer</code> (Seite fixieren, Alpha blenden); vorhandene Schiebe-Animation bleibt als Option.</li>
+      </ul>
+      <div class="files"><code>view/KenBurnsAnimator.kt (neu)</code><code>view/TouchImageView.kt</code><code>view/MediaSliderView.kt</code><code>util/FixedSpeedScroller.kt</code></div>
+    </div></div>
+    <div class="phase"><div class="n">Schritt 4<small>Hochkant-Paare</small></div><div>
+      <ul>
+        <li><code>toSliderItems(keepOrder, mergePortrait)</code> wird zu <code>toSliderItems(keepOrder, PortraitPairing)</code> mit Modus und Ortsregel; Auswahl des zeitlich nächsten passenden Partners.</li>
+        <li>Asset-Modell um <code>localDateTime</code> sowie <code>exifInfo.latitude/longitude</code> ergänzen (liefert die Immich-API bereits), Entfernung per Haversine.</li>
+        <li>Unit-Tests für gleicher Tag, Stadt, Umkreis, kein Partner, feste Reihenfolge.</li>
+      </ul>
+      <div class="files"><code>shared/util/AssetUtil.kt</code><code>api/model/Asset.kt</code><code>test/…/AssetUtilPairingTest.kt (neu)</code></div>
+    </div></div>
+    <div class="phase"><div class="n">Schritt 5<small>Volle Auflösung &amp; Vorladen</small></div><div>
+      <ul>
+        <li>Standard von „HD-Vorschaubilder“ auf aus; neue Auswahl „Bildquelle“. Glide mit <code>override(screen × 1,15)</code> und <code>DownsampleStrategy.CENTER_OUTSIDE</code>.</li>
+        <li><code>SlidePrefetcher</code>: bei jedem Seitenwechsel <code>Glide…preload()</code> für die nächsten N Ansichten mit exakt denselben Optionen wie die Anzeige (sonst trifft der Cache nicht).</li>
+        <li>Videos: gemeinsamer <code>SimpleCache</code> + <code>CacheDataSource</code>, Vorbereitung über <code>DefaultPreloadManager</code>; der Player wird mit der vorbereiteten Quelle gestartet statt erst beim Seitenwechsel <code>prepare()</code> aufzurufen.</li>
+        <li>Fehlerfall: Vorladen bricht leise ab, die Anzeige lädt dann wie heute.</li>
+      </ul>
+      <div class="files"><code>util/SlidePrefetcher.kt (neu)</code><code>view/MediaSliderView.kt</code><code>view/ExoPlayerView.kt</code><code>shared/util/AssetUtil.kt</code></div>
+    </div></div>
+  </div>
+</section>
+
+<section id="migration">
+  <div class="sec-head">
+    <span class="eyebrow">Übernahme bestehender Einstellungen</span>
+    <h2>Was mit alten Werten passiert</h2>
+    <p>Einmalig beim ersten Start der neuen Version in <code>PreferenceManager.init()</code>. Neue Werte bekommen neue Schlüssel, damit alte Prozentwerte nicht falsch gelesen werden.</p>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Bisher</th><th>Wert</th><th>Neu</th></tr></thead>
+    <tbody>
+      <tr><td>Foto-Transformation</td><td>Center Inside</td><td>Bildfüllung: Füllen, max. 30 % (neuer Standard, bewusst geändert)</td></tr>
+      <tr><td>Foto-Transformation</td><td>Center Crop / Safe Center Crop</td><td>Füllen; Max. Beschnitt = Unbegrenzt bzw. alter Safe-Crop-Wert</td></tr>
+      <tr><td>Hochkant zusammenführen</td><td>an / aus</td><td>Gleicher Tag / Aus</td></tr>
+      <tr><td>Zoom- &amp; Schwenk-Stärke</td><td>0–100 %</td><td>nicht übernommen; neue Standards 5 % / 3 %</td></tr>
+      <tr><td>Zoom- &amp; Schwenkeffekt</td><td>an / aus</td><td>Kamerafahrt an / aus und Panoramen an / aus</td></tr>
+      <tr><td>Animationsdauer + „Übergang animieren“</td><td>ms / an-aus</td><td>Übergang: Schieben mit gleicher Dauer, bei „aus“ Ohne</td></tr>
+      <tr><td>HD-Vorschaubilder</td><td>an (Standard)</td><td>Bildquelle: Volle Auflösung, außer der Wert war bewusst geändert</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="offen">
+  <div class="two">
+    <div class="card">
+      <span class="eyebrow">Beim Lesen des Codes gefunden</span>
+      <ul class="q">
+        <li>Der Bildschirmschoner übergibt die maximale Beschnitthöhe auch als Beschnittbreite (<code>ScreenSaverAssetLoader.kt</code>).</li>
+        <li>Die Titel von „Safe Center Crop max. Breite“ und „max. Höhe“ sind vertauscht (<code>Preferences.kt</code>).</li>
+        <li><code>SafeCenterCrop</code> rechnet den Unterschied zur Bildschirmgröße per Modulo und entscheidet dadurch teils zufällig. Fällt mit Schritt 2 ohnehin weg.</li>
+        <li>Videos werden erst beim Seitenwechsel vorbereitet, und der ViewPager hält nur eine Nachbarseite (<code>offscreenPageLimit = 1</code>). Das erklärt die Wartezeit bei Videos.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="eyebrow">Offene Fragen an dich</span>
+      <ol class="q">
+        <li><b>Bildschirmschoner eigenständig?</b> Vorschlag: Darstellung und Bewegung gelten für beide. Eigene Werte für den Bildschirmschoner ließen sich später als Schalter „Eigene Darstellung“ ergänzen.</li>
+        <li><b>Ortsregel-Standard:</b> „Gleiche Stadt“ oder ein Umkreis wie 10 km? Im Mockup paart „Gleiche Stadt“ Kirchzarten und Freiburg nicht, „10 km“ schon.</li>
+        <li><b>Übergang:</b> Überblenden als neuer Standard für beide, oder in der normalen Ansicht beim Schieben bleiben?</li>
+        <li><b>Sprache:</b> Deutsche Übersetzung gleich mitmachen?</li>
+        <li><b>Hochformat-Videos:</b> auch füllen (würde stark beschneiden), oder immer eingepasst mit Unschärfe-Rand?</li>
+      </ol>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+(() => {
+'use strict';
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ================= Procedural "photos" ================= */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function mk(W,H){const c=document.createElement('canvas');c.width=W;c.height=H;return [c,c.getContext('2d')]}
+function sky(g,W,H,stops,y1){const gr=g.createLinearGradient(0,0,0,y1||H);stops.forEach(([o,c])=>gr.addColorStop(o,c));g.fillStyle=gr;g.fillRect(0,0,W,H)}
+function sun(g,x,y,r,col,glow){const gr=g.createRadialGradient(x,y,0,x,y,r*glow);gr.addColorStop(0,col);gr.addColorStop(.18,col+'cc');gr.addColorStop(1,col+'00');g.fillStyle=gr;g.fillRect(x-r*glow,y-r*glow,r*glow*2,r*glow*2);g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill()}
+function ridge(g,W,H,base,amp,rough,color,r,steps=9){let pts=[base+(r()-.5)*amp,base+(r()-.5)*amp];let d=amp;for(let i=0;i<steps;i++){const n=[];for(let j=0;j<pts.length-1;j++){n.push(pts[j]);n.push((pts[j]+pts[j+1])/2+(r()-.5)*d)}n.push(pts[pts.length-1]);pts=n;d*=rough}
+  g.fillStyle=color;g.beginPath();g.moveTo(0,H);pts.forEach((y,i)=>g.lineTo(i/(pts.length-1)*W,y));g.lineTo(W,H);g.closePath();g.fill();return pts}
+function reflect(c,g,W,y0,alpha){const [t,tg]=mk(W,y0);tg.drawImage(c,0,0,W,y0,0,0,W,y0);g.save();g.translate(0,2*y0);g.scale(1,-1);g.globalAlpha=alpha;g.drawImage(t,0,0);g.restore()}
+function shimmer(g,W,y0,H,col,r,n){g.strokeStyle=col;for(let i=0;i<n;i++){const y=y0+Math.pow(r(),1.6)*(H-y0);const x=r()*W;const l=10+r()*W*.12*(y-y0)/(H-y0+1);g.globalAlpha=.08+r()*.18;g.lineWidth=1+((y-y0)/(H-y0))*2;g.beginPath();g.moveTo(x,y);g.lineTo(x+l,y);g.stroke()}g.globalAlpha=1}
+function finish(g,W,H,seed,amt=14){const v=g.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.38)');g.fillStyle=v;g.fillRect(0,0,W,H);
+  const id=g.getImageData(0,0,W,H),d=id.data,r=rng(seed);for(let i=0;i<d.length;i+=4){const n=(r()-.5)*amt;d[i]+=n;d[i+1]+=n;d[i+2]+=n}g.putImageData(id,0,0)}
+function tri(g,x,yb,w,h,col){g.fillStyle=col;g.beginPath();g.moveTo(x-w/2,yb);g.lineTo(x,yb-h);g.lineTo(x+w/2,yb);g.closePath();g.fill()}
+
+const painters = {
+  see(W,H){const [c,g]=mk(W,H),r=rng(11);sky(g,W,H,[[0,'#24345f'],[.42,'#9a7aa0'],[.6,'#eaa77f'],[.68,'#f6d7a6']],H*.68);
+    sun(g,W*.66,H*.55,H*.045,'#fff3d6',7);ridge(g,W,H,H*.47,H*.3,.55,'#7b7a9e',r);ridge(g,W,H,H*.56,H*.2,.55,'#545a85',r);ridge(g,W,H,H*.63,H*.08,.6,'#323863',r);
+    const y0=H*.66;reflect(c,g,W,y0,.55);const gr=g.createLinearGradient(0,y0,0,H);gr.addColorStop(0,'rgba(40,48,95,.35)');gr.addColorStop(1,'rgba(10,14,35,.85)');g.fillStyle=gr;g.fillRect(0,y0,W,H-y0);shimmer(g,W,y0,H,'#ffe9c4',r,260);
+    for(let i=0;i<22;i++){const x=i*W*.018;tri(g,x,H*.69+r()*6,W*.022,H*(.07+r()*.08),'#1a1d36')}finish(g,W,H,1);return c},
+  strand(W,H){const [c,g]=mk(W,H),r=rng(22);sky(g,W,H,[[0,'#1c2a52'],[.4,'#6e4677'],[.62,'#e3825b'],[.74,'#f8c27e']],H*.74);
+    sun(g,W*.42,H*.71,H*.07,'#ffd9a0',6);const y0=H*.73;g.fillStyle='#2f2b55';g.fillRect(0,y0,W,H-y0);reflect(c,g,W,y0,.45);
+    const gr=g.createLinearGradient(0,y0,0,H);gr.addColorStop(0,'rgba(40,36,80,.25)');gr.addColorStop(1,'rgba(12,10,30,.9)');g.fillStyle=gr;g.fillRect(0,y0,W,H-y0);
+    g.save();g.globalCompositeOperation='screen';for(let i=0;i<180;i++){const y=y0+Math.pow(r(),1.3)*(H-y0)*.8;const spread=(y-y0)*.35+8;g.fillStyle='rgba(255,210,150,'+(.15+r()*.35)+')';g.fillRect(W*.42+(r()-.5)*spread*2,y,4+r()*18,1.5)}g.restore();
+    g.fillStyle='#22192a';g.beginPath();g.moveTo(0,H);g.lineTo(0,H*.9);g.quadraticCurveTo(W*.35,H*.86,W*.7,H*.93);g.quadraticCurveTo(W*.85,H*.96,W,H*.94);g.lineTo(W,H);g.fill();finish(g,W,H,2);return c},
+  leuchtturm(W,H){const [c,g]=mk(W,H),r=rng(33);sky(g,W,H,[[0,'#17254a'],[.5,'#43578d'],[.8,'#e9a35e'],[.86,'#f6c98a']],H*.86);
+    for(let i=0;i<40;i++){g.fillStyle='rgba(255,255,255,'+(r()*.6)+')';g.fillRect(r()*W,r()*H*.35,1.5,1.5)}
+    const y0=H*.82;g.fillStyle='#2a3160';g.fillRect(0,y0,W,H-y0);shimmer(g,W,y0,H,'#f7c98d',r,140);
+    ridge(g,W,H,H*.86,H*.05,.5,'#191a2c',r);
+    const x=W*.6,top=H*.36,bot=H*.86,wt=W*.07,wb=W*.11;
+    g.save();g.globalCompositeOperation='screen';const bg=g.createLinearGradient(x,top,0,top+H*.08);bg.addColorStop(0,'rgba(255,240,190,.55)');bg.addColorStop(1,'rgba(255,240,190,0)');g.fillStyle=bg;g.beginPath();g.moveTo(x,top-H*.02);g.lineTo(0,top-H*.09);g.lineTo(0,top+H*.07);g.closePath();g.fill();g.restore();
+    const bands=7;for(let i=0;i<bands;i++){const y1=top+(bot-top)*i/bands,y2=top+(bot-top)*(i+1)/bands;const w1=wt+(wb-wt)*i/bands,w2=wt+(wb-wt)*(i+1)/bands;g.fillStyle=i%2?'#e7e1d6':'#b8443f';g.beginPath();g.moveTo(x-w1/2,y1);g.lineTo(x+w1/2,y1);g.lineTo(x+w2/2,y2);g.lineTo(x-w2/2,y2);g.closePath();g.fill()}
+    g.fillStyle='rgba(20,20,40,.35)';g.beginPath();g.moveTo(x+wt*.1,top);g.lineTo(x+wt/2,top);g.lineTo(x+wb/2,bot);g.lineTo(x+wb*.1,bot);g.fill();
+    g.fillStyle='#22243a';g.fillRect(x-wt*.7,top-H*.012,wt*1.4,H*.012);sun(g,x,top-H*.03,W*.022,'#fff4cf',4);g.fillStyle='#22243a';tri(g,x,top-H*.05,wt*1.1,H*.035,'#22243a');finish(g,W,H,3);return c},
+  duene(W,H){const [c,g]=mk(W,H),r=rng(44);sky(g,W,H,[[0,'#34497a'],[.55,'#d79a7f'],[.74,'#f7d7a6']],H*.76);sun(g,W*.3,H*.7,W*.06,'#fff0cf',5);
+    ridge(g,W,H,H*.74,H*.06,.45,'#c48c62',r);ridge(g,W,H,H*.82,H*.08,.5,'#9b6644',r);ridge(g,W,H,H*.9,H*.05,.5,'#6a4430',r);
+    g.lineCap='round';for(let i=0;i<260;i++){const x=r()*W,yb=H*(.86+r()*.16),h=H*(.05+r()*.13),b=(r()-.4)*W*.08;g.strokeStyle=r()<.5?'#3a2a20':'#5b4027';g.lineWidth=1+r()*2;g.beginPath();g.moveTo(x,yb);g.quadraticCurveTo(x+b*.3,yb-h*.6,x+b,yb-h);g.stroke()}finish(g,W,H,4);return c},
+  wald(W,H){const [c,g]=mk(W,H),r=rng(55);sky(g,W,H,[[0,'#e5d5b6'],[.6,'#c99c69'],[1,'#7a4f30']]);
+    const rows=[['#d9b892',.42,.18],['#c6935e',.52,.22],['#a8683a',.63,.27],['#7c4626',.76,.33],['#4c2a1a',.9,.4]];
+    rows.forEach(([col,base,h],ri)=>{for(let i=0;i<14+ri*2;i++){const x=r()*W*1.1-W*.05;const hh=H*h*(.6+r()*.6);if(r()<.5){tri(g,x,H*base+r()*H*.03,W*(.08+r()*.06),hh,col)}else{g.fillStyle=col;g.beginPath();g.ellipse(x,H*base-hh*.45,W*(.06+r()*.05),hh*.5,0,0,Math.PI*2);g.fill();g.fillRect(x-W*.006,H*base-hh*.1,W*.012,hh*.25)}}});
+    g.save();g.globalCompositeOperation='screen';for(let i=0;i<5;i++){const x=W*(.15+i*.18);const gr=g.createLinearGradient(x,0,x+W*.35,H);gr.addColorStop(0,'rgba(255,235,190,.22)');gr.addColorStop(1,'rgba(255,235,190,0)');g.fillStyle=gr;g.beginPath();g.moveTo(x,0);g.lineTo(x+W*.06,0);g.lineTo(x+W*.45,H);g.lineTo(x+W*.32,H);g.fill()}g.restore();
+    g.fillStyle='#c98a4b';g.beginPath();g.moveTo(W*.42,H);g.quadraticCurveTo(W*.5,H*.86,W*.52,H*.78);g.lineTo(W*.55,H*.78);g.quadraticCurveTo(W*.62,H*.9,W*.72,H);g.fill();finish(g,W,H,5);return c},
+  muenster(W,H){const [c,g]=mk(W,H),r=rng(66);sky(g,W,H,[[0,'#0e1838'],[.55,'#394a84'],[.9,'#e3a06a']]);for(let i=0;i<60;i++){g.fillStyle='rgba(255,255,255,'+(r()*.7)+')';g.fillRect(r()*W,r()*H*.45,1.4,1.4)}
+    const x=W*.5,base=H*.84;g.fillStyle='#151528';g.fillRect(x-W*.055,H*.34,W*.11,base-H*.34);g.beginPath();g.moveTo(x-W*.06,H*.34);g.lineTo(x,H*.1);g.lineTo(x+W*.06,H*.34);g.fill();
+    g.fillStyle='rgba(255,200,120,.35)';for(let i=0;i<9;i++){const y=H*(.14+i*.022),w=W*.012*(1+i*.35);g.fillRect(x-w/2,y,w,H*.006)}
+    for(let i=0;i<16;i++){const w=W*(.08+r()*.1),h=H*(.06+r()*.08),xx=r()*W;g.fillStyle='#141426';g.fillRect(xx-w/2,base-h,w,h+H);tri(g,xx,base-h,w,h*.7,'#141426');for(let k=0;k<4;k++){if(r()<.6){g.fillStyle='#ffcf7a';g.fillRect(xx-w/2+r()*w*.8,base-h+r()*h*.8,W*.012,H*.01)}}}
+    g.fillStyle='#0d0d1c';g.fillRect(0,base,W,H-base);finish(g,W,H,6);return c},
+  enzian(W,H){const [c,g]=mk(W,H),r=rng(77);sky(g,W,H,[[0,'#4f86cf'],[.5,'#b6d6ef']],H*.5);ridge(g,W,H,H*.36,H*.32,.55,'#eef3f8',r);ridge(g,W,H,H*.45,H*.22,.55,'#9fb2c9',r);
+    ridge(g,W,H,H*.6,H*.08,.5,'#6c9a52',r);ridge(g,W,H,H*.72,H*.06,.5,'#4c7d3e',r);ridge(g,W,H,H*.84,H*.04,.5,'#36612f',r);
+    for(let i=0;i<420;i++){const y=H*(.66+Math.pow(r(),.7)*.34),s=(y/H-.6)*W*.03;g.fillStyle=r()<.7?'#2f56c9':(r()<.5?'#f3d34a':'#f2f2f2');g.beginPath();g.arc(r()*W,y,Math.max(1,s*(.5+r())),0,Math.PI*2);g.fill()}finish(g,W,H,7);return c},
+  mohn(W,H){const [c,g]=mk(W,H),r=rng(88);sky(g,W,H,[[0,'#8fbbe3'],[.5,'#e7eff3']],H*.5);g.fillStyle='rgba(255,255,255,.7)';for(let i=0;i<6;i++){g.beginPath();g.ellipse(r()*W,H*(.1+r()*.25),W*(.06+r()*.08),H*.025,0,0,Math.PI*2);g.fill()}
+    ridge(g,W,H,H*.5,H*.03,.5,'#8fa960',r);ridge(g,W,H,H*.56,H*.02,.5,'#7a9a4c',r);g.fillStyle='#3f5a2c';g.fillRect(W*.17,H*.36,W*.012,H*.16);g.beginPath();g.ellipse(W*.176,H*.34,W*.06,H*.06,0,0,Math.PI*2);g.fill();
+    for(let i=0;i<900;i++){const y=H*(.55+Math.pow(r(),.8)*.45),s=(y/H-.52)*W*.028;g.fillStyle=r()<.85?'#d3352b':'#2f4a23';g.beginPath();g.arc(r()*W,y,Math.max(.8,s*(.6+r()*.8)),0,Math.PI*2);g.fill()}finish(g,W,H,8);return c},
+  stadt(W,H){const [c,g]=mk(W,H),r=rng(99);sky(g,W,H,[[0,'#0f1932'],[.55,'#2b3c69'],[.68,'#c4776a']],H*.68);ridge(g,W,H,H*.55,H*.12,.55,'#232c4d',r);
+    const y0=H*.68;for(let i=0;i<70;i++){const w=W*(.012+r()*.03),h=H*(.04+r()*.16),x=r()*W;g.fillStyle='#141a30';g.fillRect(x,y0-h,w,h);for(let k=0;k<6;k++)if(r()<.5){g.fillStyle=r()<.8?'#ffd28a':'#bfe0ff';g.fillRect(x+r()*w,y0-h+r()*h,2.5,3)}}
+    reflect(c,g,W,y0,.5);const gr=g.createLinearGradient(0,y0,0,H);gr.addColorStop(0,'rgba(20,26,50,.3)');gr.addColorStop(1,'rgba(6,8,18,.9)');g.fillStyle=gr;g.fillRect(0,y0,W,H-y0);shimmer(g,W,y0,H,'#ffd28a',r,220);finish(g,W,H,9);return c}
+};
+function drawSeaFrame(g,W,H,t){const gr=g.createLinearGradient(0,0,0,H*.55);gr.addColorStop(0,'#7fb2d9');gr.addColorStop(1,'#e5eef0');g.fillStyle=gr;g.fillRect(0,0,W,H);
+  g.fillStyle='rgba(255,255,255,.75)';g.beginPath();g.ellipse((W*.2+t*8)%(W*1.4)-W*.2,H*.18,W*.12,H*.03,0,0,Math.PI*2);g.fill();
+  const y0=H*.52;g.fillStyle='#3a7aa3';g.fillRect(0,y0,W,H-y0);
+  for(let row=0;row<18;row++){const y=y0+Math.pow(row/18,1.5)*(H-y0);const amp=1+row*.5,len=20+row*6;g.strokeStyle='rgba(255,255,255,'+(.15+row*.02)+')';g.lineWidth=1+row*.12;g.beginPath();for(let x=0;x<=W;x+=6){const yy=y+Math.sin(x/len+t*1.6+row)*amp;x?g.lineTo(x,yy):g.moveTo(x,yy)}g.stroke()}
+  g.fillStyle='#e7d3a8';g.beginPath();g.moveTo(0,H);g.lineTo(0,H*.86+Math.sin(t*.9)*3);g.quadraticCurveTo(W*.5,H*.8+Math.sin(t*1.2)*4,W,H*.88);g.lineTo(W,H);g.fill();
+  const v=g.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,W*.7);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.45)');g.fillStyle=v;g.fillRect(0,0,W,H);
+  g.fillStyle='rgba(255,170,60,.9)';g.font='bold 18px monospace';g.fillText('JUN 02 2019',W-150,H-20)}
+
+const A = [
+  {id:'see', title:'Bergsee am Morgen', kind:'image', w:1200,h:900, date:'2025-08-12', time:'06:41', city:'Garmisch-Partenkirchen', lat:47.49,lon:11.09, album:'Alpen 2025', p:'see'},
+  {id:'leuchtturm', title:'Leuchtturm Hörnum', kind:'image', w:900,h:1200, date:'2025-07-14', time:'21:12', city:'Sylt', lat:54.758,lon:8.296, album:'Sylt', p:'leuchtturm'},
+  {id:'mohn', title:'Mohnfeld', kind:'image', w:1000,h:1000, date:'2025-06-01', time:'11:03', city:'Beelitz', lat:52.24,lon:12.97, album:'Sommer', p:'mohn'},
+  {id:'wald', title:'Herbstwald', kind:'image', w:900,h:1200, date:'2024-10-03', time:'15:27', city:'Kirchzarten', lat:47.966,lon:7.954, album:'Schwarzwald', p:'wald'},
+  {id:'strand', title:'Sonnenuntergang am Weststrand', kind:'image', w:1350,h:900, date:'2025-07-14', time:'21:40', city:'Sylt', lat:54.80,lon:8.29, album:'Sylt', p:'strand'},
+  {id:'enzian', title:'Almwiese mit Enzian', kind:'image', w:900,h:1200, date:'2025-08-12', time:'13:15', city:'Garmisch-Partenkirchen', lat:47.47,lon:11.06, album:'Alpen 2025', p:'enzian'},
+  {id:'video', title:'Wellen an der Ostsee', kind:'video', w:640,h:480, date:'2019-06-02', time:'17:05', city:'Kiel', lat:54.43,lon:10.17, album:'Ostsee 2019'},
+  {id:'duene', title:'Dünengras', kind:'image', w:900,h:1200, date:'2025-07-14', time:'20:58', city:'Sylt', lat:54.77,lon:8.30, album:'Sylt', p:'duene'},
+  {id:'muenster', title:'Münster am Abend', kind:'image', w:800,h:1200, date:'2023-05-21', time:'21:30', city:'Freiburg im Breisgau', lat:47.9956,lon:7.8526, album:'Freiburg', p:'muenster'},
+  {id:'stadt', title:'Winterabend am Fluss', kind:'image', w:1600,h:900, date:'2024-12-20', time:'17:22', city:'Freiburg im Breisgau', lat:47.99,lon:7.85, album:'Freiburg', p:'stadt'}
+];
+A.forEach(a=>{ if(a.kind==='image'){a.src=painters[a.p](a.w,a.h).toDataURL('image/jpeg',.86)} else {const [c,g]=mk(a.w,a.h);drawSeaFrame(g,a.w,a.h,0);a.src=c.toDataURL('image/jpeg',.86)} a.portrait = a.kind==='image' && a.h>a.w; a.ts=new Date(a.date+'T'+a.time+':00').getTime(); });
+
+/* ================= Settings state ================= */
+const META_DEF = () => [
+  {k:'date',l:'Datum',on:true,al:'R'},{k:'city',l:'Ort',on:true,al:'R'},{k:'album',l:'Albumname',on:false,al:'R'},
+  {k:'desc',l:'Beschreibung',on:false,al:'L'},{k:'people',l:'Personen',on:false,al:'L'},{k:'count',l:'Zähler (3/10)',on:true,al:'R'},{k:'clock',l:'Uhrzeit',on:false,al:'R'}];
+const S = {
+  fill:'fill', maxCrop:30, fillVideos:true, edge:'blur',
+  motion:true, zoom:5, pan:3, style:'mixed', panoramas:true,
+  pairs:'day', place:'city',
+  intervalV:8, intervalS:12, transition:'fade', transDur:1000,
+  dateTLV:false, dateTLS:true,
+  metaV:META_DEF(), metaS:META_DEF().map(m=>({...m,on:['date','city','album','clock'].includes(m.k)})),
+  source:'full', prefetch:3, videoCache:500, origVideo:false, edited:false, dpad:false,
+  ssType:'albums', ssVideos:true, ssSound:false,
+  compare:false, tech:true
+};
+
+const opt = (pairs)=>pairs.map(([v,l])=>({v,l}));
+const O = {
+  fill:opt([['fit','Einpassen'],['fill','Füllen (Cover)']]),
+  maxCrop:opt([[15,'15 %'],[20,'20 %'],[25,'25 %'],[30,'30 %'],[40,'40 %'],[50,'50 %'],[999,'Unbegrenzt']]),
+  edge:opt([['blur','Unscharfes Bild'],['black','Schwarz']]),
+  style:opt([['mixed','Gemischt'],['zoom','Nur Zoom'],['pan','Nur Schwenk']]),
+  pairs:opt([['off','Aus'],['day','Gleicher Tag'],['dayplace','Gleicher Tag oder Ort']]),
+  place:opt([['city','Gleiche Stadt'],[2,'Umkreis 2 km'],[10,'Umkreis 10 km'],[50,'Umkreis 50 km']]),
+  interval:opt([[5,'5 s'],[8,'8 s'],[10,'10 s'],[12,'12 s'],[15,'15 s'],[20,'20 s'],[30,'30 s'],[60,'60 s']]),
+  transition:opt([['fade','Überblenden'],['slide','Schieben'],['none','Ohne']]),
+  transDur:opt([[300,'0,3 s'],[500,'0,5 s'],[800,'0,8 s'],[1000,'1 s'],[1500,'1,5 s'],[2000,'2 s']]),
+  source:opt([['full','Volle Auflösung'],['preview','Vorschau (schneller)']]),
+  prefetch:opt([[0,'Aus'],[1,'1 Ansicht'],[2,'2 Ansichten'],[3,'3 Ansichten'],[5,'5 Ansichten']]),
+  videoCache:opt([[250,'250 MB'],[500,'500 MB'],[1000,'1 GB']]),
+  ssType:opt([['recent','Zuletzt hinzugefügt'],['albums','Alben'],['people','Personen'],['seasonal','Saisonal'],['random','Zufällig']])
+};
+const lbl=(key,v)=>{const o=(O[key]||[]).find(x=>x.v===v);return o?o.l:String(v)};
+const zoomWord=v=>v===0?'aus':v<=2?'kaum sichtbar':v<=6?'ruhig':v<=9?'spürbar':'deutlich';
+const panWord=v=>v===0?'aus':v<=2?'kaum sichtbar':v<=4?'ruhig':v<=6?'spürbar':'deutlich';
+
+/* ================= Menu model ================= */
+const nav=(id,t,s,to,tag)=>({type:'nav',t,s,to,tag,id});
+const tog=(key,t,s,tag)=>({type:'toggle',key,t,s,tag});
+const ch=(key,t,optKey,s,tag)=>({type:'choice',key,t,optKey:optKey||key,s,tag});
+const sl=(key,t,min,max,unit,word,tag)=>({type:'slider',key,t,min,max,unit,word,tag});
+const cat=t=>({type:'cat',t});
+const note=s=>({type:'note',s});
+const dis=(t,s)=>({type:'disabled',t,s});
+
+const screens = {
+  root:{title:'Einstellungen', items:()=>[
+    dis('Server','Immich-Server und Anmeldung · unverändert'),
+    nav('browse','Durchsuchen','Allgemein, Sortierung, Inhalt (bisher „Ansicht“)','browse','chg'),
+    nav('slideshow','Diashow','Darstellung, Bewegung, Hochkant-Paare, Ablauf, Laden','slideshow','new'),
+    nav('ss','Bildschirmschoner','Inhalt, Intervall, Einblendungen','ss','chg'),
+    dis('Home-Kanäle','Unverändert'), dis('Debug','Unverändert')]},
+  browse:{title:'Durchsuchen', items:()=>[
+    dis('Allgemein','Ausgewähltes Element als Hintergrund laden'),
+    dis('Sortierung','Alben, Fotos in Alben, Fotos außerhalb von Alben'),
+    dis('Inhalt','Saisonal, Zuletzt, Ausgeschlossene Alben, Partner-Fotos'),
+    note('Alle Diashow-Einstellungen sind von hier nach „Diashow“ umgezogen.')]},
+  slideshow:{title:'Diashow', items:()=>[
+    note('Gilt für die Diashow in Alben, der Zeitleiste und für den Bildschirmschoner.'),
+    nav('disp','Darstellung', S.fill==='fill' ? `Füllen · max. ${lbl('maxCrop',S.maxCrop)} Beschnitt` : 'Einpassen','disp','new'),
+    nav('motion','Bewegung', S.motion ? `Zoom ${S.zoom} % · Schwenk ${S.pan} % · ${lbl('style',S.style)}` : 'Aus','motion','chg'),
+    nav('pairs','Hochkant-Paare', lbl('pairs',S.pairs) + (S.pairs==='dayplace'?' · '+lbl('place',S.place):''),'pairs','chg'),
+    nav('timing','Ablauf', `${lbl('interval',S.intervalV)} · ${lbl('transition',S.transition)}`,'timing'),
+    nav('overlay','Einblendungen','Datum oben links, Metadaten','overlay','moved'),
+    nav('quality','Qualität & Laden', `${lbl('source',S.source)} · ${S.prefetch?S.prefetch+' vorladen':'kein Vorladen'}`,'quality','new')]},
+  disp:{title:'Darstellung', items:()=>[
+    ch('fill','Bildfüllung',null,()=>S.fill==='fill'?'Bild füllt den ganzen Bildschirm, Ränder werden beschnitten':'Ganzes Bild sichtbar, ggf. mit Rändern','new'),
+    ...(S.fill==='fill'?[ch('maxCrop','Maximaler Beschnitt',null,()=>'Mehr Beschnitt nötig? Dann wird eingepasst. 4:3 braucht 25 %, 1:1 44 %','new'),
+      tog('fillVideos','Videos bildfüllend',()=>'Querformat-Videos ebenfalls zoomen, gleiche Grenze','new')]:[]),
+    ch('edge','Ränder füllen mit',null,()=>'Für Bilder, die nicht füllen (z. B. einzelne Hochkantbilder)','new')]},
+  motion:{title:'Bewegung', items:()=>[
+    tog('motion','Kamerafahrt',()=>'Langsamer Zoom und Schwenk, eine Bewegung pro Bild','chg'),
+    ...(S.motion?[
+      sl('zoom','Zoom-Stärke',0,12,'%',zoomWord,'chg'),
+      sl('pan','Schwenk-Stärke',0,8,'%',panWord,'chg'),
+      ch('style','Bewegungsart',null,()=>'Gemischt: abwechselnd hinein, heraus oder seitlich','new')]:[]),
+    tog('panoramas','Panoramen durchfahren',()=>'Sehr breite oder hohe Bilder füllend von einer Seite zur anderen')]},
+  pairs:{title:'Hochkant-Paare', items:()=>[
+    ch('pairs','Zwei Hochkantbilder nebeneinander',null,()=>({off:'Hochkantbilder kommen immer einzeln',day:'Nur wenn beide am selben Tag aufgenommen wurden',dayplace:'Selber Tag oder selber Ort, auch an verschiedenen Tagen'})[S.pairs],'chg'),
+    ...(S.pairs==='dayplace'?[ch('place','Als „gleicher Ort“ gilt',null,()=>S.place==='city'?'Gleicher Ortsname in den Bilddaten':'Entfernung der GPS-Koordinaten','new')]:[]),
+    note('Gewählt wird das zeitlich nächste passende Foto. Ohne Partner erscheint das Bild allein.')]},
+  timing:{title:'Ablauf', items:()=>[
+    ch('intervalV','Intervall','interval',()=>'Anzeigedauer pro Bild in der Diashow'),
+    ch('transition','Übergang',null,()=>'Überblenden wirkt am ruhigsten','new'),
+    ...(S.transition!=='none'?[ch('transDur','Übergangsdauer',null,()=>'Bewegung läuft während des Übergangs weiter')]:[])]},
+  overlay:{title:'Einblendungen', items:()=>[
+    tog('dateTLV','Datum oben links',()=>'Aufnahmedatum zusätzlich oben links anzeigen'),
+    nav('metaV','Metadaten anpassen','Welche Infos unten stehen und wo','metaV')]},
+  metaV:{title:'Metadaten · Diashow', items:()=>metaItems('metaV')},
+  quality:{title:'Qualität & Laden', items:()=>[
+    ch('source','Bildquelle',null,()=>S.source==='full'?'Originalauflösung, auf Bildschirmgröße dekodiert':'Immich-Vorschau (ca. 1440 px), lädt schneller','new'),
+    ch('prefetch','Vorladen',null,()=>S.prefetch?`Die nächsten ${S.prefetch} Ansichten liegen schon im Speicher; Videos starten sofort`:'Bilder werden erst geladen, wenn sie dran sind','new'),
+    ch('videoCache','Video-Cache',null,()=>'Speicher für vorgeladene Videoanfänge','new'),
+    tog('origVideo','Original-Video erzwingen',()=>'Statt der transkodierten Fassung','moved'),
+    tog('edited','Bearbeitete Fotos laden',()=>'In Immich bearbeitete Version zeigen','moved'),
+    tog('dpad','Steuerkreuz spult im Video',()=>'Links/Rechts spult statt Bild zu wechseln','moved')]},
+  ss:{title:'Bildschirmschoner', items:()=>[
+    {type:'action',t:'Jetzt starten',s:'Vorschau mit den Einstellungen unten',act:()=>{restartShow();toast('Bildschirmschoner-Vorschau neu gestartet')}},
+    {type:'action',t:'Als Bildschirmschoner festlegen',s:'Öffnet die Android-Einstellungen',act:()=>toast('Würde jetzt die Android-Bildschirmschoner-Einstellungen öffnen')},
+    nav('ssContent','Inhalt',`${lbl('ssType',S.ssType)} · Videos ${S.ssVideos?'an':'aus'}`,'ssContent','chg'),
+    nav('ssTiming','Ablauf',`${lbl('interval',S.intervalS)} · Ton ${S.ssSound?'an':'aus'}`,'ssTiming','chg'),
+    nav('ssOverlay','Einblendungen','Datum oben links, Metadaten','ssOverlay','chg'),
+    cat('Aussehen'),
+    {type:'link',t:'Darstellung, Bewegung & Hochkant-Paare',s:'Kommen aus „Diashow“, damit beides gleich aussieht',to:'slideshow'}]},
+  ssContent:{title:'Inhalt', items:()=>[
+    ch('ssType','Quelle',null,()=>'Woher die Bilder kommen'),
+    dis('Alben auswählen','Alpen 2025, Sylt, Freiburg, Schwarzwald'),
+    dis('Personen auswählen','Keine ausgewählt'),
+    tog('ssVideos','Videos einbeziehen',()=>'In der Vorschau: das Ostsee-Video')]},
+  ssTiming:{title:'Ablauf', items:()=>[
+    ch('intervalS','Intervall','interval',()=>'Anzeigedauer pro Bild im Bildschirmschoner'),
+    tog('ssSound','Ton abspielen',()=>'Videos mit Ton'),
+    note('Übergang und Dauer kommen aus Diashow › Ablauf. „Übergang animieren“ entfällt.')]},
+  ssOverlay:{title:'Einblendungen', items:()=>[
+    tog('dateTLS','Datum oben links',()=>'Aufnahmedatum oben links'),
+    nav('metaS','Metadaten anpassen','Welche Infos unten stehen und wo','metaS')]},
+  metaS:{title:'Metadaten · Bildschirmschoner', items:()=>metaItems('metaS')}
+};
+function metaItems(key){return [note('Enter blendet ein/aus, ←/→ wechselt die Seite. Feldauswahl wie bisher, nur neu einsortiert.'),...S[key].map((m,i)=>({type:'meta',key,i,t:m.l}))]}
+
+/* ================= Panel rendering & input ================= */
+const panel=document.getElementById('panel'), plist=document.getElementById('plist'), crumbEl=document.getElementById('crumb'), ptitle=document.getElementById('ptitle');
+let path=['root','slideshow'], focusIdx={}, rowsCache=[];
+const focusable=it=>!['cat','note'].includes(it.type);
+const curScreen=()=>path[path.length-1];
+const ctx=()=>path.some(p=>p.startsWith('ss')||p==='metaS')?'ss':'viewer';
+
+function renderPanel(){
+  const sc=screens[curScreen()]; const items=sc.items(); rowsCache=items;
+  ptitle.textContent=sc.title;
+  crumbEl.innerHTML='';
+  path.slice(0,-1).forEach((p,i)=>{const b=document.createElement('button');b.textContent=screens[p].title;b.onclick=()=>{path=path.slice(0,i+1);renderPanel();onCtxMaybe()};crumbEl.appendChild(b);const s=document.createElement('span');s.textContent='›';crumbEl.appendChild(s)});
+  let fi=focusIdx[curScreen()]; if(fi==null||!items[fi]||!focusable(items[fi])) fi=items.findIndex(focusable); focusIdx[curScreen()]=fi;
+  plist.innerHTML='';
+  items.forEach((it,i)=>{
+    const row=document.createElement('div'); row.className='row'; row.setAttribute('role','option');
+    if(it.type==='cat'){row.classList.add('cat');row.innerHTML=`<div class="tx"><div class="t">${it.t}</div></div>`;plist.appendChild(row);return}
+    if(it.type==='note'){row.classList.add('note');row.innerHTML=`<div class="tx"><div class="s">${it.s}</div></div>`;plist.appendChild(row);return}
+    if(it.type==='disabled') row.classList.add('disabled');
+    if(i===fi) row.classList.add('focus');
+    const tagHtml=it.tag?`<span class="tag ${it.tag}">${{new:'neu',chg:'geändert',moved:'verschoben'}[it.tag]}</span>`:'';
+    const sum = typeof it.s==='function'?it.s():(it.s||'');
+    let right='', body='';
+    if(it.type==='nav'||it.type==='link') right='<span class="chev">›</span>';
+    if(it.type==='toggle') right=`<span class="cb ${S[it.key]?'on':''}"></span>`;
+    if(it.type==='choice') right=`<span class="val"><button class="arr" data-d="-1" aria-label="zurück">‹</button><span class="v">${lbl(it.optKey,S[it.key])}</span><button class="arr" data-d="1" aria-label="weiter">›</button></span>`;
+    if(it.type==='meta'){const m=S[it.key][it.i]; right=`<span class="val"><button class="arr" data-d="-1">‹</button><span class="v">${m.al==='L'?'Links':'Rechts'}</span><button class="arr" data-d="1">›</button></span><span class="cb ${m.on?'on':''}"></span>`}
+    if(it.type==='slider'){const v=S[it.key];body=`<div class="slider"><input type="range" id="sl-${it.key}" min="${it.min}" max="${it.max}" step="1" value="${v}" aria-label="${it.t}"><div class="ticks"><span>${it.min} %</span><span>${it.max} %</span></div></div>`;
+      row.innerHTML=`<div class="tx"><div class="t">${it.t} ${tagHtml}</div><div class="s">${v} % · ${it.word(v)}</div>${body}</div>`;}
+    else row.innerHTML=`<div class="tx"><div class="t">${it.t} ${tagHtml}</div>${sum?`<div class="s">${sum}</div>`:''}</div>${right}`;
+    row.addEventListener('click',e=>{focusIdx[curScreen()]=i; const arr=e.target.closest('.arr'); if(it.type==='slider'&&e.target.tagName==='INPUT'){updateFocusClass();return} if(arr){change(it,+arr.dataset.d)} else activate(it); panel.focus({preventScroll:true})});
+    const inp=row.querySelector('input[type=range]'); if(inp) inp.addEventListener('input',()=>{S[it.key]=+inp.value; row.querySelector('.s').textContent=`${inp.value} % · ${it.word(+inp.value)}`; settingsChanged(it.key)});
+    plist.appendChild(row);
+  });
+  const fr=plist.children[fi]; if(fr) fr.scrollIntoView({block:'nearest'});
+}
+function updateFocusClass(){[...plist.children].forEach((r,i)=>r.classList.toggle('focus',i===focusIdx[curScreen()]))}
+function moveFocus(d){const items=rowsCache;let i=focusIdx[curScreen()];for(let k=0;k<items.length;k++){i+=d;if(i<0||i>=items.length)return;if(focusable(items[i]))break}focusIdx[curScreen()]=i;updateFocusClass();const fr=plist.children[i];if(fr)fr.scrollIntoView({block:'nearest'})}
+function go(to){path.push(to);renderPanel();onCtxMaybe()}
+function back(){if(path.length>1){path.pop();renderPanel();onCtxMaybe()}}
+function activate(it){
+  if(it.type==='nav') go(it.to);
+  else if(it.type==='link'){path=['root',it.to];renderPanel();onCtxMaybe()}
+  else if(it.type==='toggle'){S[it.key]=!S[it.key];renderPanel();settingsChanged(it.key)}
+  else if(it.type==='choice') change(it,1);
+  else if(it.type==='action') it.act();
+  else if(it.type==='meta'){const m=S[it.key][it.i];m.on=!m.on;renderPanel();settingsChanged(it.key)}
+}
+function change(it,d){
+  if(it.type==='choice'){const o=O[it.optKey];let i=o.findIndex(x=>x.v===S[it.key]);i=(i+d+o.length)%o.length;S[it.key]=o[i].v;renderPanel();settingsChanged(it.key)}
+  else if(it.type==='slider'){S[it.key]=Math.max(it.min,Math.min(it.max,S[it.key]+d));renderPanel();settingsChanged(it.key)}
+  else if(it.type==='toggle'){S[it.key]=!S[it.key];renderPanel();settingsChanged(it.key)}
+  else if(it.type==='meta'){const m=S[it.key][it.i];m.al=m.al==='L'?'R':'L';renderPanel();settingsChanged(it.key)}
+}
+panel.addEventListener('keydown',e=>{
+  const it=rowsCache[focusIdx[curScreen()]];
+  if(e.target.tagName==='INPUT' && (e.key==='ArrowLeft'||e.key==='ArrowRight')) return;
+  switch(e.key){
+    case 'ArrowDown': moveFocus(1); break;
+    case 'ArrowUp': moveFocus(-1); break;
+    case 'ArrowRight': if(it&&['choice','slider','meta','toggle'].includes(it.type)) change(it,1); else if(it&&(it.type==='nav'||it.type==='link')) activate(it); else return; break;
+    case 'ArrowLeft': if(it&&['choice','slider','meta'].includes(it.type)) change(it,-1); else back(); break;
+    case 'Enter': case ' ': if(it) activate(it); break;
+    case 'Escape': case 'Backspace': back(); break;
+    default: return;
+  }
+  e.preventDefault();
+});
+let toastT; function toast(msg){const h=document.getElementById('toastHost');h.innerHTML=`<div class="toast">${msg}</div>`;clearTimeout(toastT);toastT=setTimeout(()=>h.innerHTML='',2600)}
+
+/* ================= Slideshow engine ================= */
+const stage=document.getElementById('stage');
+let slides=[], idx=0, timer=null, playing=true, curEl=null, lastCtx='viewer', videoLoops=new Set();
+const fmtDate=d=>new Date(d+'T12:00:00').toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const fmtShort=d=>new Date(d+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+function km(a,b){const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLon=(b.lon-a.lon)*Math.PI/180;const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function pairReason(a,b){
+  if(a.date===b.date) return 'gleicher Tag ('+fmtShort(a.date)+')';
+  if(S.pairs==='dayplace'){ if(S.place==='city'){ if(a.city===b.city) return 'gleiche Stadt ('+a.city+')'; } else { const d=km(a,b); if(d<=S.place) return `Umkreis ${S.place} km (${d.toFixed(1).replace('.',',')} km)`; } }
+  return null;
+}
+function buildSlides(){
+  let list=A.filter(a=>!(ctx()==='ss'&&!S.ssVideos&&a.kind==='video'));
+  const used=new Set(), out=[];
+  list.forEach((a,i)=>{
+    if(used.has(a.id))return; used.add(a.id);
+    if(a.portrait){
+      if(S.compare){const b=list.slice(i+1).find(x=>x.portrait&&!used.has(x.id)); if(b){used.add(b.id);out.push({items:[a,b],reason:'beliebiges nächstes Hochkantbild'});return}}
+      else if(S.pairs!=='off'){
+        const cands=list.slice(i+1).filter(x=>x.portrait&&!used.has(x.id)).map(x=>({x,r:pairReason(a,x)})).filter(c=>c.r).sort((p,q)=>Math.abs(p.x.ts-a.ts)-Math.abs(q.x.ts-a.ts));
+        if(cands.length){used.add(cands[0].x.id);out.push({items:[a,cands[0].x],reason:cands[0].r});return}
+        out.push({items:[a],reason:'kein passender Partner'});return;
+      }
+    }
+    out.push({items:[a]});
+  });
+  return out;
+}
+const effective=()=>S.compare?{fill:'fit',maxCrop:0,fillVideos:false,edge:'black',transition:'slide',transDur:450}:{fill:S.fill,maxCrop:S.maxCrop,fillVideos:S.fillVideos,edge:S.edge,transition:S.transition,transDur:S.transDur};
+const intervalMs=()=>(ctx()==='ss'?S.intervalS:S.intervalV)*1000;
+
+function makeMedia(a){
+  if(a.kind==='video'){const c=document.createElement('canvas');c.width=a.w;c.height=a.h;const g=c.getContext('2d');const t0=performance.now();let alive=true;
+    const loop=()=>{if(!alive)return;drawSeaFrame(g,a.w,a.h,(performance.now()-t0)/1000);requestAnimationFrame(loop)};
+    if(reduceMotion) drawSeaFrame(g,a.w,a.h,0); else requestAnimationFrame(loop);
+    const h={stop:()=>{alive=false}};videoLoops.add(h);c._h=h;return c}
+  const img=new Image();img.src=a.src;img.alt=a.title;img.decoding='sync';return img;
+}
+function computeLayout(a,pw,ph,eff){
+  const ar=a.w/a.h, br=pw/ph, crop=1-Math.min(ar/br,br/ar);
+  const allowFill=eff.fill==='fill' && (a.kind!=='video'||eff.fillVideos);
+  const fills=allowFill && crop*100<=eff.maxCrop+0.001;
+  const sc=fills?Math.max(pw/a.w,ph/a.h):Math.min(pw/a.w,ph/a.h);
+  return {dw:a.w*sc, dh:a.h*sc, fills, crop, wantsFill:allowFill};
+}
+function planMotion(lay,pw,ph,dur,R){
+  R=R||Math.random;
+  // returns {from:{s,x,y}, to:{s,x,y}}
+  if(S.compare){ // emulate today's zoomAndPanEffect at default 50/50
+    const z=.5,p=.5,rs=1+(.5+R()*1.5)*z, rx=(R()*2-1)*lay.dw*.5*p, ry=(R()*2-1)*lay.dh*.5*p, mod=[.85,.9,.95,1,1,1,1,1.05,1.1,1.15][Math.floor(R()*10)];
+    const p1=.2+R()*.6, kind=Math.floor(R()*4);
+    const end=[{s:rs*mod,x:0,y:0},{s:rs*mod,x:-rx,y:-ry},{s:rs,x:rx,y:ry},{s:1+(.5+R()*1.5)*z,x:(R()*2-1)*lay.dw*.25,y:(R()*2-1)*lay.dh*.25}][kind];
+    return {frames:[{transform:'translate(0px,0px) scale(1)',offset:0,easing:'ease-in-out'},{transform:`translate(${rx}px,${ry}px) scale(${rs})`,offset:p1,easing:'ease-in-out'},{transform:`translate(${end.x}px,${end.y}px) scale(${end.s})`,offset:1}],desc:`heute: Zoom ${rs.toFixed(2).replace('.',',')}× in ${Math.round(p1*100)} % der Zeit, dann Richtungswechsel`};
+  }
+  if(!S.motion) return null;
+  const z=S.zoom/100, p=S.pan/100;
+  let style=S.style; if(style==='mixed') style=['in','out','pan'][Math.floor(R()*3)];
+  const base=1+p; let s0=base,s1=base;
+  const coin=R(); if(style==='in'||(style==='zoom'&&coin<.5)){s0=base;s1=base+z;style='in'} else if(style==='out'||style==='zoom'){s0=base+z;s1=base;style='out'}
+  if(z===0&&p===0) return null;
+  // pan vector: mostly horizontal for landscape panes, vertical for tall
+  const ang=(lay.dw/lay.dh>pw/ph?0:Math.PI/2)+(R()-.5)*0.9+(R()<.5?Math.PI:0);
+  const mag=p*pw; let vx=Math.cos(ang)*mag, vy=Math.sin(ang)*mag;
+  const lim=(s)=>({x:Math.max(0,(lay.dw*s-pw)/2),y:Math.max(0,(lay.dh*s-ph)/2)});
+  const l0=lim(s0),l1=lim(s1); const clamp=(v,m)=>Math.max(-m,Math.min(m,v));
+  const f={s:s0,x:clamp(-vx/2,l0.x),y:clamp(-vy/2,l0.y)}, t={s:s1,x:clamp(vx/2,l1.x),y:clamp(vy/2,l1.y)};
+  const moved=Math.hypot(t.x-f.x,t.y-f.y);
+  return {frames:[{transform:`translate(${f.x}px,${f.y}px) scale(${f.s})`},{transform:`translate(${t.x}px,${t.y}px) scale(${t.s})`}],
+    desc:`${style==='in'?'hinein':style==='out'?'heraus':'Schwenk'} · Zoom ${f.s.toFixed(3).replace('.',',')}→${t.s.toFixed(3).replace('.',',')} · Weg ${Math.round(moved/pw*1000)/10} % in ${(dur/1000).toString().replace('.',',')} s · linear`};
+}
+function metaBlock(a,slideNo,total,list){
+  const left=[],right=[];
+  list.forEach(m=>{if(!m.on||m.k==='clock')return;let v='';
+    if(m.k==='date')v=fmtDate(a.date);else if(m.k==='city')v=a.city;else if(m.k==='album')v=a.album;else if(m.k==='desc')v=a.title;else if(m.k==='people')v='—';else if(m.k==='count')v=`${slideNo}/${total}`;
+    (m.al==='L'?left:right).push(`<span class="${m.k==='album'||m.k==='desc'?'big':'sm'}">${v}</span>`)});
+  return `<div class="meta"><div class="col">${left.join('')}</div><div class="col r">${right.join('')}</div></div>`;
+}
+function buildSlideEl(si){
+  const sl=slides[si], eff=effective(); const rect=stage.getBoundingClientRect(); const W=rect.width||960, H=rect.height||540;
+  const el=document.createElement('div'); el.className='slide';
+  const n=sl.items.length, gap=n>1?Math.round(W*.006):0, pw=(W-gap*(n-1))/n;
+  const tech=[]; const dur=intervalMs()+(eff.transition==='none'?0:eff.transDur);
+  const metaList=ctx()==='ss'?S.metaS:S.metaV;
+  const lays=sl.items.map(a=>computeLayout(a,pw,H,eff));
+  const anyNonFill=lays.some(l=>!l.fills);
+  if(anyNonFill && eff.edge==='blur' && !S.compare){sl.items.forEach((a,i)=>{if(lays[i].fills)return;const b=new Image();b.src=a.src;b.className='backdrop';b.alt='';
+    if(n>1){const wrap=document.createElement('div');wrap.className='pane';Object.assign(wrap.style,{left:(i*(pw+gap))+'px',top:0,width:pw+'px',height:H+'px'});wrap.appendChild(b);el.appendChild(wrap)}else el.appendChild(b)})}
+  const seed=Math.floor(Math.random()*1e9);
+  sl.items.forEach((a,i)=>{
+    const lay=lays[i]; const pane=document.createElement('div');pane.className='pane';Object.assign(pane.style,{left:(i*(pw+gap))+'px',top:'0px',width:pw+'px',height:H+'px'});
+    const mv=document.createElement('div');mv.className='mover';Object.assign(mv.style,{width:lay.dw+'px',height:lay.dh+'px',left:((pw-lay.dw)/2)+'px',top:((H-lay.dh)/2)+'px'});
+    mv.appendChild(makeMedia(a)); pane.appendChild(mv);
+    if(metaList.some(m=>m.on&&m.k!=='clock')){const sh=document.createElement('div');sh.className='shade';pane.appendChild(sh);pane.insertAdjacentHTML('beforeend',metaBlock(a,si+1,slides.length,metaList))}
+    el.appendChild(pane);
+    // motion (pairs share same random plan; pan limited per pane)
+    if(a.kind==='image' && !reduceMotion){ const plan=planMotion(lay,pw,H,dur,rng(seed)); if(plan){mv.animate(plan.frames,{duration:dur,easing:'linear',fill:'forwards'}); if(i===0)tech.push({t:plan.desc})} else if(i===0) tech.push({t:'Kamerafahrt aus'}) }
+    const arTxt=ratioName(a.w,a.h);
+    const pct=Math.round(lay.crop*100);
+    if(lay.fills) tech.push({t:`${a.kind==='video'?'Video ':''}${arTxt} · füllt${n>1?' Bildhälfte':''} · ${pct} % beschnitten`});
+    else if(lay.wantsFill) tech.push({t:`${arTxt} · bräuchte ${pct} % > ${eff.maxCrop} % → eingepasst, Rand ${eff.edge==='blur'?'unscharf':'schwarz'}`,w:1});
+    else tech.push({t:`${a.kind==='video'?'Video ':''}${arTxt} · eingepasst${S.compare?' (Center Inside)':''}`,w:S.compare?1:0});
+  });
+  if(sl.reason) tech.unshift({t:(n>1?'Paar: ':'Hochkant allein: ')+sl.reason,w:n===1||S.compare?1:0});
+  const a0=sl.items[0];
+  if(a0.kind==='video') el.insertAdjacentHTML('beforeend',`<div class="badge-video">▶ VIDEO · ${S.prefetch&&!S.compare?'sofort gestartet (vorgepuffert)':'lädt beim Anzeigen'}</div>`);
+  const dtl=ctx()==='ss'?S.dateTLS:S.dateTLV; if(dtl) el.insertAdjacentHTML('beforeend',`<div class="datetl">${fmtDate(a0.date)}</div>`);
+  if(metaList.find(m=>m.k==='clock'&&m.on)){const d=new Date();el.insertAdjacentHTML('beforeend',`<div class="clock">${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</div>`)}
+  if(S.tech){el.insertAdjacentHTML('beforeend','<div class="tech">'+tech.map(x=>`<span class="${x.w?'w':''}">${x.t}</span>`).join('')+'</div>')}
+  el.insertAdjacentHTML('beforeend',`<div class="ctxlabel">Vorschau: ${ctx()==='ss'?'Bildschirmschoner':'Diashow'} · ${si+1}/${slides.length}</div>`);
+  if(S.compare) el.insertAdjacentHTML('beforeend','<div class="compare-flag">HEUTE: Center Inside · Zoom bis 2× mit Richtungswechsel · beliebige Hochkant-Paare · Schieben</div>');
+  return el;
+}
+function ratioName(w,h){const r=w/h;const known=[[16/9,'16:9'],[4/3,'4:3'],[3/2,'3:2'],[1,'1:1'],[3/4,'3:4'],[2/3,'2:3']];let best=known[0];known.forEach(k=>{if(Math.abs(k[0]-r)<Math.abs(best[0]-r))best=k});return best[1]}
+function stopVideos(el){el.querySelectorAll('canvas').forEach(c=>{if(c._h){c._h.stop();videoLoops.delete(c._h)}})}
+function show(i,{transition=true,dir=1}={}){
+  idx=(i+slides.length)%slides.length; const eff=effective();
+  const el=buildSlideEl(idx); const old=curEl; stage.appendChild(el); curEl=el;
+  const d=eff.transDur, t=transition&&old&&!reduceMotion?eff.transition:'none';
+  if(old){ if(t==='fade'){el.animate([{opacity:0},{opacity:1}],{duration:d,easing:'ease-in-out'})}
+    else if(t==='slide'){el.animate([{transform:`translateX(${dir*100}%)`},{transform:'translateX(0)'}],{duration:d,easing:'cubic-bezier(.25,.8,.25,1)'});old.animate([{transform:'translateX(0)'},{transform:`translateX(${-dir*100}%)`}],{duration:d,easing:'cubic-bezier(.25,.8,.25,1)',fill:'forwards'})}
+    const kill=()=>{stopVideos(old);old.remove()}; if(t==='none')kill(); else setTimeout(kill,d+30); }
+  schedule(); renderPrefetch();
+}
+function schedule(){clearTimeout(timer); if(playing) timer=setTimeout(()=>show(idx+1),intervalMs()+(effective().transition==='none'?0:effective().transDur))}
+function restartShow(){slides=buildSlides();stage.querySelectorAll('.slide').forEach(s=>{stopVideos(s);s.remove()});curEl=null;show(0,{transition:false})}
+function rerenderCurrent(){ // same slide, new settings, no transition
+  const curIds=slides[idx]?slides[idx].items.map(a=>a.id):[];
+  slides=buildSlides(); let ni=slides.findIndex(s=>s.items.some(a=>curIds.includes(a.id))); if(ni<0)ni=0;
+  stage.querySelectorAll('.slide').forEach(s=>{stopVideos(s);s.remove()});curEl=null;show(ni,{transition:false});
+}
+let rrT; function settingsChanged(){clearTimeout(rrT);rrT=setTimeout(rerenderCurrent,120)}
+function onCtxMaybe(){const c=ctx();if(c!==lastCtx){lastCtx=c;rerenderCurrent()}}
+
+/* ---------- Prefetch strip ---------- */
+const pfEl=document.getElementById('prefetch'); let pfTimers=[];
+function renderPrefetch(){
+  pfTimers.forEach(clearInterval);pfTimers=[];
+  const n=S.compare?0:Math.min(3,S.prefetch); const shown=Math.max(3,0);
+  let html=`<div class="pf-label"><b>${S.compare?'Heute: kein Vorladen':n?'Vorgeladen':'Vorladen aus'}</b>${S.compare?'Bild 2 lädt erst beim Wechsel, Videos starten nach dem Seitenwechsel':n?`Nächste ${S.prefetch} Ansicht${S.prefetch>1?'en':''} · ${S.source==='full'?'volle Auflösung':'Vorschau'}`:'Laden erst beim Anzeigen'}</div>`;
+  for(let k=1;k<=3;k++){const s=slides[(idx+k)%slides.length];if(!s)continue;
+    const thumbs=s.items.map(a=>`<img src="${a.src}" alt="">`).join('');
+    const isVid=s.items[0].kind==='video'; const pre=k<=n;
+    const status=pre?(k===n&&!isVid?`<span class="st load" data-k="${k}">lädt … 0 %</span><div class="bar"><i data-k="${k}"></i></div>`:`<span class="st ok">✓ ${isVid?'erste 10 s gepuffert':'bereit im Speicher'}</span>`):'<span class="st">wartet</span>';
+    html+=`<div class="pf"><div class="th ${s.items.length>1?'pair':''}">${thumbs}</div><div class="info"><div class="t">${k}. ${s.items.map(a=>a.title).join(' + ')}</div>${status}</div></div>`}
+  pfEl.innerHTML=html;
+  if(n){const st=pfEl.querySelector('.st.load'),bar=pfEl.querySelector('.bar i');if(st){let p=0;const tm=setInterval(()=>{p=Math.min(100,p+7+Math.random()*9);bar.style.width=p+'%';st.textContent=p>=100?'✓ bereit im Speicher':`lädt … ${Math.round(p)} %`;if(p>=100){st.className='st ok';clearInterval(tm)}},220);pfTimers.push(tm)}}
+}
+
+/* ---------- Controls ---------- */
+const bPlay=document.getElementById('bPlay');
+document.getElementById('bNext').onclick=()=>show(idx+1,{dir:1});
+document.getElementById('bPrev').onclick=()=>show(idx-1,{dir:-1});
+bPlay.onclick=()=>{playing=!playing;bPlay.textContent=playing?'❚❚ Pause':'▶ Weiter';if(playing)schedule();else clearTimeout(timer);stage.getAnimations({subtree:true}).forEach(an=>playing?an.play():an.pause())};
+const bTech=document.getElementById('bTech');bTech.onclick=()=>{S.tech=!S.tech;bTech.setAttribute('aria-pressed',S.tech);rerenderCurrent()};
+const bCmp=document.getElementById('bCompare');bCmp.onclick=()=>{S.compare=!S.compare;bCmp.setAttribute('aria-pressed',S.compare);rerenderCurrent()};
+let rsT;new ResizeObserver(()=>{clearTimeout(rsT);rsT=setTimeout(()=>{if(slides.length)rerenderCurrent()},200)}).observe(stage);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(timer);else if(playing)schedule()});
+
+renderPanel();
+slides=buildSlides(); show(0,{transition:false});
+})();
+</script>
