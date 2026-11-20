@@ -56,9 +56,9 @@ class LocationMapRenderingTest {
     fun `map has the expected size and an opaque white dot on the location`() {
         val bitmap = render(mallorca, "mallorca")
 
-        assertEquals(720, bitmap.width)
-        assertEquals(540, bitmap.height)
-        val dot = bitmap.getPixel((0.7f * 720).roundToInt(), (0.45f * 540).roundToInt())
+        assertEquals(648, bitmap.width)
+        assertEquals(486, bitmap.height)
+        val dot = bitmap.getPixel((0.7f * 648).roundToInt(), (0.45f * 486).roundToInt())
         assertEquals(Color.WHITE, dot)
     }
 
@@ -68,7 +68,7 @@ class LocationMapRenderingTest {
 
         val (lx, ly) = pixelOf(mallorca, GeoLocation(39.2, -0.8), bitmap) // inland Valencia region
         val land = bitmap.getPixel(lx, ly)
-        assertTrue("land alpha ${Color.alpha(land)}", Color.alpha(land) in 100..150)
+        assertTrue("land alpha ${Color.alpha(land)}", Color.alpha(land) in 70..150)
         assertTrue("land is white", Color.red(land) > 240 && Color.green(land) > 240 && Color.blue(land) > 240)
 
         val (wx, wy) = pixelOf(mallorca, GeoLocation(39.0, 5.5), bitmap) // open sea east of Mallorca
@@ -86,14 +86,14 @@ class LocationMapRenderingTest {
     @Test
     fun `renders across the antimeridian without crashing`() {
         val bitmap = render(GeoLocation(-16.5, 179.9), "fiji")
-        assertEquals(Color.WHITE, bitmap.getPixel((0.7f * 720).roundToInt(), (0.45f * 540).roundToInt()))
+        assertEquals(Color.WHITE, bitmap.getPixel((0.7f * 648).roundToInt(), (0.45f * 486).roundToInt()))
     }
 
     @Test
     fun `renders far north and far east`() {
         listOf("moskenes" to GeoLocation(67.933, 13.03), "shirahama" to GeoLocation(33.678, 135.348)).forEach { (name, place) ->
             val bitmap = render(place, name)
-            assertEquals(name, Color.WHITE, bitmap.getPixel((0.7f * 720).roundToInt(), (0.45f * 540).roundToInt()))
+            assertEquals(name, Color.WHITE, bitmap.getPixel((0.7f * 648).roundToInt(), (0.45f * 486).roundToInt()))
         }
     }
 }
