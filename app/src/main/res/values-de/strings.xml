@@ -135,8 +135,8 @@
     <string name="show_date_top_left">Datum oben links anzeigen</string>
     <string name="show_date_top_left_viewer_desc">Datum des Mediums oben links in der Foto- und Videoansicht einblenden. Unabhängig von den Metadaten unten.</string>
     <string name="show_date_top_left_screensaver_desc">Datum des Mediums oben links im Bildschirmschoner einblenden. Unabhängig von den Metadaten unten.</string>
-    <string name="show_city">Stadt anzeigen</string>
-    <string name="show_city_desc">Stadt des Mediums in der Diashow anzeigen</string>
+    <string name="show_city">Ort anzeigen</string>
+    <string name="show_city_desc">Ort des Mediums in der Diashow anzeigen</string>
     <string name="customize_metadata_viewer">Metadaten anpassen</string>
     <string name="configure_metadata_viewer">Festlegen, was in der Ansicht angezeigt wird</string>
     <string name="merge_portrait_photos">Hochkantfotos paaren</string>
@@ -347,7 +347,7 @@
     <string name="slideshow_fill_videos_desc">Auch Querformat-Videos bildschirmfüllend zeigen. Hochkant-Videos werden nie beschnitten</string>
     <string name="slideshow_edge_fill">Leere Ränder füllen</string>
     <string name="slideshow_edge_fill_desc">Gilt für Fotos, die den Bildschirm nicht ausfüllen, z. B. einzelne Hochkantfotos</string>
-    <string name="slideshow_edge_fill_blur">Unscharfes Foto</string>
+    <string name="slideshow_edge_fill_blur">Weichgezeichnetes Foto</string>
     <string name="slideshow_edge_fill_black">Schwarz</string>
 
     <!-- Slideshow redesign: motion -->

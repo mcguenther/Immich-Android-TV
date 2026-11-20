@@ -2,7 +2,7 @@
 <resources>
     <string name="album_name">Albumname</string>
     <string name="camera">Kameramodell</string>
-    <string name="city">Stadt</string>
+    <string name="city">Ort</string>
     <string name="clock">Uhr</string>
     <string name="country">Land</string>
     <string name="date">Datum</string>
