@@ -151,6 +151,9 @@
     <string name="show_date_top_left">Показывать дату сверху слева</string>
     <string name="show_date_top_left_viewer_desc">Показывать дату элемента в оверлее сверху слева в просмотрщике. Независимо от нижних метаданных.</string>
     <string name="show_date_top_left_screensaver_desc">Показывать дату элемента в оверлее сверху слева в заставке. Независимо от нижних метаданных.</string>
+    <string name="show_location_map">Показывать карту места</string>
+    <string name="show_location_map_viewer_desc">Показывать небольшую офлайн-карту (контуры суши и границы стран) за местоположением в просмотрщике, чтобы было видно, где это. Только для элементов с GPS-данными.</string>
+    <string name="show_location_map_screensaver_desc">Показывать небольшую офлайн-карту (контуры суши и границы стран) за местоположением в заставке, чтобы было видно, где это. Только для элементов с GPS-данными.</string>
     <string name="show_city">Показывать город</string>
     <string name="show_city_desc">Показывать город элемента в слайд-шоу</string>
     <string name="customize_metadata_viewer">Настроить метаданные</string>

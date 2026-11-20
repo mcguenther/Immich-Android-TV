@@ -91,7 +91,8 @@ fun Asset.toSliderItem(): SliderItem {
         AssetMetaDataMapping.providersFor(this),
         ApiUtil.getThumbnailUrl(this.id, "preview", PreferenceManager.get(SLIDER_LOAD_EDITED_PHOTO)),
         isPanorama = this.isPanoramaImage(),
-        isFavorite = this.isFavorite
+        isFavorite = this.isFavorite,
+        geoLocationProvider = AssetMetaDataMapping.geoLocationProviderFor(this)
     )
 }
 
