@@ -252,7 +252,8 @@ fun Asset.toSliderItem(): SliderItem {
         isFavorite = this.isFavorite,
         width = if (swap) exifH else exifW,
         height = if (swap) exifW else exifH,
-        durationMs = if (itemType == SliderItemType.VIDEO) parseImmichDurationMs(this.duration) else null
+        durationMs = if (itemType == SliderItemType.VIDEO) parseImmichDurationMs(this.duration) else null,
+        geoLocationProvider = AssetMetaDataMapping.geoLocationProviderFor(this)
     )
 }
 

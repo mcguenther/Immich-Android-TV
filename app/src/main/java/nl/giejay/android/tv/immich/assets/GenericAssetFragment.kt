@@ -31,6 +31,7 @@ import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_INTERVAL
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_DATE_TOP_LEFT
+import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_LOCATION_MAP
 import nl.giejay.android.tv.immich.shared.util.Utils.pmap
 import nl.giejay.android.tv.immich.shared.util.toCard
 import nl.giejay.android.tv.immich.shared.util.toSliderItems
@@ -161,7 +162,8 @@ abstract class GenericAssetFragment : VerticalCardGridFragment<Asset>() {
                     videoPlayback = SlideshowSettings.videoPlayback(),
                     useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
                     dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
-                    showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)
+                    showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT),
+                    showLocationMap = PreferenceManager.get(SLIDER_SHOW_LOCATION_MAP)
                 )
                 sliderViewModel.configuration = config
                 findNavController().navigate(AlbumDetailsFragmentDirections.actionToPhotoSlider())

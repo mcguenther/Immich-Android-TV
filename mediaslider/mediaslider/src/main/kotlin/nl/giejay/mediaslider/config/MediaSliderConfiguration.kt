@@ -26,6 +26,8 @@ class MediaSliderConfiguration(
     val dpadSeeksInVideo: Boolean = false,
     /** When true, [nl.giejay.mediaslider.plugin.DateOverlayViewPlugin] shows DATE at the top. */
     val showDateTopLeft: Boolean = false,
+    /** When true, [nl.giejay.mediaslider.plugin.LocationMapViewPlugin] shows an offline map behind the bottom-right metadata. */
+    val showLocationMap: Boolean = false,
     var controllerPlugins: List<SliderControllerPlugin> = emptyList(),
     var viewPlugins: List<SliderViewPlugin<*>> = emptyList(),
     var keyEventPlugins: List<SliderKeyEventPlugin> = emptyList()

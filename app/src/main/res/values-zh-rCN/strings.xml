@@ -147,6 +147,9 @@
     <string name="show_date_top_left">在左上角显示日期</string>
     <string name="show_date_top_left_viewer_desc">在照片/视频查看器中以左上角浮层显示媒体日期，与底部元数据互不影响。</string>
     <string name="show_date_top_left_screensaver_desc">在屏保中以左上角浮层显示媒体日期，与底部元数据互不影响。</string>
+    <string name="show_location_map">显示位置地图</string>
+    <string name="show_location_map_viewer_desc">在照片/视频查看器的位置信息后面显示一张离线小地图（陆地轮廓和国界），方便了解地点所在位置。仅适用于带有 GPS 数据的媒体。</string>
+    <string name="show_location_map_screensaver_desc">在屏保的位置信息后面显示一张离线小地图（陆地轮廓和国界），方便了解地点所在位置。仅适用于带有 GPS 数据的媒体。</string>
     <string name="show_city">显示城市</string>
     <string name="show_city_desc">在幻灯片中显示媒体项所在的城市</string>
     <string name="customize_metadata_viewer">自定义元数据</string>

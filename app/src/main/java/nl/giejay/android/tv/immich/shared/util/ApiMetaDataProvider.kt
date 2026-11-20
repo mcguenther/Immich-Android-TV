@@ -15,6 +15,8 @@ import nl.giejay.android.tv.immich.shared.prefs.API_KEY
 import nl.giejay.android.tv.immich.shared.prefs.DEBUG_MODE
 import nl.giejay.android.tv.immich.shared.prefs.DISABLE_SSL_VERIFICATION
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
+import nl.giejay.mediaslider.model.GeoLocation
+import nl.giejay.mediaslider.model.GeoLocationProvider
 import nl.giejay.mediaslider.model.MetaDataProvider
 import nl.giejay.mediaslider.model.MetaDataType
 import timber.log.Timber
@@ -57,6 +59,19 @@ class AssetDetailMetaDataProvider(
                 null
             },
             { asset -> AssetMetaDataMapping.valueOf(asset, field) }
+        )
+    }
+}
+
+/** Lazy coordinates for assets loaded without EXIF (e.g. timeline buckets), via [AssetDetailCache]. */
+class AssetDetailGeoLocationProvider(private val assetId: String) : GeoLocationProvider {
+    override suspend fun getLocation(): GeoLocation? {
+        return AssetDetailCache.get(assetId).fold(
+            { error ->
+                Timber.w("Failed to load asset $assetId for location: $error")
+                null
+            },
+            { asset -> AssetMetaDataMapping.geoLocationOf(asset) }
         )
     }
 }

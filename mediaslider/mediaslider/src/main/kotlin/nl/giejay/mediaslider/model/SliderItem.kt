@@ -24,11 +24,14 @@ class SliderItem(
     /** Display height in pixels (after EXIF rotation) when known. */
     val height: Int? = null,
     /** Video length in milliseconds when known ahead of playback (null for photos or unknown). */
-    val durationMs: Long? = null
+    val durationMs: Long? = null,
+    private val geoLocationProvider: GeoLocationProvider? = null
 ) {
     suspend fun get(metaDataType: MetaDataType): String? {
         return this.metaData[metaDataType]?.getValue()
     }
+
+    suspend fun getGeoLocation(): GeoLocation? = geoLocationProvider?.getLocation()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -38,6 +38,7 @@ include:
 | Showing the 4K thumbnail instead of the full image to speed up loading         | Done         |
 | Showing the EXIF data and improving the slideshow view                         | Done         |
 | Configure whether to play sound with videos                                    | Done         |
+| Offline map of the photo location in slideshow and screensaver                 | Done         |
 | Smarter merging of portrait photos (same people, same date, same city)         | Todo         |
 | Add transitions to slideshow                                                   | Done         |
 | Add places/tags view                                                           | Todo         |
@@ -84,6 +85,11 @@ When setting up your API key in Immich, make sure to grant the following permiss
 3. copy app/strings_other.xml.example to app/src/main/res/values/strings_other.xml and modify
    the address and API keys for your demo server.
 4. Build apk with `./gradlew assembleRelease`
+
+The offline location map uses [Natural Earth](https://www.naturalearthdata.com/) 1:50m land and
+country border data (public domain). To regenerate the bundled file
+`mediaslider/mediaslider/src/main/assets/naturalearth/ne_50m.bin`, run
+`python3 tools/natural-earth/build_map_asset.py`.
 
 ## Support the project
 

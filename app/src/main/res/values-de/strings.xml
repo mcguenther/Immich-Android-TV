@@ -401,4 +401,7 @@
     <string name="slideshow_prefetch_n">%d kommende</string>
     <string name="slideshow_video_cache">Videocache</string>
     <string name="slideshow_video_cache_desc">Speicher für vorgeladene Videoanfänge</string>
+    <string name="show_location_map">Standortkarte anzeigen</string>
+    <string name="show_location_map_viewer_desc">Eine kleine Offline-Karte (Landumriss und Ländergrenzen) hinter dem Ort im Foto-/Videobetrachter anzeigen, damit man sieht, wo ein Ort liegt. Nur für Medien mit GPS-Daten.</string>
+    <string name="show_location_map_screensaver_desc">Eine kleine Offline-Karte (Landumriss und Ländergrenzen) hinter dem Ort im Bildschirmschoner anzeigen, damit man sieht, wo ein Ort liegt. Nur für Medien mit GPS-Daten.</string>
 </resources>
