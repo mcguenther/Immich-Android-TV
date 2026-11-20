@@ -251,22 +251,15 @@
     <string name="order_least_updated">Am längsten nicht aktualisiert</string>
 
     <!-- Interval titles -->
-    <string name="interval_1_second">1 Sekunde</string>
-    <string name="interval_2_seconds">2 Sekunden</string>
-    <string name="interval_3_seconds">3 Sekunden</string>
-    <string name="interval_4_seconds">4 Sekunden</string>
-    <string name="interval_5_seconds">5 Sekunden</string>
-    <string name="interval_6_seconds">6 Sekunden</string>
-    <string name="interval_7_seconds">7 Sekunden</string>
-    <string name="interval_8_seconds">8 Sekunden</string>
-    <string name="interval_9_seconds">9 Sekunden</string>
-    <string name="interval_10_seconds">10 Sekunden</string>
-    <string name="interval_20_seconds">20 Sekunden</string>
-    <string name="interval_30_seconds">30 Sekunden</string>
-    <string name="interval_1_minute">1 Minute</string>
-    <string name="interval_3_minutes">3 Minuten</string>
-    <string name="interval_5_minutes">5 Minuten</string>
-    <string name="interval_10_minutes">10 Minuten</string>
+    <plurals name="interval_seconds">
+        <item quantity="one">%d Sekunde</item>
+        <item quantity="other">%d Sekunden</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="one">%d Minute</item>
+        <item quantity="other">%d Minuten</item>
+    </plurals>
+    <string name="interval_minutes_seconds">%1$d Min. %2$d Sek.</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">Alle</string>

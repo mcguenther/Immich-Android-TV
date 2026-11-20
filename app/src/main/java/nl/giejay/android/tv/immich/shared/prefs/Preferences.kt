@@ -130,11 +130,9 @@ private fun intentAvailable(intent: Intent, context: Context): Boolean {
     return infos.isNotEmpty()
 }
 
-data object SCREENSAVER_INTERVAL : IntListPref(10,
+data object SCREENSAVER_INTERVAL : IntervalPref(10,
     ImmichApplication.appContext!!.getString(R.string.interval_screensaver),
-    ImmichApplication.appContext!!.getString(R.string.screensaver_interval_desc),
-    R.array.interval_titles,
-    R.array.interval_values)
+    ImmichApplication.appContext!!.getString(R.string.screensaver_interval_desc))
 
 data object SCREENSAVER_SHOW_DESCRIPTION : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_description),
@@ -248,11 +246,9 @@ data object CHANNEL_REFRESH_NOW : ActionPref(null, ImmichApplication.appContext!
     })
 
 // slider/viewer
-data object SLIDER_INTERVAL : IntListPref(6,
+data object SLIDER_INTERVAL : IntervalPref(6,
     ImmichApplication.appContext!!.getString(R.string.interval_slideshow),
-    ImmichApplication.appContext!!.getString(R.string.interval_slideshow_desc),
-    R.array.interval_titles,
-    R.array.interval_values)
+    ImmichApplication.appContext!!.getString(R.string.interval_slideshow_desc))
 
 data object SLIDER_SHOW_DESCRIPTION : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_description_slideshow),
