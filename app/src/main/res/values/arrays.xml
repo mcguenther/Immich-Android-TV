@@ -182,4 +182,143 @@
         <item>100</item>
     </string-array>
 
+    <!-- Slideshow redesign -->
+    <string-array name="slideshow_max_crop_titles">
+        <item>15%</item>
+        <item>20%</item>
+        <item>25%</item>
+        <item>30%</item>
+        <item>40%</item>
+        <item>50%</item>
+        <item>@string/slideshow_max_crop_unlimited</item>
+    </string-array>
+    <string-array name="slideshow_max_crop_values" translatable="false">
+        <item>15</item>
+        <item>20</item>
+        <item>25</item>
+        <item>30</item>
+        <item>40</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
+    <string-array name="slideshow_transition_duration_titles">
+        <item>0.3 s</item>
+        <item>0.5 s</item>
+        <item>0.8 s</item>
+        <item>1 s</item>
+        <item>1.5 s</item>
+        <item>2 s</item>
+    </string-array>
+    <string-array name="slideshow_transition_duration_values" translatable="false">
+        <item>300</item>
+        <item>500</item>
+        <item>800</item>
+        <item>1000</item>
+        <item>1500</item>
+        <item>2000</item>
+    </string-array>
+    <string-array name="slideshow_prefetch_titles">
+        <item>@string/slideshow_prefetch_off</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>5</item>
+    </string-array>
+    <string-array name="slideshow_prefetch_values" translatable="false">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>5</item>
+    </string-array>
+    <string-array name="slideshow_video_cache_titles" translatable="false">
+        <item>250 MB</item>
+        <item>500 MB</item>
+        <item>1 GB</item>
+    </string-array>
+    <string-array name="slideshow_video_cache_values" translatable="false">
+        <item>250</item>
+        <item>500</item>
+        <item>1000</item>
+    </string-array>
+
+    <string-array name="slideshow_video_clip_length_titles" translatable="false">
+        <item>@string/slideshow_video_clip_auto</item>
+        <item>@string/slideshow_video_clip_whole</item>
+        <item>2 s</item>
+        <item>4 s</item>
+        <item>6 s</item>
+        <item>8 s</item>
+        <item>10 s</item>
+        <item>12 s</item>
+        <item>14 s</item>
+        <item>16 s</item>
+        <item>18 s</item>
+        <item>20 s</item>
+        <item>22 s</item>
+        <item>24 s</item>
+        <item>26 s</item>
+        <item>28 s</item>
+        <item>30 s</item>
+        <item>32 s</item>
+        <item>34 s</item>
+        <item>36 s</item>
+        <item>38 s</item>
+        <item>40 s</item>
+        <item>42 s</item>
+        <item>44 s</item>
+        <item>46 s</item>
+        <item>48 s</item>
+        <item>50 s</item>
+        <item>52 s</item>
+        <item>54 s</item>
+        <item>56 s</item>
+        <item>58 s</item>
+        <item>60 s</item>
+    </string-array>
+    <string-array name="slideshow_video_clip_length_values" translatable="false">
+        <item>-1</item>
+        <item>0</item>
+        <item>2</item>
+        <item>4</item>
+        <item>6</item>
+        <item>8</item>
+        <item>10</item>
+        <item>12</item>
+        <item>14</item>
+        <item>16</item>
+        <item>18</item>
+        <item>20</item>
+        <item>22</item>
+        <item>24</item>
+        <item>26</item>
+        <item>28</item>
+        <item>30</item>
+        <item>32</item>
+        <item>34</item>
+        <item>36</item>
+        <item>38</item>
+        <item>40</item>
+        <item>42</item>
+        <item>44</item>
+        <item>46</item>
+        <item>48</item>
+        <item>50</item>
+        <item>52</item>
+        <item>54</item>
+        <item>56</item>
+        <item>58</item>
+        <item>60</item>
+    </string-array>
+    <string-array name="slideshow_video_trim_end_titles" translatable="false">
+        <item>@string/slideshow_video_trim_end_off</item>
+        <item>1 s</item>
+        <item>2 s</item>
+    </string-array>
+    <string-array name="slideshow_video_trim_end_values" translatable="false">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
 </resources>

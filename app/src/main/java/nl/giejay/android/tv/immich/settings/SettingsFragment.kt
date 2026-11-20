@@ -15,6 +15,7 @@ import nl.giejay.android.tv.immich.shared.donate.DonateService
 import nl.giejay.android.tv.immich.shared.prefs.DebugPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.HomeScreenChannelsPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.ScreensaverPrefScreen
+import nl.giejay.android.tv.immich.shared.prefs.SlideshowPrefScreen
 import nl.giejay.android.tv.immich.shared.prefs.ViewPrefScreen
 
 
@@ -56,7 +57,7 @@ class SettingsFragment : RowsSupportFragment() {
                             )
                         },
                         SettingsCard(
-                            ImmichApplication.appContext!!.getString(R.string.view_settings),
+                            ImmichApplication.appContext!!.getString(R.string.browse_settings),
                             null,
                             "view_settings",
                             "icon_view",
@@ -64,6 +65,17 @@ class SettingsFragment : RowsSupportFragment() {
                         ) {
                             findNavController().navigate(
                                 HomeFragmentDirections.actionGlobalToSettingsDialog(ViewPrefScreen.key)
+                            )
+                        },
+                        SettingsCard(
+                            ImmichApplication.appContext!!.getString(R.string.slideshow),
+                            null,
+                            "slideshow",
+                            "icon_slideshow",
+                            "icon_slideshow"
+                        ) {
+                            findNavController().navigate(
+                                HomeFragmentDirections.actionGlobalToSettingsDialog(SlideshowPrefScreen.key)
                             )
                         },
                         SettingsCard(

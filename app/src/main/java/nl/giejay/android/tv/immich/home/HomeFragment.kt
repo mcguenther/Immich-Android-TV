@@ -37,6 +37,7 @@ class HomeFragment : BrowseSupportFragment() {
     private lateinit var mRowsAdapter: ArrayObjectAdapter
     private lateinit var rows: List<PageRow>
     val immichRowPresenter = ImmichRowPresenter()
+    private var activatedHeaderView: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,11 +50,20 @@ class HomeFragment : BrowseSupportFragment() {
         mainFragmentRegistry.registerFragment(PageRow::class.java, PageRowFragmentFactory())
     }
 
+    override fun onDestroyView() {
+        activatedHeaderView = null
+        super.onDestroyView()
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        headersSupportFragment.setOnHeaderViewSelectedListener { _, row ->
+        headersSupportFragment.setOnHeaderViewSelectedListener { viewHolder, row ->
             selectedPosition = row?.let { mRowsAdapter.indexOf(it) } ?: 0
             val name = row?.headerItem?.name ?: "-"
+            // keep the current page marked in the left menu (see ImmichRowPresenter / menu_header_background)
+            immichRowPresenter.selectedName = row?.headerItem?.name
+            activatedHeaderView?.isActivated = false
+            activatedHeaderView = viewHolder?.view?.also { it.isActivated = true }
             // Timeline is a full-bleed mosaic — never show the Leanback page title there
             // (it flashes and slides away when entering the page).
             if (name == getString(R.string.timeline)) {

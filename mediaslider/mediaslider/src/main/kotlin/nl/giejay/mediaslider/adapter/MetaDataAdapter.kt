@@ -116,6 +116,8 @@ class MetaDataAdapter(val context: Context,
     private val layoutInflater: LayoutInflater = LayoutInflater.from(context)
     private val viewsPerType: MutableMap<MetaDataType, View> = mutableMapOf()
     private val stateForItem = mutableMapOf<String, String>()
+    private var itemAlpha = 1f
+    private var staticAlpha = 1f
 
     override fun getCount(): Int {
         return getItemsToShow().size
@@ -160,8 +162,28 @@ class MetaDataAdapter(val context: Context,
         textView.textSize = item.fontSize.toFloat()
         textView.setPadding(textView.paddingLeft, item.padding, textView.paddingRight, item.padding)
         item.updateView(textView, value)
+        textView.alpha = alphaFor(item.type)
         return view
     }
+
+    private fun alphaFor(type: MetaDataType): Float = if (type == MetaDataType.CLOCK) staticAlpha else itemAlpha
+
+    /**
+     * Sets the alpha of the rows for the label cross-fade: [itemAlpha] for rows that depend on the slide,
+     * [staticAlpha] for the clock, which must not flicker while the slide changes. Applies to the rows
+     * already created and to rows created later.
+     */
+    fun setFade(itemAlpha: Float, staticAlpha: Float) {
+        this.itemAlpha = itemAlpha
+        this.staticAlpha = staticAlpha
+        viewsPerType.forEach { (type, view) ->
+            view.findViewById<TextView>(R.id.textView)?.alpha = alphaFor(type)
+        }
+    }
+
+    /** True when every row's value of [assetId] is already known (nothing left to resolve). */
+    fun hasAllValues(assetId: String): Boolean =
+        getItemsToShow().indices.all { hasStateForItem(assetId, it) }
 
     private fun resolveKey(index: Int, assetId: String = getCurrentItem().id): String = assetId + index
 

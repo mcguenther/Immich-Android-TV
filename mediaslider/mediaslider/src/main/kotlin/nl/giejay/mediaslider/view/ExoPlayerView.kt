@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package nl.giejay.mediaslider.view
 
 import android.app.ActivityManager
@@ -9,15 +11,27 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.ProgressBar
 import androidx.annotation.OptIn
+import androidx.media3.common.C
+import androidx.media3.common.Format
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.bumptech.glide.Glide
 import com.zeuskartik.mediaslider.R
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory
+import nl.giejay.mediaslider.adapter.SliderImageRequests
+import nl.giejay.mediaslider.config.DisplayOptions
+import nl.giejay.mediaslider.config.EdgeFill
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
+import nl.giejay.mediaslider.config.VideoPlaybackOptions
+import nl.giejay.mediaslider.player.playbackSpeedFor
 
 /**
  * Fullscreen video surface + ExoPlayer. Transport controls live in [MediaSliderView]'s
@@ -31,13 +45,47 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
     private val posterView: ImageView
     private val loadingView: ProgressBar
     private var player: ExoPlayer? = null
+    private val backdropView: ImageView
     private var awaitingFirstFrame = false
+    private var display = DisplayOptions()
+    private var videoSize: VideoSize? = null
+    private var backdropUrl: String? = null
+    private var videoPlayback = VideoPlaybackOptions()
+    private var sourceFps = Format.NO_VALUE.toFloat()
 
     init {
         LayoutInflater.from(context).inflate(resourceId, this, true)
         playerView = findViewById(R.id.video_view)
         posterView = findViewById(R.id.video_poster)
         loadingView = findViewById(R.id.video_loading)
+        backdropView = findViewById(R.id.video_backdrop)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        applyVideoFit()
+    }
+
+    /**
+     * Chooses between cover and fit once the video size is known. Portrait videos (after the
+     * unapplied rotation) are always fitted; landscape ones are zoomed to cover the view when
+     * [DisplayOptions] allow it ([FitCalculator] holds the rules). A fitted video shows the blurred
+     * thumbnail behind it when the edge fill is BLUR.
+     */
+    private fun applyVideoFit() {
+        val size = videoSize ?: return
+        if (size.width <= 0 || size.height <= 0 || width <= 0 || height <= 0) return
+        var w = size.width * (if (size.pixelWidthHeightRatio > 0f) size.pixelWidthHeightRatio else 1f)
+        var h = size.height.toFloat()
+        if (size.unappliedRotationDegrees == 90 || size.unappliedRotationDegrees == 270) {
+            val t = w
+            w = h
+            h = t
+        }
+        val fit = FitCalculator.compute(Math.round(w), Math.round(h), width, height, display, isVideo = true)
+        playerView.resizeMode = if (fit.fills) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
+        posterView.scaleType = if (fit.fills) ImageView.ScaleType.CENTER_CROP else ImageView.ScaleType.FIT_CENTER
+        backdropView.visibility = if (!fit.fills && display.edgeFill == EdgeFill.BLUR && backdropUrl != null) View.VISIBLE else View.GONE
     }
 
     @OptIn(UnstableApi::class)
@@ -51,6 +99,9 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
             .setRenderersFactory(renderersFactory)
             .setLoadControl(createLoadControl(config))
             .build()
+        display = config.display
+        videoPlayback = config.videoPlayback
+        sourceFps = Format.NO_VALUE.toFloat()
         playerView.player = player
         if (!config.isVideoSoundEnable) player?.volume = 0f
 
@@ -67,6 +118,30 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
                     }
                 }
                 listener.onPlaybackStateChanged(playbackState)
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                sourceFps = tracks.groups
+                    .firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
+                    ?.let { group ->
+                        (0 until group.length).firstOrNull { group.isTrackSelected(it) }
+                            ?.let { group.getTrackFormat(it).frameRate }
+                    } ?: Format.NO_VALUE.toFloat()
+                applyCinemaSpeed()
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                sourceFps = Format.NO_VALUE.toFloat()
+                applyCinemaSpeed()
+            }
+
+            override fun onVolumeChanged(volume: Float) {
+                applyCinemaSpeed()
+            }
+
+            override fun onVideoSizeChanged(size: VideoSize) {
+                videoSize = size
+                applyVideoFit()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -88,12 +163,33 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
     }
 
     /**
+     * Slows the video to the cinema frame rate when configured and applicable (see
+     * [playbackSpeedFor]); resets to normal speed otherwise. Media3 hints the display with
+     * `frameRate * speed`, so a 30 fps clip at 0.8x asks for 24 Hz.
+     */
+    private fun applyCinemaSpeed() {
+        val p = player ?: return
+        val muted = p.volume == 0f
+        val target = videoPlayback.cinemaFrameRate
+            ?.takeIf { muted || !videoPlayback.cinemaOnlyWhenMuted }
+        val speed = playbackSpeedFor(sourceFps, target)
+        if (p.playbackParameters.speed != speed) {
+            p.playbackParameters = PlaybackParameters(speed, 1f)
+        }
+    }
+
+    /**
      * Loads [thumbnailUrl] immediately and keeps it elevated until the first decoded frame.
      * Safe to call again when re-preparing or seeking back to the start of a page.
      */
     fun showLoadingPoster(thumbnailUrl: String?) {
         awaitingFirstFrame = true
         showPosterOverlay()
+        if (!thumbnailUrl.isNullOrBlank() && thumbnailUrl != backdropUrl && display.edgeFill == EdgeFill.BLUR) {
+            backdropUrl = thumbnailUrl
+            SliderImageRequests.blurredBackdrop(context, thumbnailUrl).into(backdropView)
+            applyVideoFit()
+        }
         if (thumbnailUrl.isNullOrBlank()) {
             posterView.setImageDrawable(null)
             return
@@ -126,6 +222,8 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
 
     fun releasePlayer() {
         clearPoster()
+        Glide.with(backdropView).clear(backdropView)
+        backdropUrl = null
         player?.release()
         player = null
     }

@@ -10,6 +10,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import arrow.core.Either
+import nl.giejay.android.tv.immich.shared.prefs.listSummary
 import nl.giejay.android.tv.immich.shared.prefs.ALL_ASSETS_SORTING
 import nl.giejay.android.tv.immich.shared.prefs.AlbumDetailsSettingsScreen
 import nl.giejay.android.tv.immich.shared.prefs.FILTER_CONTENT_TYPE
@@ -26,8 +27,8 @@ class GenericAssetsInnerSettingsFragment : SettingsScreenFragment.SettingsInnerF
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        findPreference<ListPreference>(ALL_ASSETS_SORTING.key())!!.summary = ALL_ASSETS_SORTING.getValue(PreferenceManager.sharedPreference).getTitle()
-        findPreference<ListPreference>(FILTER_CONTENT_TYPE.key())!!.summary = FILTER_CONTENT_TYPE.getValue(PreferenceManager.sharedPreference).getTitle()
+        findPreference<ListPreference>(ALL_ASSETS_SORTING.key())!!.summary = listSummary(ALL_ASSETS_SORTING.getValue(PreferenceManager.sharedPreference).getTitle())
+        findPreference<ListPreference>(FILTER_CONTENT_TYPE.key())!!.summary = listSummary(FILTER_CONTENT_TYPE.getValue(PreferenceManager.sharedPreference).getTitle())
     }
 
     override fun getLayout(): Either<Int, PrefScreen> {

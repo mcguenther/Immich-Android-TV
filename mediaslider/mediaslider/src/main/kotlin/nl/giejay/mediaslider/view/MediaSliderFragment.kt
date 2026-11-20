@@ -23,12 +23,19 @@ open class MediaSliderFragment : Fragment() {
     }
 
     override fun onPause() {
-        destroyMediaPlayer()
+        // Releases the player and pauses prefetching; onResume brings prefetching back.
+        view.onPause()
         super.onPause()
     }
 
-    private fun destroyMediaPlayer() {
+    override fun onResume() {
+        super.onResume()
+        view.onResume()
+    }
+
+    override fun onDestroyView() {
         view.onDestroy()
+        super.onDestroyView()
     }
 
     override fun getView(): MediaSliderView {

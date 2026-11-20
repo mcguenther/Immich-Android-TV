@@ -200,11 +200,6 @@
     <string name="excluded_albums_desc">Исключать элементы из конкретных альбомов для случайного/сезонного вида</string>
 
     <!-- Preference screens and categories -->
-    <string name="view_settings">Настройки просмотра</string>
-    <string name="display">Отображение</string>
-    <string name="display_desc">Изменение способа отображения медиа</string>
-    <string name="effects">Эффекты</string>
-    <string name="effects_desc">Эффекты масштабирования, панорамирования и обрезки</string>
     <string name="content">Контент</string>
     <string name="content_desc">Настройка отображаемого контента</string>
     <string name="general">Общие</string>

@@ -6,6 +6,7 @@ import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.android.tv.immich.api.util.ApiUtil
 import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.card.Card
+import nl.giejay.android.tv.immich.shared.prefs.PortraitPairing
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_LOAD_EDITED_PHOTO
@@ -13,71 +14,228 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.random.Random
 
-fun List<Asset>.toSliderItems(keepOrder: Boolean, mergePortrait: Boolean): List<SliderItemViewHolder> {
-    if (!mergePortrait) {
-        return this.map { SliderItemViewHolder(it.toSliderItem()) }
+/**
+ * Turns assets into slider pages, pairing portrait photos per [options].
+ *
+ * @param keepOrder keep the given order (albums, folders, timeline) instead of shuffling
+ * @param keepAssetId an asset the user explicitly opened; it is never filtered out
+ * @param random source of the shuffle used when [keepOrder] is false and pairing is enabled
+ */
+fun List<Asset>.toSliderItems(keepOrder: Boolean,
+                              options: SliderItemOptions,
+                              keepAssetId: String? = null,
+                              random: Random = Random.Default): List<SliderItemViewHolder> {
+    val groups = groupForSlider(this, keepOrder, options, keepAssetId)
+    val shuffle = !keepOrder && options.pairing != PortraitPairing.OFF
+    return (if (shuffle) groups.shuffled(random) else groups).map { group ->
+        if (group.size == 2) {
+            SliderItemViewHolder(group[0].toSliderItem(), group[1].toSliderItem())
+        } else {
+            SliderItemViewHolder(group[0].toSliderItem())
+        }
     }
-    if (!keepOrder) {
-        val portraits = this.filter { it.isPortraitImage() }
-        val queue = portraits.toMutableList()
-        val portraitSliders = mutableListOf<SliderItemViewHolder>()
+}
 
-        while (queue.isNotEmpty()) {
-            val first = queue.removeAt(0)
-            val firstDate = first.fileModifiedAt?.time
-
-            // pick the second portrait image that is most furthest away in time to the first one
-            val second = if (first.people?.isNotEmpty() == true && firstDate != null) {
-                // Try strict match: same people size and city
-                queue.filter { candidate ->
-                    candidate.people?.size == first.people.size &&
-                            candidate.people.firstOrNull()?.id == first.people.first().id &&
-                            candidate.exifInfo?.city != null && first.exifInfo?.city != null &&
-                            candidate.exifInfo.city == first.exifInfo.city &&
-                            candidate.exifInfo.dateTimeOriginal != null
-                }.maxByOrNull { candidate ->
-                    kotlin.math.abs(candidate.exifInfo!!.dateTimeOriginal!!.time - firstDate)
-                } ?: // Fallback: only same people id
-                queue.filter { candidate ->
-                    candidate.people?.firstOrNull()?.id == first.people.first().id &&
-                            candidate.exifInfo?.dateTimeOriginal != null
-                }.maxByOrNull { candidate ->
-                    kotlin.math.abs(candidate.exifInfo!!.dateTimeOriginal!!.time - firstDate)
-                }
-            } else null // no people or date info, or simply no match with the first, just add a random one next to it
-
-            if (second != null) {
-                portraitSliders.add(SliderItemViewHolder(first.toSliderItem(), second.toSliderItem()))
-                queue.remove(second)
+/**
+ * Groups [assets] into slider pages: one asset alone, or two portrait photos side by side.
+ * Pure function without Android dependencies, so the pairing rules are unit tested.
+ *
+ * Portrait videos are dropped unless [options] shows them or the asset is [keepAssetId].
+ * With [keepOrder] only directly following assets are paired. Without it, each portrait photo
+ * is paired with the matching remaining portrait photo closest in capture time; the groups are
+ * returned unshuffled and [toSliderItems] shuffles them.
+ */
+internal fun groupForSlider(assets: List<Asset>,
+                            keepOrder: Boolean,
+                            options: SliderItemOptions,
+                            keepAssetId: String?): List<List<Asset>> {
+    val visible = assets.filter { options.showPortraitVideos || it.id == keepAssetId || !it.isPortraitVideo() }
+    val pairing = options.pairing
+    if (pairing == PortraitPairing.OFF) {
+        return visible.map { listOf(it) }
+    }
+    val keys = pairKeys(visible)
+    if (keepOrder) {
+        val groups = mutableListOf<List<Asset>>()
+        var index = 0
+        while (index < keys.size) {
+            val first = keys[index]
+            val second = keys.getOrNull(index + 1)
+            if (second != null && first.canPairWith(second, pairing)) {
+                groups.add(listOf(first.asset, second.asset))
+                index += 2
             } else {
-                portraitSliders.add(SliderItemViewHolder(first.toSliderItem(), queue.removeFirstOrNull()?.toSliderItem()))
+                groups.add(listOf(first.asset))
+                index += 1
             }
         }
-
-        val landscapeItems = this - portraits.toSet()
-        return (landscapeItems.map { SliderItemViewHolder(it.toSliderItem()) } + portraitSliders).shuffled()
+        return groups
     }
+    val others = keys.filter { !it.portrait }.map { listOf(it.asset) }
+    return others + pairPortraits(keys.filter { it.portrait }, pairing)
+}
 
-    val queue = this.toMutableList()
-    val items = mutableListOf<SliderItemViewHolder>()
-
-    while (queue.isNotEmpty()) {
-        val first = queue.removeAt(0)
-        val second = queue.firstOrNull()
-
-        if (first.isPortraitImage() && second?.isPortraitImage() == true) {
-            items.add(SliderItemViewHolder(first.toSliderItem(), second.toSliderItem()))
-            queue.remove(second)
-        } else {
-            items.add(SliderItemViewHolder(first.toSliderItem()))
+/**
+ * Pairing facts of one asset, computed once per [groupForSlider] call so the pairing never parses
+ * dates or place names again.
+ *
+ * @param portrait the asset is a portrait photo (only those can be paired)
+ * @param timeMs capture time in milliseconds, null without a capture time
+ * @param day local calendar day as yyyymmdd, null without a capture time
+ * @param city trimmed, lowercased city; null when missing or blank
+ * @param country trimmed, lowercased country; null when missing or blank
+ */
+private class PairKey(
+    val asset: Asset,
+    val portrait: Boolean,
+    val timeMs: Long?,
+    val day: Int?,
+    val city: String?,
+    val country: String?
+) {
+    /** Two portrait photos may share a page only if both are portrait photos and they match the pairing mode. */
+    fun canPairWith(other: PairKey, pairing: PortraitPairing): Boolean {
+        if (!portrait || !other.portrait) return false
+        return when (pairing) {
+            PortraitPairing.OFF -> false
+            PortraitPairing.SAME_DAY -> isSameDay(other)
+            PortraitPairing.SAME_DAY_OR_PLACE -> isSameDay(other) || isSamePlace(other)
         }
     }
-    return items
+
+    private fun isSameDay(other: PairKey): Boolean = day != null && day == other.day
+
+    /** Same city; a missing country on either side still allows the match. */
+    private fun isSamePlace(other: PairKey): Boolean {
+        if (city == null || city != other.city) return false
+        return country == null || other.country == null || country == other.country
+    }
+
+    /** Distance in milliseconds between capture times; assets without a time sort last. */
+    fun captureDistanceTo(other: PairKey): Long {
+        val a = timeMs ?: return Long.MAX_VALUE
+        val b = other.timeMs ?: return Long.MAX_VALUE
+        return abs(a - b)
+    }
+}
+
+/** Builds the [PairKey]s with one reused calendar in the device time zone. */
+private fun pairKeys(assets: List<Asset>): List<PairKey> {
+    val calendar = Calendar.getInstance()
+    return assets.map { asset ->
+        val time = asset.captureTime()
+        val day = time?.let {
+            calendar.time = it
+            calendar.get(Calendar.YEAR) * 10_000 +
+                    (calendar.get(Calendar.MONTH) + 1) * 100 +
+                    calendar.get(Calendar.DAY_OF_MONTH)
+        }
+        PairKey(
+            asset = asset,
+            portrait = asset.isPortraitImage(),
+            timeMs = time?.time,
+            day = day,
+            city = asset.exifInfo?.city?.normalizedPlace(),
+            country = asset.exifInfo?.country?.normalizedPlace()
+        )
+    }
+}
+
+/**
+ * Pairs portrait photos in list order: each remaining photo takes the matching remaining photo
+ * closest in capture time (on a tie, the earlier one). Candidates come from a day bucket and a
+ * city bucket, so no pass scans all remaining photos.
+ */
+private fun pairPortraits(portraits: List<PairKey>, pairing: PortraitPairing): List<List<Asset>> {
+    val byDay = HashMap<Int, MutableList<Int>>()
+    val byCity = HashMap<String, MutableList<Int>>()
+    portraits.forEachIndexed { index, key ->
+        key.day?.let { byDay.getOrPut(it) { ArrayList() }.add(index) }
+        key.city?.let { byCity.getOrPut(it) { ArrayList() }.add(index) }
+    }
+    val removed = BooleanArray(portraits.size)
+    val groups = ArrayList<List<Asset>>(portraits.size)
+    for (index in portraits.indices) {
+        if (removed[index]) continue
+        removed[index] = true
+        val first = portraits[index]
+        var partner = -1
+        first.day?.let { day ->
+            byDay[day]?.let { partner = closestPartner(first, it, portraits, removed, pairing, partner) }
+        }
+        if (pairing == PortraitPairing.SAME_DAY_OR_PLACE) {
+            first.city?.let { city ->
+                byCity[city]?.let { partner = closestPartner(first, it, portraits, removed, pairing, partner) }
+            }
+        }
+        if (partner >= 0) {
+            removed[partner] = true
+            groups.add(listOf(first.asset, portraits[partner].asset))
+        } else {
+            groups.add(listOf(first.asset))
+        }
+    }
+    return groups
+}
+
+/**
+ * Returns the index of the matching remaining portrait in [bucket] closest to [first], compared
+ * with [current] (-1 for none) by distance and then by index. Removed entries are dropped from
+ * [bucket] during the scan.
+ */
+private fun closestPartner(
+    first: PairKey,
+    bucket: MutableList<Int>,
+    portraits: List<PairKey>,
+    removed: BooleanArray,
+    pairing: PortraitPairing,
+    current: Int
+): Int {
+    var best = current
+    var bestDistance = if (current >= 0) first.captureDistanceTo(portraits[current]) else Long.MAX_VALUE
+    var kept = 0
+    for (position in bucket.indices) {
+        val candidate = bucket[position]
+        if (removed[candidate]) continue
+        bucket[kept++] = candidate
+        val key = portraits[candidate]
+        if (!first.canPairWith(key, pairing)) continue
+        val distance = first.captureDistanceTo(key)
+        if (best < 0 || distance < bestDistance || (distance == bestDistance && candidate < best)) {
+            best = candidate
+            bestDistance = distance
+        }
+    }
+    bucket.subList(kept, bucket.size).clear()
+    return best
+}
+
+/** Capture time: EXIF date taken, falling back to the file creation date. */
+private fun Asset.captureTime(): Date? = this.exifInfo?.dateTimeOriginal ?: this.fileCreatedAt
+
+private fun String.normalizedPlace(): String? = this.trim().lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
+
+/** True when the asset is a video whose displayed orientation (EXIF rotation 5-8 swaps width/height) is portrait. */
+fun Asset.isPortraitVideo(): Boolean {
+    if (this.type != SliderItemType.VIDEO.toString()) return false
+    val width = this.exifInfo?.exifImageWidth ?: return false
+    val height = this.exifInfo.exifImageHeight ?: return false
+    if (width <= 0 || height <= 0) return false
+    val rotated = this.exifInfo.orientation in listOf(5, 6, 7, 8)
+    val displayWidth = if (rotated) height else width
+    val displayHeight = if (rotated) width else height
+    return displayHeight > displayWidth
 }
 
 fun Asset.toSliderItem(): SliderItem {
     val itemType = SliderItemType.valueOf(this.type.uppercase())
+    // EXIF width/height are stored before rotation; orientations 5..8 are rotated by 90 degrees.
+    val exifW = this.exifInfo?.exifImageWidth?.takeIf { it > 0 }
+    val exifH = this.exifInfo?.exifImageHeight?.takeIf { it > 0 }
+    val swap = (this.exifInfo?.orientation ?: 1) in 5..8
     return SliderItem(
         this.id,
         ApiUtil.getFileUrl(
@@ -92,8 +250,22 @@ fun Asset.toSliderItem(): SliderItem {
         ApiUtil.getThumbnailUrl(this.id, "preview", PreferenceManager.get(SLIDER_LOAD_EDITED_PHOTO)),
         isPanorama = this.isPanoramaImage(),
         isFavorite = this.isFavorite,
+        width = if (swap) exifH else exifW,
+        height = if (swap) exifW else exifH,
+        durationMs = if (itemType == SliderItemType.VIDEO) parseImmichDurationMs(this.duration) else null,
         geoLocationProvider = AssetMetaDataMapping.geoLocationProviderFor(this)
     )
+}
+
+/** Parses Immich's "H:MM:SS.ffffff" duration into milliseconds; null when absent, malformed or zero. */
+internal fun parseImmichDurationMs(duration: String?): Long? {
+    val parts = duration?.trim()?.split(":") ?: return null
+    if (parts.size != 3) return null
+    val h = parts[0].toLongOrNull() ?: return null
+    val m = parts[1].toLongOrNull() ?: return null
+    val sec = parts[2].toDoubleOrNull() ?: return null
+    val ms = h * 3_600_000L + m * 60_000L + Math.round(sec * 1000)
+    return ms.takeIf { it > 0 }
 }
 
 internal fun formatAssetDate(date: Date): String {

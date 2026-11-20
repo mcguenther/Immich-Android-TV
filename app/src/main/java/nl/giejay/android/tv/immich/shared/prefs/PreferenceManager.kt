@@ -52,6 +52,7 @@ object PreferenceManager {
         sharedPreference = PreferenceManager.getDefaultSharedPreferences(context)
         liveSharedPreferences = LiveSharedPreferences(sharedPreference)
         migrateApiKeyIfNeeded()
+        SlideshowPrefsMigration.migrateIfNeeded(sharedPreference)
         subclasses(Pref::class).filter { it.objectInstance != null }.forEach { pref ->
             val prefInstance = pref.objectInstance!! as Pref<Any, *, *>
             liveSharedPreferences.subscribeTyped(prefInstance) { typeValue ->

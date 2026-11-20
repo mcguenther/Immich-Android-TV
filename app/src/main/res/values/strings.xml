@@ -108,7 +108,8 @@
     <string name="screensaver_not_possible">Could not start screensaver for Immich because of invalid Hostname/API key</string>
     <string name="close">Close</string>
     <string name="interval">Interval</string>
-    <string name="screensaver_interval_desc">Interval of the screensaver</string>
+    <string name="screensaver_interval_desc">Seconds per photo in the screensaver.</string>
+    <string name="interval_screensaver">Interval (screensaver)</string>
     <string name="show_media_count">Show media count</string>
     <string name="show_media_count_desc_screensaver">Show the number of total items and currently selected item</string>
     <string name="show_description">Show description</string>
@@ -139,8 +140,8 @@
     <string name="screensaver_start_now_desc">Start the screensaver now</string>
 
     <!-- Slider/viewer preferences -->
-    <string name="interval_slideshow">Slideshow interval</string>
-    <string name="interval_slideshow_desc">Seconds per photo during slideshow. Videos play in full, then advance.</string>
+    <string name="interval_slideshow">Interval (slideshow)</string>
+    <string name="interval_slideshow_desc">Seconds per photo in slideshows (albums, timeline). Videos follow the clip length setting.</string>
     <string name="slide_animation_speed_ms">Slide animation speed (ms)</string>
     <string name="slide_animation_speed_desc">Slide animation speed in milliseconds</string>
     <string name="show_description_slideshow">Show description</string>
@@ -201,11 +202,6 @@
     <string name="excluded_albums_desc">Exclude assets in specific albums for random/seasonal view</string>
 
     <!-- Preference screens and categories -->
-    <string name="view_settings">View Settings</string>
-    <string name="display">Display</string>
-    <string name="display_desc">Change how media is displayed</string>
-    <string name="effects">Effects</string>
-    <string name="effects_desc">Zoom, pan and crop effects</string>
     <string name="content">Content</string>
     <string name="content_desc">Configure which content to show</string>
     <string name="general">General</string>
@@ -323,4 +319,107 @@
     <string name="favorite_removed">Removed from favorites</string>
     <string name="favorite_add_failed">Failed to add to favorites</string>
     <string name="favorite_remove_failed">Failed to remove from favorites</string>
+    <!-- Slideshow redesign: menu -->
+    <string name="slideshow_settings_desc">Display, motion, portrait pairs, timing, loading</string>
+    <string name="browse_settings">Browse</string>
+    <string name="browse_settings_desc">General, ordering, content</string>
+    <string name="slideshow_shared_note">Applies to slideshows in albums, the timeline and the screensaver.</string>
+    <string name="slideshow_display">Display</string>
+    <string name="slideshow_display_desc">Fill the screen, crop limit, edges</string>
+    <string name="slideshow_motion">Motion</string>
+    <string name="slideshow_motion_desc">Slow zoom and pan on photos</string>
+    <string name="slideshow_pairs">Portrait pairs</string>
+    <string name="slideshow_pairs_desc">When two portrait photos are shown side by side</string>
+    <string name="slideshow_timing">Timing</string>
+    <string name="slideshow_timing_desc">Interval and transition</string>
+    <string name="slideshow_overlays">Overlays</string>
+    <string name="slideshow_overlays_desc">Date in the top left, metadata</string>
+    <string name="slideshow_quality">Quality &amp; loading</string>
+    <string name="slideshow_quality_desc">Image source and preloading</string>
+    <string name="slideshow_videos">Videos</string>
+    <string name="slideshow_videos_desc">Clip length, excerpt, frame rate, playback</string>
+    <string name="slideshow_video_clip_length">Clip length</string>
+    <string name="slideshow_video_clip_length_desc">How long a video plays in the slideshow. Shorter videos play completely</string>
+    <string name="slideshow_video_clip_auto">2× photo interval</string>
+    <string name="slideshow_video_clip_whole">Whole video</string>
+    <string name="slideshow_video_clip_position">Excerpt</string>
+    <string name="slideshow_video_clip_position_desc">Which part of a longer video is shown</string>
+    <string name="slideshow_video_clip_position_start">Beginning</string>
+    <string name="slideshow_video_clip_position_middle">Middle</string>
+    <string name="slideshow_video_clip_position_random">Random excerpt</string>
+    <string name="slideshow_video_trim_end">Cut off video end</string>
+    <string name="slideshow_video_trim_end_desc">Skip the last seconds of every video, where the camera often shakes when recording is stopped</string>
+    <string name="slideshow_video_trim_end_off">Off</string>
+    <string name="screensaver_content">Content</string>
+    <string name="screensaver_content_desc">Source, albums, people, videos</string>
+    <string name="screensaver_timing_desc">Interval and sound</string>
+    <string name="screensaver_appearance_link">Display, motion &amp; portrait pairs</string>
+    <string name="screensaver_appearance_link_desc">Taken from Slideshow so both look the same</string>
+
+    <!-- Slideshow redesign: display -->
+    <string name="slideshow_fill_mode">Fill mode</string>
+    <string name="slideshow_fill_mode_desc">Fill the whole screen or always show the whole photo</string>
+    <string name="slideshow_fill_mode_fit">Fit (show whole photo)</string>
+    <string name="slideshow_fill_mode_fill">Fill (crop edges)</string>
+    <string name="slideshow_max_crop">Maximum crop</string>
+    <string name="slideshow_max_crop_desc">Photos that would lose more of an edge are fitted instead. 4:3 needs 25%, 1:1 needs 44%</string>
+    <string name="slideshow_max_crop_unlimited">Unlimited</string>
+    <string name="slideshow_fill_videos">Fill with landscape videos</string>
+    <string name="slideshow_fill_videos_desc">Zoom landscape videos the same way. Portrait videos are never cropped</string>
+    <string name="slideshow_edge_fill">Fill empty edges with</string>
+    <string name="slideshow_edge_fill_desc">For photos that do not fill the screen, such as single portrait photos</string>
+    <string name="slideshow_edge_fill_blur">Blurred photo</string>
+    <string name="slideshow_edge_fill_black">Black</string>
+
+    <!-- Slideshow redesign: motion -->
+    <string name="slideshow_motion_enabled">Camera motion</string>
+    <string name="slideshow_motion_enabled_desc">One slow, steady zoom or pan per photo</string>
+    <string name="slideshow_motion_zoom">Zoom amount %</string>
+    <string name="slideshow_motion_zoom_desc">Total zoom over one photo. 5% is calm</string>
+    <string name="slideshow_motion_pan">Pan amount %</string>
+    <string name="slideshow_motion_pan_desc">Total travel over one photo, as a share of the screen width. 3% is calm</string>
+    <string name="slideshow_motion_style">Motion style</string>
+    <string name="slideshow_motion_style_desc">Mixed alternates between zooming in, zooming out and panning</string>
+    <string name="slideshow_motion_style_mixed">Mixed</string>
+    <string name="slideshow_motion_style_zoom">Zoom only</string>
+    <string name="slideshow_motion_style_pan">Pan only</string>
+    <string name="slideshow_panorama_scroll">Scroll panoramas</string>
+    <string name="slideshow_panorama_scroll_desc">Fill the screen with very wide or tall photos and scroll from one side to the other</string>
+
+    <!-- Slideshow redesign: portrait pairs -->
+    <string name="slideshow_pairing">Show two portrait photos side by side</string>
+    <string name="slideshow_pairing_desc">Only photos that belong together are paired; the closest in time is chosen</string>
+    <string name="slideshow_pairing_off">Off</string>
+    <string name="slideshow_pairing_same_day">Same day</string>
+    <string name="slideshow_pairing_same_day_or_place">Same day or same place</string>
+    <string name="slideshow_show_portrait_videos">Show portrait videos</string>
+    <string name="slideshow_show_portrait_videos_desc">Portrait videos are shown upright and never cropped. Turn off to skip them</string>
+
+    <!-- Slideshow redesign: timing -->
+    <string name="slideshow_transition">Transition</string>
+    <string name="slideshow_transition_desc">Crossfade is the calmest</string>
+    <string name="slideshow_transition_crossfade">Crossfade</string>
+    <string name="slideshow_transition_slide">Slide</string>
+    <string name="slideshow_transition_none">None</string>
+    <string name="slideshow_transition_duration">Transition duration</string>
+    <string name="slideshow_transition_duration_desc">Motion keeps going during the transition</string>
+    <string name="slideshow_video_cinema_fps">Cinema frame rate for videos</string>
+    <string name="slideshow_video_cinema_fps_desc">Play videos at 24 fps. Faster videos are slowed down slightly for a calm slow-motion look (30 fps plays at 80% speed)</string>
+    <string name="slideshow_video_cinema_fps_off">Off</string>
+    <string name="slideshow_video_cinema_fps_24">24 fps</string>
+    <string name="slideshow_video_cinema_fps_23976">23.976 fps</string>
+    <string name="slideshow_video_cinema_only_muted">Only for muted videos</string>
+    <string name="slideshow_video_cinema_only_muted_desc">Keep normal speed when a video plays with sound</string>
+
+    <!-- Slideshow redesign: quality & loading -->
+    <string name="slideshow_image_source">Image source</string>
+    <string name="slideshow_image_source_desc">Full resolution looks sharpest; the preview loads faster</string>
+    <string name="slideshow_image_source_full">Full resolution</string>
+    <string name="slideshow_image_source_preview">Preview (faster)</string>
+    <string name="slideshow_prefetch">Preload</string>
+    <string name="slideshow_prefetch_desc">Load upcoming photos and video starts in the background so they show instantly</string>
+    <string name="slideshow_prefetch_off">Off</string>
+    <string name="slideshow_prefetch_n">%d upcoming</string>
+    <string name="slideshow_video_cache">Video cache</string>
+    <string name="slideshow_video_cache_desc">Storage for preloaded video starts</string>
 </resources>
