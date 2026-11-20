@@ -260,6 +260,9 @@
         <item quantity="other">%d Minuten</item>
     </plurals>
     <string name="interval_minutes_seconds">%1$d Min. %2$d Sek.</string>
+    <string name="interval_picker_minutes">Min.</string>
+    <string name="interval_picker_seconds">Sek.</string>
+    <string name="interval_picker_hint">▲▼ ändern · ◀▶ Spalte wechseln · OK übernehmen</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">Alle</string>

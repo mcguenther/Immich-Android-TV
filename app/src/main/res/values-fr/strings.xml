@@ -266,6 +266,9 @@
         <item quantity="other">%d minutes</item>
     </plurals>
     <string name="interval_minutes_seconds">%1$d min %2$d s</string>
+    <string name="interval_picker_minutes">min</string>
+    <string name="interval_picker_seconds">s</string>
+    <string name="interval_picker_hint">▲▼ modifier · ◀▶ changer de colonne · OK valider</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">Tous</string>

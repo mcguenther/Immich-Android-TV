@@ -281,6 +281,9 @@
         <item quantity="other">%d minutes</item>
     </plurals>
     <string name="interval_minutes_seconds">%1$d min %2$d s</string>
+    <string name="interval_picker_minutes">Min.</string>
+    <string name="interval_picker_seconds">Sec.</string>
+    <string name="interval_picker_hint">▲▼ change · ◀▶ switch column · OK confirm</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">All</string>
