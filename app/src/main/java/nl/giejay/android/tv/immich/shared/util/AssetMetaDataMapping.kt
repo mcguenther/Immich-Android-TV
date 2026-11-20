@@ -1,11 +1,14 @@
 package nl.giejay.android.tv.immich.shared.util
 
 import nl.giejay.android.tv.immich.api.model.Asset
+import nl.giejay.android.tv.immich.shared.prefs.COUNTRY_NAME_LANGUAGE
+import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.mediaslider.model.GeoLocation
 import nl.giejay.mediaslider.model.GeoLocationProvider
 import nl.giejay.mediaslider.model.MetaDataProvider
 import nl.giejay.mediaslider.model.MetaDataType
 import nl.giejay.mediaslider.model.StaticMetaDataProvider
+import java.util.Locale
 
 /**
  * Single place to map an [Asset] onto slider [MetaDataType] values / providers.
@@ -13,6 +16,23 @@ import nl.giejay.mediaslider.model.StaticMetaDataProvider
  * [AssetDetailMetaDataProvider].
  */
 object AssetMetaDataMapping {
+
+    private val defaultCountryNameLocale: () -> Locale? = {
+        // never let an unreadable preference break the metadata overlay
+        runCatching { PreferenceManager.get(COUNTRY_NAME_LANGUAGE).targetLocale() }.getOrNull()
+    }
+
+    /**
+     * Target language for [MetaDataType.COUNTRY] (null = keep the Immich value).
+     * Test seam — production reads [COUNTRY_NAME_LANGUAGE].
+     */
+    @Volatile
+    var countryNameLocale: () -> Locale? = defaultCountryNameLocale
+
+    /** Test helper. */
+    fun resetCountryNameLocale() {
+        countryNameLocale = defaultCountryNameLocale
+    }
 
     /**
      * Maps each supported [MetaDataType] to a lambda that extracts its string value
@@ -26,7 +46,11 @@ object AssetMetaDataMapping {
             date?.let { formatAssetDate(it) }
         },
         MetaDataType.CITY to { it.exifInfo?.city },
-        MetaDataType.COUNTRY to { it.exifInfo?.country },
+        MetaDataType.COUNTRY to { asset ->
+            asset.exifInfo?.country?.let { country ->
+                countryNameLocale()?.let { CountryNameTranslator.translate(country, it) } ?: country
+            }
+        },
         MetaDataType.DESCRIPTION to { it.exifInfo?.description },
         MetaDataType.FILENAME to { it.originalFileName },
         MetaDataType.PEOPLE to { asset ->

@@ -288,6 +288,19 @@ data object SLIDER_SHOW_CITY : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_city),
     ImmichApplication.appContext!!.getString(R.string.show_city_desc))
 
+data object COUNTRY_NAME_LANGUAGE : EnumByTitlePref<CountryNameLanguage>(CountryNameLanguage.ORIGINAL,
+    ImmichApplication.appContext!!.getString(R.string.country_name_language),
+    ImmichApplication.appContext!!.getString(R.string.country_name_language_desc)) {
+
+    override fun fromPrefValue(prefValue: String): CountryNameLanguage {
+        return CountryNameLanguage.entries.firstOrNull { it.name == prefValue } ?: defaultValue
+    }
+
+    override fun getEnumEntries(): Array<CountryNameLanguage> {
+        return CountryNameLanguage.entries.toTypedArray()
+    }
+}
+
 data object SLIDER_METADATA_CUSTOMIZER : ActionPref(null, ImmichApplication.appContext!!.getString(R.string.customize_metadata_viewer),
     ImmichApplication.appContext!!.getString(R.string.configure_metadata_viewer),
     { _, navController ->
@@ -579,6 +592,7 @@ data object ViewSlideshowPrefScreen : PrefScreen(ImmichApplication.appContext!!.
             SLIDER_ANIMATION_SPEED,
             SLIDER_SHOW_DATE_TOP_LEFT,
             SLIDER_SHOW_LOCATION_MAP,
+            COUNTRY_NAME_LANGUAGE,
             SLIDER_METADATA_CUSTOMIZER
         ))
     )
@@ -652,6 +666,7 @@ data object ScreensaverPrefScreen : PrefScreen(ImmichApplication.appContext!!.ge
                 SCREENSAVER_PEOPLE,
                 SCREENSAVER_SHOW_DATE_TOP_LEFT,
                 SCREENSAVER_SHOW_LOCATION_MAP,
+                COUNTRY_NAME_LANGUAGE,
                 SCREENSAVER_METADATA_CUSTOMIZER,
                 SCREENSAVER_INCLUDE_VIDEOS,
                 SCREENSAVER_PLAY_SOUND,

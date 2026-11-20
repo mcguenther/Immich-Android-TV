@@ -317,4 +317,8 @@
     <string name="favorite_removed">已从收藏中移除</string>
     <string name="favorite_add_failed">添加到收藏失败</string>
     <string name="favorite_remove_failed">移除收藏失败</string>
+    <string name="country_name_language">国家名称语言</string>
+    <string name="country_name_language_desc">查看器和屏保中国家名称的显示语言。Immich 提供的是英文名称，翻译在设备上离线完成。</string>
+    <string name="country_name_language_original">原始（与 Immich 相同）</string>
+    <string name="country_name_language_device">设备语言</string>
 </resources>

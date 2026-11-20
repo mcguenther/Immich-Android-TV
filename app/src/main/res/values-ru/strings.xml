@@ -311,4 +311,8 @@
     <string name="meta_data_padding_dialog_title">Отступ сверху и снизу элемента</string>
     <string name="meta_data_delete_desc">Удалить элемент</string>
     <string name="meta_data_save_desc">Сохранить элемент</string>
+    <string name="country_name_language">Язык названий стран</string>
+    <string name="country_name_language_desc">Язык названий стран в просмотрщике и заставке. Immich передаёт их на английском; перевод выполняется офлайн на устройстве.</string>
+    <string name="country_name_language_original">Оригинал (как в Immich)</string>
+    <string name="country_name_language_device">Язык устройства</string>
 </resources>

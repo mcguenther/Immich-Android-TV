@@ -323,4 +323,9 @@
     <string name="favorite_removed">Removed from favorites</string>
     <string name="favorite_add_failed">Failed to add to favorites</string>
     <string name="favorite_remove_failed">Failed to remove from favorites</string>
+    <string name="country_name_language">Country name language</string>
+    <string name="country_name_language_desc">Language for country names in the photo/video viewer and screensaver. Immich provides them in English; translation happens offline on the device.</string>
+    <string name="country_name_language_original">Original (as in Immich)</string>
+    <string name="country_name_language_device">Device language</string>
+    <string name="country_name_language_german" translatable="false">Deutsch</string>
 </resources>

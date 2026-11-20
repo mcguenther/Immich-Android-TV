@@ -12,12 +12,14 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.After
 import org.junit.Test
+import java.util.Locale
 
 class AssetMetaDataMappingTest {
 
     @After
     fun tearDown() {
         AssetDetailCache.clear()
+        AssetMetaDataMapping.resetCountryNameLocale()
     }
 
     private fun assetWithCoordinates(id: String, latitude: Double?, longitude: Double?) = Asset(
@@ -137,5 +139,49 @@ class AssetMetaDataMappingTest {
         assertTrue(providers[MetaDataType.CITY] is StaticMetaDataProvider)
         assertTrue(providers[MetaDataType.COUNTRY] is AssetDetailMetaDataProvider)
         assertTrue(providers[MetaDataType.ALBUM_NAME] is AlbumMetaDataProvider)
+    }
+
+    private fun assetInCountry(country: String?) = Asset(
+        id = "c",
+        type = "IMAGE",
+        deviceAssetId = null,
+        exifInfo = AssetExifInfo(
+            description = null,
+            orientation = 1,
+            exifImageWidth = null,
+            exifImageHeight = null,
+            city = "Oslo",
+            country = country,
+            dateTimeOriginal = null,
+            make = null,
+            model = null
+        ),
+        fileCreatedAt = null,
+        fileModifiedAt = null,
+        albumName = null,
+        people = null,
+        tags = null,
+        originalPath = null,
+        originalFileName = null,
+        isFavorite = false
+    )
+
+    @Test
+    fun `country is translated to the configured language`() {
+        AssetMetaDataMapping.countryNameLocale = { Locale.GERMAN }
+        assertEquals("Norwegen", AssetMetaDataMapping.valueOf(assetInCountry("Norway"), MetaDataType.COUNTRY))
+        // city stays as Immich provides it
+        assertEquals("Oslo", AssetMetaDataMapping.valueOf(assetInCountry("Norway"), MetaDataType.CITY))
+        assertNull(AssetMetaDataMapping.valueOf(assetInCountry(null), MetaDataType.COUNTRY))
+    }
+
+    @Test
+    fun `country keeps the Immich value when translation is off or unavailable`() {
+        AssetMetaDataMapping.countryNameLocale = { null }
+        assertEquals("Norway", AssetMetaDataMapping.valueOf(assetInCountry("Norway"), MetaDataType.COUNTRY))
+
+        // default reads PreferenceManager, which is not initialised in plain JVM tests
+        AssetMetaDataMapping.resetCountryNameLocale()
+        assertEquals("Norway", AssetMetaDataMapping.valueOf(assetInCountry("Norway"), MetaDataType.COUNTRY))
     }
 }
