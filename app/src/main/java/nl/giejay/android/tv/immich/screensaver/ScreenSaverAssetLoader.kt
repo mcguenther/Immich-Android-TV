@@ -33,9 +33,10 @@ import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_TYPE
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.util.Utils.pmap
-import nl.giejay.android.tv.immich.shared.util.toSliderItems
+import nl.giejay.android.tv.immich.shared.util.toSliderPages
 import nl.giejay.android.tv.immich.slider.FavoriteService
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
+import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.util.LoadMore
 import nl.giejay.mediaslider.util.LoadMoreResult
 import timber.log.Timber
@@ -65,7 +66,7 @@ internal fun screenSaverApiClientConfig(): ApiClientConfig =
  * literal is what guarantees the in-app preview and the real DreamService stay identical.
  */
 internal fun buildScreenSaverConfiguration(
-    assets: List<Asset>,
+    pages: List<SliderItemViewHolder>,
     loadMore: LoadMore?,
     scope: CoroutineScope,
     favoriteService: FavoriteService
@@ -75,7 +76,7 @@ internal fun buildScreenSaverConfiguration(
         0,
         PreferenceManager.get(SCREENSAVER_INTERVAL),
         PreferenceManager.get(SCREENSAVER_PLAY_SOUND),
-        assets.toSliderItems(keepOrder = false, options = SlideshowSettings.sliderItems()),
+        pages,
         loadMore,
         gradiantOverlay = true,
         metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.SCREENSAVER),
@@ -131,6 +132,17 @@ class ScreenSaverAssetLoader(
         filterAssets = { filterExcludedAssets(it, excludedAssetIds) }
     )
     private val loadedAssetIds = mutableSetOf<String>()
+    private var partnerFinder = partnerFinder()
+
+    private fun partnerFinder(albums: List<String> = emptyList(), people: List<UUID> = emptyList()) =
+        PortraitPartnerFinder(
+            source = ServerPartnerCandidateSource(apiClient, albums, people),
+            isAllowed = { filterExcludedAssets(listOf(it), excludedAssetIds).isNotEmpty() }
+        )
+
+    /** Slider pages for one batch, with partners looked up for portrait photos. */
+    private suspend fun toPages(assets: List<Asset>): List<SliderItemViewHolder> =
+        partnerFinder.group(assets, SlideshowSettings.sliderItems()).toSliderPages()
 
     fun start(): Job = scope.launch(Dispatchers.IO) {
         val excludedAlbums = PreferenceManager.get(EXCLUDE_ASSETS_IN_ALBUM)
@@ -172,9 +184,9 @@ class ScreenSaverAssetLoader(
         val page = currentPage
         currentPage += 1
         return when (screenSaverType) {
-            ScreenSaverType.RECENT -> apiClient.recentAssets(page, PAGE_COUNT, contentType = contentType)
-            ScreenSaverType.SIMILAR_TIME_PERIOD -> apiClient.similarAssets(page, PAGE_COUNT, contentType = contentType)
-            else -> apiClient.listAssets(page, PAGE_COUNT, true, contentType = contentType)
+            ScreenSaverType.RECENT -> apiClient.recentAssets(page, BATCH_SIZE, contentType = contentType)
+            ScreenSaverType.SIMILAR_TIME_PERIOD -> apiClient.similarAssets(page, BATCH_SIZE, contentType = contentType)
+            else -> apiClient.listAssets(page, BATCH_SIZE, true, contentType = contentType)
         }
     }
 
@@ -185,10 +197,7 @@ class ScreenSaverAssetLoader(
                 LoadMoreResult(emptyList(), false)
             },
             { response ->
-                LoadMoreResult(
-                    response.assets.toSliderItems(false, SlideshowSettings.sliderItems()),
-                    response.canLoadMore
-                )
+                LoadMoreResult(toPages(response.assets), response.canLoadMore)
             }
         )
     }
@@ -204,6 +213,7 @@ class ScreenSaverAssetLoader(
 
             val albumsList = albums ?: emptyList()
             val peopleList = people ?: emptyList()
+            partnerFinder = partnerFinder(albumsList, peopleList.map { UUID.fromString(it) })
 
             val response = filteredAssetLoader.load(fetch =
                 {
@@ -240,7 +250,7 @@ class ScreenSaverAssetLoader(
         val contentType =
             if (PreferenceManager.get(SCREENSAVER_INCLUDE_VIDEOS)) ContentType.ALL else ContentType.IMAGE
         val response = if (random) {
-            val pageCount = (50 / max(albums.size, people.size).coerceAtLeast(1))
+            val pageCount = (BATCH_SIZE / max(albums.size, people.size).coerceAtLeast(1)).coerceAtLeast(1)
             val responses = if (albums.isNotEmpty()) {
                 albums.pmap { albumId ->
                     apiClient.listAssets(
@@ -293,20 +303,29 @@ class ScreenSaverAssetLoader(
         host.exitScreenSaver()
     }
 
-    private suspend fun setInitialAssets(assets: List<Asset>, loadMore: (suspend () -> LoadMoreResult)?) = withContext(Dispatchers.Main) {
-        if (assets.isEmpty()) {
+    private suspend fun setInitialAssets(assets: List<Asset>, loadMore: (suspend () -> LoadMoreResult)?) {
+        val pages = toPages(assets)
+        withContext(Dispatchers.Main) { showInitialPages(pages, loadMore) }
+    }
+
+    private fun showInitialPages(pages: List<SliderItemViewHolder>, loadMore: (suspend () -> LoadMoreResult)?) {
+        if (pages.isEmpty()) {
             host.showScreenSaverMessage(R.string.no_assets_for_screensaver, longDuration = true)
             if (host.exitWhenNothingToShow) {
                 host.exitScreenSaver()
             }
         } else {
             host.onScreenSaverConfigurationReady(
-                buildScreenSaverConfiguration(assets, loadMore, scope, favoriteService)
+                buildScreenSaverConfiguration(pages, loadMore, scope, favoriteService)
             )
         }
     }
 
     companion object {
-        private const val PAGE_COUNT = 100
+        /**
+         * Assets per request. Portrait partners are looked up per photo, so a batch no longer has to be
+         * large to hold two photos of the same day; small batches start the screensaver sooner.
+         */
+        internal const val BATCH_SIZE = 30
     }
 }
