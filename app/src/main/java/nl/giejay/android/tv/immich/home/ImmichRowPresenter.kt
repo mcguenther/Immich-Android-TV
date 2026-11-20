@@ -21,11 +21,10 @@ class ImmichRowPresenter : Presenter() {
             .inflate(R.layout.presenter_row, parent, false)
 
         val viewHolder = ImmichRowViewHolder(root)
-        // Make the focused entry unmistakable on a TV: bold text and a slight zoom on top of the white pill.
+        // Bold text on the white focus pill. No zoom: the pill spans the sidebar width, so any scaling
+        // would push its edges (and the text) past the sidebar and get clipped.
         viewHolder.tvTitle.setOnFocusChangeListener { view, hasFocus ->
             (view as android.widget.TextView).setTypeface(null, if (hasFocus) Typeface.BOLD else Typeface.NORMAL)
-            view.animate().scaleX(if (hasFocus) FOCUS_SCALE else 1f).scaleY(if (hasFocus) FOCUS_SCALE else 1f)
-                .setDuration(FOCUS_ANIMATION_MS).start()
         }
         return viewHolder
     }
@@ -58,8 +57,4 @@ class ImmichRowPresenter : Presenter() {
         vh.view.isActivated = false
     }
 
-    private companion object {
-        const val FOCUS_SCALE = 1.04f
-        const val FOCUS_ANIMATION_MS = 120L
-    }
 }
