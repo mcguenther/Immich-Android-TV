@@ -272,6 +272,9 @@
         <item quantity="other">%d минуты</item>
     </plurals>
     <string name="interval_minutes_seconds">%1$d мин %2$d с</string>
+    <string name="interval_picker_minutes">мин</string>
+    <string name="interval_picker_seconds">с</string>
+    <string name="interval_picker_hint">▲▼ изменить · ◀▶ сменить столбец · OK подтвердить</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">Все</string>

@@ -264,9 +264,19 @@ sealed class IntListPref(defaultValue: Int, title: String, summary: String,
 /**
  * Seconds-per-item setting for the slideshow and screensaver. The options are generated rather than listed in XML:
  * 1 s steps up to 9 s, 2 s steps from 10 s to 1 minute and 10 s steps from there on (see [IntervalOptions]).
+ * It is edited with a minutes/seconds picker ([IntervalPickerDialog]); the entries only serve the summary text.
  */
 sealed class IntervalPref(defaultValue: Int, title: String, summary: String) :
     IntListPref(defaultValue, title, summary, 0, 0) {
+    override fun createPref(context: Context): ListPreference {
+        val listPreference = IntervalPreference(context)
+        val (titles, values) = entries(context)
+        listPreference.entries = titles
+        listPreference.dialogTitle = summary
+        listPreference.entryValues = values
+        return listPreference
+    }
+
     override fun entries(context: Context): Pair<Array<CharSequence>, Array<CharSequence>> {
         val seconds = IntervalOptions.seconds
         return seconds.map<Int, CharSequence> { IntervalOptions.title(context.resources, it) }.toTypedArray() to

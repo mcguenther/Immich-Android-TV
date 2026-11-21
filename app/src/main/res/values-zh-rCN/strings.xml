@@ -273,6 +273,9 @@
         <item quantity="other">%d 分钟</item>
     </plurals>
     <string name="interval_minutes_seconds">%1$d 分 %2$d 秒</string>
+    <string name="interval_picker_minutes">分</string>
+    <string name="interval_picker_seconds">秒</string>
+    <string name="interval_picker_hint">▲▼ 调整 · ◀▶ 切换列 · OK 确认</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">全部</string>
