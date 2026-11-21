@@ -232,24 +232,28 @@ internal fun Asset.captureTime(): Date? = this.exifInfo?.dateTimeOriginal ?: thi
 
 private fun String.normalizedPlace(): String? = this.trim().lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
 
+/**
+ * Displayed (width, height) of the asset. EXIF width/height are stored before rotation and
+ * orientations 5..8 are rotated by 90 degrees, so those are swapped. Non-positive sizes are null.
+ */
+private fun Asset.displaySize(): Pair<Int?, Int?> {
+    val exifW = this.exifInfo?.exifImageWidth?.takeIf { it > 0 }
+    val exifH = this.exifInfo?.exifImageHeight?.takeIf { it > 0 }
+    val rotated = (this.exifInfo?.orientation ?: 1) in 5..8
+    return if (rotated) exifH to exifW else exifW to exifH
+}
+
 /** True when the asset is a video whose displayed orientation (EXIF rotation 5-8 swaps width/height) is portrait. */
-fun Asset.isPortraitVideo(): Boolean {
+internal fun Asset.isPortraitVideo(): Boolean {
     if (this.type != SliderItemType.VIDEO.toString()) return false
-    val width = this.exifInfo?.exifImageWidth ?: return false
-    val height = this.exifInfo.exifImageHeight ?: return false
-    if (width <= 0 || height <= 0) return false
-    val rotated = this.exifInfo.orientation in listOf(5, 6, 7, 8)
-    val displayWidth = if (rotated) height else width
-    val displayHeight = if (rotated) width else height
+    val (displayWidth, displayHeight) = displaySize()
+    if (displayWidth == null || displayHeight == null) return false
     return displayHeight > displayWidth
 }
 
 fun Asset.toSliderItem(): SliderItem {
     val itemType = SliderItemType.valueOf(this.type.uppercase())
-    // EXIF width/height are stored before rotation; orientations 5..8 are rotated by 90 degrees.
-    val exifW = this.exifInfo?.exifImageWidth?.takeIf { it > 0 }
-    val exifH = this.exifInfo?.exifImageHeight?.takeIf { it > 0 }
-    val swap = (this.exifInfo?.orientation ?: 1) in 5..8
+    val (displayWidth, displayHeight) = displaySize()
     return SliderItem(
         this.id,
         ApiUtil.getFileUrl(
@@ -264,8 +268,8 @@ fun Asset.toSliderItem(): SliderItem {
         ApiUtil.getThumbnailUrl(this.id, "preview", PreferenceManager.get(SLIDER_LOAD_EDITED_PHOTO)),
         isPanorama = this.isPanoramaImage(),
         isFavorite = this.isFavorite,
-        width = if (swap) exifH else exifW,
-        height = if (swap) exifW else exifH,
+        width = displayWidth,
+        height = displayHeight,
         durationMs = if (itemType == SliderItemType.VIDEO) parseImmichDurationMs(this.duration) else null,
         locationProvider = AssetMapLocationProvider(this)
     )
