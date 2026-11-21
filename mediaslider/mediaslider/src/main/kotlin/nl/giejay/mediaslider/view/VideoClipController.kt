@@ -28,18 +28,11 @@ class VideoClipController(
     private val slideShowPlaying: () -> Boolean,
     private val advance: () -> Unit
 ) {
-    private var plannerAssigned = false
-
     /**
      * Shared with the prefetcher so both agree on the start of a random excerpt. The view hands in its
-     * planner once, before playback starts; until then a private one is used.
+     * planner before playback starts; until then a private one is used.
      */
     var planner: ClipPlanner = ClipPlanner()
-        set(value) {
-            check(!plannerAssigned || field === value) { "ClipPlanner already assigned" }
-            field = value
-            plannerAssigned = true
-        }
 
     private class ActiveClip(val item: SliderItem, val player: ExoPlayer) {
         var window: ClipWindow? = null
