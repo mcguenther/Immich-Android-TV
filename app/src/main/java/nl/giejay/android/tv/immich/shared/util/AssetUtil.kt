@@ -253,7 +253,8 @@ fun Asset.toSliderItem(): SliderItem {
         width = if (swap) exifH else exifW,
         height = if (swap) exifW else exifH,
         durationMs = if (itemType == SliderItemType.VIDEO) parseImmichDurationMs(this.duration) else null,
-        geoLocationProvider = AssetMetaDataMapping.geoLocationProviderFor(this)
+        geoLocationProvider = AssetMetaDataMapping.geoLocationProviderFor(this),
+        locationEstimateProvider = AssetMetaDataMapping.locationEstimateProviderFor(this)
     )
 }
 

@@ -131,6 +131,22 @@ class ApiClient(private val config: ApiClientConfig) {
         return executeAPICall(200) { service.listAssets(searchRequest) }
     }
 
+    /**
+     * One page of all assets (own and timeline partners, as Immich decides) captured between [takenAfter] and
+     * [takenBefore] (ISO instants, compared with the UTC capture time), oldest first, with EXIF.
+     */
+    suspend fun searchTakenBetween(takenAfter: String, takenBefore: String, page: Int, size: Int): Either<String, SearchResponse> {
+        return search(SearchRequest(
+            page = page,
+            size = size.coerceAtMost(MAX_SEARCH_PAGE_SIZE),
+            order = "asc",
+            takenAfter = takenAfter,
+            takenBefore = takenBefore,
+            withExif = true,
+            visibility = null
+        ))
+    }
+
     suspend fun listAlbums(assetId: Option<String> = None): Either<String, List<Album>> {
         return executeAPICall(200) { service.listAlbums(assetId.getOrNull()) }
     }

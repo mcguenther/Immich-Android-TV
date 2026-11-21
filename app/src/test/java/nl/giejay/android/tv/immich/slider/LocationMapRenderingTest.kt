@@ -7,6 +7,8 @@ import nl.giejay.mediaslider.map.LocationMapRenderer
 import nl.giejay.mediaslider.map.MapViewport
 import nl.giejay.mediaslider.map.WorldMapData
 import nl.giejay.mediaslider.model.GeoLocation
+import nl.giejay.mediaslider.model.LocationPrecision
+import nl.giejay.mediaslider.model.MapLocation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -35,7 +37,9 @@ class LocationMapRenderingTest {
 
     private val mallorca = GeoLocation(39.611, 3.283)
 
-    private fun render(location: GeoLocation, name: String): Bitmap =
+    private fun render(location: GeoLocation, name: String): Bitmap = render(MapLocation(location), name)
+
+    private fun render(location: MapLocation, name: String): Bitmap =
         LocationMapRenderer.render(data, location, density).also { bitmap ->
             System.getenv("LOCATION_MAP_PREVIEW_DIR")?.let { dir ->
                 File(dir).mkdirs()
@@ -95,5 +99,41 @@ class LocationMapRenderingTest {
             val bitmap = render(place, name)
             assertEquals(name, Color.WHITE, bitmap.getPixel((0.7f * 720).roundToInt(), (0.45f * 540).roundToInt()))
         }
+    }
+
+    private val seefeld = GeoLocation(47.377, 11.156)
+    private val centerX = (0.7f * 720).roundToInt()
+    private val centerY = (0.45f * 540).roundToInt()
+
+    @Test
+    fun `near estimate is a hollow ring, not a dot`() {
+        val bitmap = render(MapLocation(seefeld, LocationPrecision.NEAR, 10.0), "estimate-near")
+        assertTrue("centre is not solid white", bitmap.getPixel(centerX, centerY) != Color.WHITE)
+        // ring radius 6 dp = 12 px at density 2
+        assertEquals(Color.WHITE, bitmap.getPixel(centerX + 12, centerY))
+    }
+
+    @Test
+    fun `corridor estimate marks both known positions and the ring`() {
+        // Munich to Verona: long enough that the end points are not hidden under the ring at zoom 4.
+        val munich = GeoLocation(48.137, 11.575)
+        val verona = GeoLocation(45.438, 10.992)
+        val middle = GeoLocation(46.79, 11.28)
+        val bitmap = render(MapLocation(middle, LocationPrecision.CORRIDOR, 40.0, munich, verona), "estimate-corridor")
+        for (end in listOf(munich, verona)) {
+            val (x, y) = pixelOf(middle, end, bitmap)
+            assertEquals("end point $end", Color.WHITE, bitmap.getPixel(x, y))
+        }
+        assertEquals(Color.WHITE, bitmap.getPixel(centerX + 12, centerY))
+    }
+
+    @Test
+    fun `rough estimate is a soft cloud that fades out`() {
+        val bitmap = render(MapLocation(seefeld, LocationPrecision.ROUGH, 60.0), "estimate-rough")
+        val centre = bitmap.getPixel(centerX, centerY)
+        assertTrue("bright centre", Color.alpha(centre) > 200 && Color.red(centre) > 240)
+        assertTrue("not a solid dot", centre != Color.WHITE)
+        // 60 km at zoom 4 and 47 degrees north is about 18 px at density 2; 30 px away the cloud is gone.
+        assertTrue(Color.alpha(bitmap.getPixel(centerX + 30, centerY)) < Color.alpha(centre))
     }
 }

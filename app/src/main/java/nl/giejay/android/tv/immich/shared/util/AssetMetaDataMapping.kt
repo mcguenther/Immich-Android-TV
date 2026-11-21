@@ -1,8 +1,11 @@
 package nl.giejay.android.tv.immich.shared.util
 
 import nl.giejay.android.tv.immich.api.model.Asset
+import nl.giejay.android.tv.immich.location.EstimatedMapLocationProvider
+import nl.giejay.android.tv.immich.location.EstimatedPlaceMetaDataProvider
 import nl.giejay.mediaslider.model.GeoLocation
 import nl.giejay.mediaslider.model.GeoLocationProvider
+import nl.giejay.mediaslider.model.MapLocationProvider
 import nl.giejay.mediaslider.model.MetaDataProvider
 import nl.giejay.mediaslider.model.MetaDataType
 import nl.giejay.mediaslider.model.StaticMetaDataProvider
@@ -81,8 +84,15 @@ object AssetMetaDataMapping {
             ?: AssetDetailGeoLocationProvider(asset.id)
 
     /**
+     * Estimated map position for assets without GPS (e.g. system camera photos), from photos with GPS taken
+     * before and after. Only asked when the asset has no coordinates of its own and the map is shown.
+     */
+    fun locationEstimateProviderFor(asset: Asset): MapLocationProvider = EstimatedMapLocationProvider(asset)
+
+    /**
      * Build providers for [Asset.toSliderItem]: static when [valueOf] is known, else lazy
-     * detail fetch ([AssetDetailMetaDataProvider]) or album list lookup.
+     * detail fetch ([AssetDetailMetaDataProvider]) or album list lookup. A missing city or country
+     * falls back to the location estimate ([EstimatedPlaceMetaDataProvider]).
      */
     fun providersFor(asset: Asset): Map<MetaDataType, MetaDataProvider> =
         MAPPINGS.keys.associateWith { field ->
@@ -91,6 +101,7 @@ object AssetMetaDataMapping {
                 inline != null -> StaticMetaDataProvider(inline)
                 field == MetaDataType.ALBUM_NAME -> AlbumMetaDataProvider(asset.id)
                 field == MetaDataType.CURRENT_DATE -> DateMetaDataProvider()
+                field == MetaDataType.CITY || field == MetaDataType.COUNTRY -> EstimatedPlaceMetaDataProvider(asset, field)
                 else -> AssetDetailMetaDataProvider(asset.id, field)
             }
         }

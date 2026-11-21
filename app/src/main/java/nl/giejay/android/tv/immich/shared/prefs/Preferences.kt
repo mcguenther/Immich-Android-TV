@@ -274,6 +274,14 @@ data object SLIDER_SHOW_LOCATION_MAP : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_location_map),
     ImmichApplication.appContext!!.getString(R.string.show_location_map_viewer_desc))
 
+data object ESTIMATE_CAMERA_LOCATIONS : BooleanPref(true,
+    ImmichApplication.appContext!!.getString(R.string.estimate_camera_locations),
+    ImmichApplication.appContext!!.getString(R.string.estimate_camera_locations_desc))
+
+data object ESTIMATE_LOCATIONS_WITH_PARTNERS : BooleanPref(true,
+    ImmichApplication.appContext!!.getString(R.string.estimate_locations_with_partners),
+    ImmichApplication.appContext!!.getString(R.string.estimate_locations_with_partners_desc))
+
 data object SLIDER_SHOW_CITY : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_city),
     ImmichApplication.appContext!!.getString(R.string.show_city_desc))
@@ -712,8 +720,13 @@ data object SlideshowOverlaysPrefScreen : PrefScreen(str(R.string.slideshow_over
         PrefCategory("", listOf(
             SLIDER_SHOW_DATE_TOP_LEFT,
             SLIDER_SHOW_LOCATION_MAP,
+            ESTIMATE_CAMERA_LOCATIONS,
+            ESTIMATE_LOCATIONS_WITH_PARTNERS,
             SLIDER_METADATA_CUSTOMIZER
         ))
+    ),
+    visibility = mapOf(
+        ESTIMATE_LOCATIONS_WITH_PARTNERS to { prefs -> ESTIMATE_CAMERA_LOCATIONS.getValue(prefs) }
     )
 )
 
@@ -819,8 +832,13 @@ data object ScreensaverOverlaysPrefScreen : PrefScreen(str(R.string.slideshow_ov
         PrefCategory("", listOf(
             SCREENSAVER_SHOW_DATE_TOP_LEFT,
             SCREENSAVER_SHOW_LOCATION_MAP,
+            ESTIMATE_CAMERA_LOCATIONS,
+            ESTIMATE_LOCATIONS_WITH_PARTNERS,
             SCREENSAVER_METADATA_CUSTOMIZER
         ))
+    ),
+    visibility = mapOf(
+        ESTIMATE_LOCATIONS_WITH_PARTNERS to { prefs -> ESTIMATE_CAMERA_LOCATIONS.getValue(prefs) }
     )
 )
 

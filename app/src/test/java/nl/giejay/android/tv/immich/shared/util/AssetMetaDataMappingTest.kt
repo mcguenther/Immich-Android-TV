@@ -4,6 +4,7 @@ import arrow.core.right
 import kotlinx.coroutines.runBlocking
 import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.api.model.AssetExifInfo
+import nl.giejay.android.tv.immich.location.EstimatedPlaceMetaDataProvider
 import nl.giejay.mediaslider.model.GeoLocation
 import nl.giejay.mediaslider.model.MetaDataType
 import nl.giejay.mediaslider.model.StaticMetaDataProvider
@@ -107,7 +108,7 @@ class AssetMetaDataMappingTest {
     }
 
     @Test
-    fun `providersFor uses static when inline value exists else detail provider`() {
+    fun `providersFor uses static when inline value exists, estimate fallback for places, else detail provider`() {
         val asset = Asset(
             id = "2",
             type = "IMAGE",
@@ -135,7 +136,8 @@ class AssetMetaDataMappingTest {
 
         val providers = AssetMetaDataMapping.providersFor(asset)
         assertTrue(providers[MetaDataType.CITY] is StaticMetaDataProvider)
-        assertTrue(providers[MetaDataType.COUNTRY] is AssetDetailMetaDataProvider)
+        assertTrue(providers[MetaDataType.COUNTRY] is EstimatedPlaceMetaDataProvider)
+        assertTrue(providers[MetaDataType.DESCRIPTION] is AssetDetailMetaDataProvider)
         assertTrue(providers[MetaDataType.ALBUM_NAME] is AlbumMetaDataProvider)
     }
 }

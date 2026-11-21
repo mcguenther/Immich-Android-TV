@@ -402,6 +402,13 @@
     <string name="slideshow_video_cache">Videocache</string>
     <string name="slideshow_video_cache_desc">Speicher für vorgeladene Videoanfänge</string>
     <string name="show_location_map">Standortkarte anzeigen</string>
-    <string name="show_location_map_viewer_desc">Eine kleine Offline-Karte (Landumriss und Ländergrenzen) hinter dem Ort in der Foto- und Videoansicht anzeigen, damit sich der Ort besser einordnen lässt. Nur für Medien mit GPS-Daten.</string>
-    <string name="show_location_map_screensaver_desc">Eine kleine Offline-Karte (Landumriss und Ländergrenzen) hinter dem Ort im Bildschirmschoner anzeigen, damit sich der Ort besser einordnen lässt. Nur für Medien mit GPS-Daten.</string>
+    <string name="show_location_map_viewer_desc">Eine kleine Offline-Karte (Landumriss und Ländergrenzen) hinter dem Ort in der Foto- und Videoansicht anzeigen, damit sich der Ort besser einordnen lässt. Medien ohne GPS-Daten nur, wenn sich ihr Ort schätzen lässt.</string>
+    <string name="show_location_map_screensaver_desc">Eine kleine Offline-Karte (Landumriss und Ländergrenzen) hinter dem Ort im Bildschirmschoner anzeigen, damit sich der Ort besser einordnen lässt. Medien ohne GPS-Daten nur, wenn sich ihr Ort schätzen lässt.</string>
+    <string name="estimate_camera_locations">Ort von Kamerafotos schätzen</string>
+    <string name="estimate_camera_locations_desc">Fotos ohne GPS (z. B. von einer Systemkamera) werden grob anhand von Fotos mit GPS davor und danach verortet, etwa Handyfotos. Auf der Karte als Ring oder weiche Wolke, im Ort als „ca. Innsbruck“. In Immich wird nichts verändert.</string>
+    <string name="estimate_locations_with_partners">Partnerfotos für die Schätzung nutzen</string>
+    <string name="estimate_locations_with_partners_desc">Auch Fotos von Partnern, die ihre Bibliothek mit dir teilen, dienen als Stützpunkte.</string>
+    <string name="estimated_place_near">ca. %1$s</string>
+    <string name="estimated_place_between">zwischen %1$s und %2$s</string>
+    <string name="estimated_place_area">Raum %1$s</string>
 </resources>

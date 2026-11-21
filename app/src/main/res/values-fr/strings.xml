@@ -153,6 +153,13 @@
     <string name="show_location_map">Afficher une carte du lieu</string>
     <string name="show_location_map_viewer_desc">Affiche une petite carte hors ligne (contours des terres et frontières) derrière le lieu dans la visionneuse, pour situer l’endroit. Uniquement pour les éléments avec données GPS.</string>
     <string name="show_location_map_screensaver_desc">Affiche une petite carte hors ligne (contours des terres et frontières) derrière le lieu dans l’écran de veille, pour situer l’endroit. Uniquement pour les éléments avec données GPS.</string>
+    <string name="estimate_camera_locations">Estimer le lieu des photos d\'appareil</string>
+    <string name="estimate_camera_locations_desc">Les photos sans GPS (par ex. d\'un appareil photo) sont situées approximativement grâce aux photos avec GPS prises avant et après, comme celles du téléphone. Affiché sur la carte par un cercle ou un nuage flou, et comme « près de Innsbruck ». Rien n\'est modifié dans Immich.</string>
+    <string name="estimate_locations_with_partners">Utiliser les photos des partenaires</string>
+    <string name="estimate_locations_with_partners_desc">Les photos des partenaires qui partagent leur bibliothèque avec vous servent aussi de repères.</string>
+    <string name="estimated_place_near">près de %1$s</string>
+    <string name="estimated_place_between">entre %1$s et %2$s</string>
+    <string name="estimated_place_area">région de %1$s</string>
     <string name="show_city">Afficher la ville</string>
     <string name="show_city_desc">Afficher la ville de l’élément dans le diaporama</string>
     <string name="customize_metadata_viewer">Personnaliser les métadonnées</string>
