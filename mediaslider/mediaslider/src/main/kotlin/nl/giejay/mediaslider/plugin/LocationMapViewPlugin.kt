@@ -1,8 +1,10 @@
 package nl.giejay.mediaslider.plugin
 
+import android.animation.ObjectAnimator
 import android.os.Handler
 import android.os.SystemClock
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.zeuskartik.mediaslider.R
@@ -39,6 +41,12 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
     private var renderJob: Job? = null
     private var pendingAssetId: String? = null
     private var shownAssetId: String? = null
+    /** Asset each map view currently shows (null = none); the metadata layer for it carries the same tag id. */
+    private val mapAssetIds = arrayOfNulls<String>(2)
+    /** Running glide of a map view's translationY (separate from the alpha fade) and the value it heads to. */
+    private val translators = arrayOfNulls<ObjectAnimator>(2)
+    private val translationTargets = floatArrayOf(Float.NaN, Float.NaN)
+    private var lastTranslation = 0f
     private var config: MediaSliderConfiguration? = null
     private val observedViews = mutableListOf<View>()
     private val layoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateVerticalOffset() }
@@ -71,14 +79,25 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
     override fun onLoadConfig(context: SliderViewPluginContext, config: MediaSliderConfiguration, state: Unit?) {
         this.config = config
         if (!config.showLocationMap) return
-        listOfNotNull(
-            context.rootView.findViewById(R.id.meta_data_holder),
-            context.rootView.findViewById<View>(R.id.metadata_view_right)
-        ).forEach {
-            it.addOnLayoutChangeListener(layoutListener)
-            observedViews += it
-        }
+        observeHolders(context.rootView)
         updateVerticalOffset()
+    }
+
+    /** Observes every metadata layer (there are two), not just the first. Idempotent. */
+    private fun observeHolders(root: ConstraintLayout) {
+        metadataHolders(root).forEach { holder ->
+            listOfNotNull(holder, holder.findViewById<View>(R.id.metadata_view_right)).forEach {
+                if (it !in observedViews) {
+                    it.addOnLayoutChangeListener(layoutListener)
+                    observedViews += it
+                }
+            }
+        }
+    }
+
+    private fun metadataHolders(root: View): List<View> {
+        val group = root as? android.view.ViewGroup ?: return emptyList()
+        return (0 until group.childCount).map { group.getChildAt(it) }.filter { it.id == R.id.meta_data_holder }
     }
 
     /** Transition start: fade the old map out and render + fade in the new one during the same transition. */
@@ -113,6 +132,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         state: Unit?
     ) {
         this.config = config
+        if (config.showLocationMap) observeHolders(context.rootView)
         if (!config.showLocationMap) {
             renderJob?.cancel()
             pendingAssetId = null
@@ -132,6 +152,9 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         shownAssetId = null
         observedViews.forEach { it.removeOnLayoutChangeListener(layoutListener) }
         observedViews.clear()
+        translators.forEachIndexed { i, a -> a?.cancel(); translators[i] = null }
+        mapAssetIds.fill(null)
+        translationTargets.fill(Float.NaN)
         mapViews.forEach { view ->
             view.animate().cancel()
             (view.parent as? ConstraintLayout)?.removeView(view)
@@ -165,13 +188,27 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
                 lastUsedIndex = index
                 val view = mapViews[index]
                 view.animate().cancel()
+                cancelTranslator(index)
                 view.setImageBitmap(bitmap)
                 view.alpha = 0f
                 view.visibility = View.VISIBLE
+                mapAssetIds[index] = assetId
                 visibleIndex = index
                 shownAssetId = assetId
                 pendingAssetId = null
-                updateVerticalOffset()
+                // Place it while still invisible; without a resolved match use the front-most visible text
+                // block (or the last position) and glide once the matching layer is resolved.
+                val root = view.parent as? View
+                val height = textHeightFor(root, assetId) ?: frontMostVisibleHeight(root)
+                translationTargets[index] = Float.NaN
+                if (height != null) {
+                    val target = targetFor(view, height)
+                    view.translationY = target
+                    lastTranslation = target
+                    translationTargets[index] = if (textHeightFor(root, assetId) != null) target else Float.NaN
+                } else {
+                    view.translationY = lastTranslation
+                }
                 // Fade in over what is left of the page transition; a late map still fades in briefly.
                 val remaining = fadeMs - (SystemClock.uptimeMillis() - startedAt)
                 view.animate().alpha(1f)
@@ -189,9 +226,12 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         shownAssetId = null
         val view = mapViews.getOrNull(index) ?: return
         view.animate().cancel()
+        // The outgoing map keeps its position: freeze any glide in progress.
+        cancelTranslator(index)
         val hide = Runnable {
             view.visibility = View.GONE
             view.setImageDrawable(null)
+            mapAssetIds[index] = null
         }
         if (fadeMs <= 0L || config == null) {
             view.alpha = 0f
@@ -204,25 +244,86 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         }
     }
 
-    /** Keeps the location dot just above the bottom-right text block, however many lines it has. */
+    /**
+     * Keeps the location dot above the bottom-right text block of the metadata layer that belongs to the map
+     * being shown, however many lines it has. Only the incoming/visible map moves; the outgoing one is left alone.
+     */
     private fun updateVerticalOffset() {
-        val first = mapViews.firstOrNull() ?: return
-        val root = first.parent as? View ?: return
-        val holder = root.findViewById<View>(R.id.meta_data_holder)
-        val rightColumn = root.findViewById<View>(R.id.metadata_view_right)
-        val density = first.resources.displayMetrics.density
-        val translation = mapTranslationY(
-            mapHeightPx = first.layoutParams.height,
-            textBlockTopFromBottomPx = (holder?.paddingBottom ?: 0) + (rightColumn?.height ?: 0),
-            gapPx = DOT_GAP_ABOVE_TEXT_DP * density
+        val index = visibleIndex
+        val view = mapViews.getOrNull(index) ?: return
+        if (view.visibility != View.VISIBLE) return
+        val assetId = mapAssetIds[index] ?: return
+        val height = textHeightFor(view.parent as? View, assetId) ?: return // not resolved yet: keep position
+        applyTranslation(index, targetFor(view, height))
+    }
+
+    private fun targetFor(view: View, textHeightFromBottomPx: Int): Float =
+        mapTranslationY(
+            mapHeightPx = view.layoutParams.height,
+            textBlockTopFromBottomPx = textHeightFromBottomPx,
+            gapPx = DOT_GAP_ABOVE_TEXT_DP * view.resources.displayMetrics.density
         )
-        mapViews.forEach { it.translationY = translation }
+
+    private fun holderHeight(holder: View): Int =
+        holder.paddingBottom + (holder.findViewById<View>(R.id.metadata_view_right)?.height ?: 0)
+
+    private fun textHeightFor(root: View?, assetId: String): Int? {
+        root ?: return null
+        return chooseTextHeight(
+            metadataHolders(root).map { (it.getTag(R.id.metadata_right_item_id) as? String) to holderHeight(it) },
+            assetId
+        )
+    }
+
+    /** Last (top-most) visible metadata layer's height, used until the layer for the map's asset is resolved. */
+    private fun frontMostVisibleHeight(root: View?): Int? {
+        root ?: return null
+        return metadataHolders(root).lastOrNull { it.visibility == View.VISIBLE }?.let { holderHeight(it) }
+    }
+
+    private fun cancelTranslator(index: Int) {
+        translators[index]?.cancel()
+        translators[index] = null
+    }
+
+    /** Glides a visible map to [target]; an invisible one (about to fade in) is set directly. */
+    private fun applyTranslation(index: Int, target: Float) {
+        val view = mapViews.getOrNull(index) ?: return
+        val previous = translationTargets[index]
+        if (!previous.isNaN() && Math.abs(previous - target) < 0.5f) return
+        translationTargets[index] = target
+        lastTranslation = target
+        cancelTranslator(index)
+        if (view.alpha <= VISIBLE_ALPHA || view.visibility != View.VISIBLE) {
+            view.translationY = target
+            return
+        }
+        if (Math.abs(view.translationY - target) < 0.5f) {
+            view.translationY = target
+            return
+        }
+        translators[index] = ObjectAnimator.ofFloat(view, View.TRANSLATION_Y, view.translationY, target).apply {
+            duration = GLIDE_MS
+            interpolator = DecelerateInterpolator()
+            start()
+        }
     }
 
     companion object {
         private const val MAP_ELEVATION_DP = 5f
-        private const val DOT_GAP_ABOVE_TEXT_DP = 14f
+        private const val DOT_GAP_ABOVE_TEXT_DP = 30f
         private const val FADE_IN_MS = 400L
+        private const val GLIDE_MS = 250L
+        private const val VISIBLE_ALPHA = 0.01f
+
+        /**
+         * Height (padding + right column, from the screen bottom) of the metadata layer tagged with [assetId],
+         * from (tagId, height) pairs of all layers; null when no layer is resolved for that asset yet.
+         */
+        fun chooseTextHeight(layers: List<Pair<String?, Int>>, assetId: String?): Int? {
+            if (assetId == null) return null
+            return layers.firstOrNull { it.first == assetId }?.second
+        }
 
         /**
          * Vertical translation of the bottom-aligned map so that its dot (at [LocationMapRenderer.ANCHOR_Y])

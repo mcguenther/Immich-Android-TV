@@ -2,4 +2,6 @@
 <resources>
     <!-- Tag key on a photo's "mover" view (TouchImageView): holds its current nl.giejay.mediaslider.view.FitResult. -->
     <item name="slider_fit_result" type="id" />
+    <!-- Tag key on a metadata_holder: id of the right-column SliderItem whose values are resolved in that layer (null while unresolved). -->
+    <item name="metadata_right_item_id" type="id" />
 </resources>
