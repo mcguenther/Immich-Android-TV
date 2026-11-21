@@ -17,49 +17,54 @@ class RecentScreenSaverPagesTest {
         originalPath = null, originalFileName = null
     )
 
-    @Test fun `empty without history`() {
+    private fun ids(signature: String) = pages.load(signature).map { page -> page.map { it.id } }
+
+    @Test fun `empty without a queue`() {
         assertThat(pages.load("a")).isEmpty()
     }
 
-    @Test fun `newest slide first and at most three`() {
-        listOf("1", "2", "3", "4").forEach { pages.record("a", listOf(asset(it))) }
-        assertThat(pages.load("a").map { page -> page.map { it.id } })
-            .containsExactly(listOf("4"), listOf("3"), listOf("2")).inOrder()
+    @Test fun `keeps the order, shown slide first`() {
+        pages.save("a", listOf(listOf(asset("shown")), listOf(asset("next1")), listOf(asset("next2"))))
+        assertThat(ids("a")).containsExactly(listOf("shown"), listOf("next1"), listOf("next2")).inOrder()
     }
 
-    @Test fun `showing a slide again moves it to the front instead of duplicating it`() {
-        pages.record("a", listOf(asset("1")))
-        pages.record("a", listOf(asset("2")))
-        pages.record("a", listOf(asset("1")))
-        assertThat(pages.load("a").map { page -> page.map { it.id } })
-            .containsExactly(listOf("1"), listOf("2")).inOrder()
+    @Test fun `saving replaces the previous queue and keeps at most the shown slide plus three`() {
+        pages.save("a", listOf(listOf(asset("old"))))
+        pages.save("a", (1..6).map { listOf(asset("$it")) })
+        assertThat(ids("a")).containsExactly(listOf("1"), listOf("2"), listOf("3"), listOf("4")).inOrder()
     }
 
     @Test fun `a portrait pair is one slide`() {
-        pages.record("a", listOf(asset("1"), asset("2")))
+        pages.save("a", listOf(listOf(asset("1"), asset("2"))))
         assertThat(pages.load("a").single().map { it.id }).containsExactly("1", "2").inOrder()
     }
 
-    @Test fun `history of another source is ignored and replaced`() {
-        pages.record("a", listOf(asset("1")))
+    @Test fun `queue of another source is ignored and replaced`() {
+        pages.save("a", listOf(listOf(asset("1"))))
         assertThat(pages.load("b")).isEmpty()
-        pages.record("b", listOf(asset("2")))
+        pages.save("b", listOf(listOf(asset("2"))))
         assertThat(pages.load("a")).isEmpty()
-        assertThat(pages.load("b").single().single().id).isEqualTo("2")
+        assertThat(ids("b")).containsExactly(listOf("2"))
     }
 
     @Test fun `assets survive the round trip including dates`() {
         val taken = Date(1_700_000_000_000L)
-        pages.record("a", listOf(asset("1", taken)))
+        pages.save("a", listOf(listOf(asset("1", taken))))
         val back = pages.load("a").single().single()
         assertThat(back.exifInfo?.dateTimeOriginal).isEqualTo(taken)
         assertThat(back.exifInfo?.city).isEqualTo("Berlin")
     }
 
-    @Test fun `unreadable history is treated as empty`() {
+    @Test fun `unreadable queue is treated as empty`() {
         stored = "{not json"
         assertThat(pages.load("a")).isEmpty()
-        pages.record("a", listOf(asset("1")))
+        pages.save("a", listOf(listOf(asset("1"))))
         assertThat(pages.load("a")).hasSize(1)
+    }
+
+    @Test fun `an empty queue is not stored`() {
+        pages.save("a", listOf(listOf(asset("1"))))
+        pages.save("a", emptyList())
+        assertThat(ids("a")).containsExactly(listOf("1"))
     }
 }
