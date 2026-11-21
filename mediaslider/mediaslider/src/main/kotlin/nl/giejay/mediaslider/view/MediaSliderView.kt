@@ -53,6 +53,7 @@ import nl.giejay.mediaslider.util.LoadMoreResult
 import nl.giejay.mediaslider.util.PageList
 import timber.log.Timber
 import java.lang.reflect.Field
+import kotlin.math.abs
 
 /**
  * Pager + metadata shell for the media slider. Timeline/memories chrome is provided
@@ -108,7 +109,10 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     private var transitionImageStart = ""
     private val frameMonitor = TransitionFrameMonitor { 1000.0 / (display?.refreshRate?.takeIf { it > 1f } ?: 60f) }
     private val prefetchRunnable = Runnable {
-        if (!destroyed) prefetcher?.onPageChanged(mPager.currentItem, config.items, playingBackwards())
+        if (!destroyed) {
+            prefetcher?.onPageChanged(mPager.currentItem, config.items, playingBackwards())
+            warmUpNextVideo()
+        }
     }
     private val monitorTimeoutRunnable = Runnable { frameMonitor.stop("no idle signal, stopped by timeout") }
     private var destroyed = false
@@ -121,6 +125,10 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             effectiveTransitionMs()
         }
     }
+    /** True while the first page is hidden until its photos are loaded ([MediaSliderConfiguration.revealWhenLoaded]). */
+    private var revealPending = false
+    private var revealWaitedMs = 0L
+    private val revealRunnable = Runnable { checkReveal() }
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
     private data class ViewPluginEntry(val plugin: SliderViewPlugin<Any?>, val state: Any?)
     private val viewPlugins = mutableListOf<ViewPluginEntry>()
@@ -139,6 +147,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         val playButton: View = findViewById(R.id.playPause)
         mPager = findViewById(R.id.pager)
         controller = MediaSliderController(context, mainHandler, mPager, playButton, this)
+        controller.pageReady = { position -> pagerAdapter?.isPageReady(position) ?: true }
+        controller.canStartAssetTimer = { !revealPending }
         playButton.setOnClickListener { controller.toggleSlideshow(true) }
         controller.onSlideshowPlayingChanged = { playing ->
             if (playing) {
@@ -201,6 +211,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                 controller.onPlayerError(error)
             }
         }
+        // A video is always followed by a photo (see warmUpNextVideo). Not with a chosen start asset: its index must stay.
+        if (config.startPosition < 0) config.items = PageList.separateVideos(config.items)
         controller.initialize(config)
         controller.clips.planner = clipPlanner
         viewPlugins.forEach { it.plugin.attachView(viewPluginContext.rootView, it.state) }
@@ -275,17 +287,24 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                     loading = true
                     ioScope.launch {
                         val loadMore = config.loadMore ?: return@launch
-                        val result: LoadMoreResult = loadMore()
-                        val added = addItemsMain(result.items)
-                        if (!result.canLoadMore) {
-                            config.loadMore = null
+                        var added = 0
+                        try {
+                            val result: LoadMoreResult = loadMore()
+                            added = addItemsMain(result.items)
+                            if (!result.canLoadMore) {
+                                config.loadMore = null
+                            }
+                        } finally {
+                            // The first request delivers what follows the initial pages; the slideshow was
+                            // holding on the last of them for it (also when it failed: then it loops).
+                            config.holdOnLastPageUntilLoaded = false
+                            loading = false
                         }
                         // A source that only returns assets shown lately (e.g. a random source that has
                         // delivered the whole library) would otherwise be asked again on every scroll.
                         emptyLoads = if (added > 0) 0 else emptyLoads + 1
                         loadMoreBlockedUntil = if (added > 0) 0L
                         else SystemClock.uptimeMillis() + PageList.emptyLoadBackoffMs(emptyLoads)
-                        loading = false
                     }
                 }
                 // Stop the player once per transition (and at rest), not on every scroll frame.
@@ -324,12 +343,22 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                         return
                     }
                     val player = viewTag.getPlayer()!!
+                    // From now on the page's events count (a warmed-up player was silent until now).
+                    viewTag.warmingUp = false
+                    // Thumbnail over the black surface until the first frame is drawn (not needed for a warmed-up player).
+                    viewTag.showLoadingPosterIfNeeded(mainItem.thumbnailUrl)
                     controller.setCurrentPlayer(player)
                     // Where the clip starts (0 outside clip mode); known before anything is shown.
                     val clipStartMs = controller.beginVideoClip(sliderItem.mainItem, player)
-                    player.seekTo(0, clipStartMs)
-                    if (player.playbackState == Player.STATE_IDLE && sliderItem.url != null) {
-                        prepareMedia(sliderItem.url!!, player, playbackDataSourceFactory(), clipStartMs)
+                    if (player.playbackState == Player.STATE_IDLE) {
+                        player.seekTo(0, clipStartMs)
+                        if (sliderItem.url != null) {
+                            prepareMedia(sliderItem.url!!, player, playbackDataSourceFactory(), clipStartMs)
+                        }
+                    } else if (abs(player.currentPosition - clipStartMs) > WARM_UP_SEEK_TOLERANCE_MS) {
+                        // A warmed-up player already sits at the start: seeking to it again would flush the decoder and
+                        // bring back the wait for the first frame.
+                        player.seekTo(0, clipStartMs)
                     }
                     if (!config.isVideoSoundEnable) {
                         player.volume = 0f
@@ -380,8 +409,48 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         })
         // Register the listener before selecting the start page so the first asset
         // still gets onPageSelected / onPageSettled (metadata, date overlay, etc.).
+        if (config.revealWhenLoaded) hideUntilLoaded()
         setStartPosition()
         prefetcher?.onPageChanged(mPager.currentItem, config.items)
+        // The neighbouring page only exists after the first layout pass.
+        mainHandler.postDelayed(prefetchRunnable, PrefetchDeferral.SETTLE_DELAY_MS)
+        if (revealPending) mainHandler.post(revealRunnable)
+    }
+
+    private fun setContentAlpha(alpha: Float) {
+        mPager.alpha = alpha
+        findViewById<View>(R.id.plugin_layer)?.alpha = alpha
+    }
+
+    /** Keeps the pager and its overlays invisible (the background is black) until [checkReveal] fades them in. */
+    private fun hideUntilLoaded() {
+        revealPending = true
+        revealWaitedMs = 0L
+        setContentAlpha(0f)
+    }
+
+    /**
+     * Fades the slider in as soon as the start page exists and all its photos are loaded (or after
+     * [REVEAL_TIMEOUT_MS], when the network is slow: the page is then shown as it is).
+     */
+    private fun checkReveal() {
+        if (!revealPending || destroyed) return
+        val index = mPager.currentItem
+        val inflated = mPager.findViewWithTag<View>("view$index") != null
+        val ready = inflated && (config.items.getOrNull(index)?.type != SliderItemType.IMAGE || pagerAdapter?.isPageReady(index) == true)
+        if (!ready && revealWaitedMs < REVEAL_TIMEOUT_MS) {
+            revealWaitedMs += REVEAL_POLL_MS
+            mainHandler.postDelayed(revealRunnable, REVEAL_POLL_MS)
+            return
+        }
+        revealPending = false
+        val fadeMs = effectiveTransitionMs().takeIf { it > 0 }?.toLong() ?: REVEAL_FALLBACK_FADE_MS
+        val interpolator = OverlayFade.interpolator(config.transition)
+        listOf<View?>(mPager, findViewById(R.id.plugin_layer)).forEach { view ->
+            view?.animate()?.alpha(1f)?.setDuration(fadeMs)?.setInterpolator(interpolator)?.start()
+        }
+        // The first photo's screen time starts now that it is visible.
+        controller.onAssetTimerGateOpened()
     }
 
     /**
@@ -416,6 +485,29 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         )
         mainHandler.removeCallbacks(monitorTimeoutRunnable)
         mainHandler.postDelayed(monitorTimeoutRunnable, effectiveTransitionMs() + MONITOR_TIMEOUT_MARGIN_MS)
+    }
+
+    /**
+     * Prepares (paused) the player of the video page next in the slideshow direction, so its decoder is
+     * running and its first frame is drawn before the page is shown; otherwise opening the container,
+     * starting the codec and the first frame all happen after the page appeared, a black half second.
+     * Only the neighbouring page exists (offscreen limit 1) and only while the current page is a photo: two
+     * hardware decoders at once are not available on every TV box. The caching of its bytes is [SlidePrefetcher]'s job.
+     */
+    private fun warmUpNextVideo() {
+        if (destroyed || paused || !isConfigReady) return
+        val items = config.items
+        val current = mPager.currentItem
+        if (items.getOrNull(current)?.type != SliderItemType.IMAGE) return
+        val next = current + if (playingBackwards()) -1 else 1
+        val slide = items.getOrNull(next)?.takeIf { it.type == SliderItemType.VIDEO } ?: return
+        val url = slide.url ?: return
+        val page = mPager.findViewWithTag<ExoPlayerView>("view$next") ?: return
+        val player = page.getPlayer() ?: return
+        if (player.playbackState != Player.STATE_IDLE) return
+        page.warmingUp = true
+        player.playWhenReady = false
+        prepareMedia(url, player, playbackDataSourceFactory(), controller.plannedVideoClipStart(slide.mainItem))
     }
 
     /** Authenticated HTTP factory, wrapped in the shared video cache when that could be opened. */
@@ -504,6 +596,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     fun onDestroy() {
         if (destroyed) return
         destroyed = true
+        mainHandler.removeCallbacks(revealRunnable)
         tearDownPrefetching()
         ioScope.cancel()
         destroyPluginsOnce()
@@ -570,6 +663,14 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     companion object {
         /** Slack after the transition length before a measurement without idle signal is closed. */
         private const val MONITOR_TIMEOUT_MARGIN_MS = 1500L
+
+        /** A warmed-up video is not seeked again at settle when it already sits this close to its clip start. */
+        private const val WARM_UP_SEEK_TOLERANCE_MS = 200L
+
+        /** Check interval, longest wait and fade length (transition NONE) of the initial reveal. */
+        private const val REVEAL_POLL_MS = 50L
+        private const val REVEAL_TIMEOUT_MS = 4000L
+        private const val REVEAL_FALLBACK_FADE_MS = 600L
 
         @SuppressLint("UnsafeOptInUsageError")
         fun prepareMedia(mediaUrl: String, player: ExoPlayer, factory: DataSource.Factory, startPositionMs: Long = 0L) {

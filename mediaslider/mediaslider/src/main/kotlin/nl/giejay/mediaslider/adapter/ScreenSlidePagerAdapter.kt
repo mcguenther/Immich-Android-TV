@@ -61,6 +61,16 @@ class ScreenSlidePagerAdapter(private val context: Context,
 
     private val pendingFits = HashMap<Int, () -> Unit>()
 
+    /** Photos of each instantiated page that Glide has neither delivered nor failed yet. */
+    private val pendingImages = HashMap<Int, Int>()
+
+    /**
+     * True when no photo of [position] is still loading. Pages that are not instantiated (yet) and videos
+     * count as ready: there is nothing to wait for that this adapter knows of. A portrait pair is only
+     * ready when both photos are, so it can be shown as one piece.
+     */
+    fun isPageReady(position: Int): Boolean = (pendingImages[position] ?: 0) <= 0
+
     /** Where each position's (full resolution) image came from once it was delivered; one entry per photo of the page. */
     private val loadedSources = HashMap<Int, MutableList<String>>()
 
@@ -220,6 +230,14 @@ class ScreenSlidePagerAdapter(private val context: Context,
         var imageW = model.width ?: 0
         var imageH = model.height ?: 0
         var edgeRequested = false
+        // Counts as pending from now until the request delivered or failed (once, whichever comes first).
+        var pending = true
+        pendingImages[position] = (pendingImages[position] ?: 0) + 1
+        fun settled() {
+            if (!pending) return
+            pending = false
+            pendingImages[position]?.let { if (it > 1) pendingImages[position] = it - 1 else pendingImages.remove(position) }
+        }
 
         fun applyFit() {
             val fit = FitCalculator.compute(imageW, imageH, slotW, slotH, config.display)
@@ -255,6 +273,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                                           target: com.bumptech.glide.request.target.Target<Drawable>,
                                           isFirstResource: Boolean): Boolean {
                     Timber.e(e, "Could not fetch image: %s", model)
+                    settled()
                     hideProgressBar(position)
                     return false
                 }
@@ -292,6 +311,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                             }
                         }
                     }
+                    settled()
                     hideProgressBar(position)
                     return false
                 }
@@ -312,6 +332,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
         val view = `object` as View
         onPageDestroyed?.invoke(view)
         pendingFits.remove(position)
+        pendingImages.remove(position)
         loadedSources.remove(position)
         if (view is ExoPlayerView) {
             view.releasePlayer()

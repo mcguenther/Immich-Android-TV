@@ -13,7 +13,7 @@ import nl.giejay.mediaslider.player.VideoPrecacher
 
 /**
  * Warms the caches for the next slides: photos are preloaded into Glide with the very same request the
- * pager uses for display, video starts are pre-cached by [VideoPrecacher]. Everything runs
+ * pager uses for display, video starts are pre-cached by [VideoPrecacher] (plus their thumbnail, the poster). Everything runs
  * asynchronously (Glide's executors, the precacher thread); methods must be called on the main thread.
  *
  * @param slotSize slot size for an image page (`paired` = portrait pair), see `ScreenSlidePagerAdapter.slotSize`
@@ -47,7 +47,12 @@ class SlidePrefetcher(
             if (active.containsKey(k)) return@forEach
             active[k] = if (slide.type == SliderItemType.VIDEO) {
                 slide.url?.let { precacher?.precache(it, clipStartFraction(slide)) }
-                Entry(emptyList(), slide.url)
+                // The thumbnail covers the black surface until the first frame; it must not be fetched at that moment.
+                val poster = slide.mainItem.thumbnailUrl?.takeIf { it.isNotBlank() }?.let {
+                    val (w, h) = slotSize(false)
+                    listOf(Glide.with(context).load(it).centerInside().preload(w, h))
+                }.orEmpty()
+                Entry(poster, slide.url)
             } else {
                 val (w, h) = slotSize(slide.hasSecondaryItem())
                 val targets = listOfNotNull(slide.mainItem, slide.secondaryItem).map {
