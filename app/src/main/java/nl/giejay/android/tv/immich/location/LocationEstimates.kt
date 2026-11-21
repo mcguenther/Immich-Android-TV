@@ -25,8 +25,8 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-private const val HOUR_MS = 3_600_000L
-private const val DAY_MS = 24 * HOUR_MS
+internal const val HOUR_MS = 3_600_000L
+internal const val DAY_MS = 24 * HOUR_MS
 
 /**
  * Local clock time of the capture, encoded as if it were UTC. Uses Immich's time-zone-free `localDateTime`
@@ -66,12 +66,6 @@ data class CachedAnchorDay(val fetchedAtMs: Long, val anchors: List<LocationAnch
 interface AnchorDayStore {
     fun load(utcDay: Long): CachedAnchorDay?
     fun save(utcDay: Long, day: CachedAnchorDay)
-}
-
-/** No persistence (tests, or no app context yet). */
-object NoAnchorDayStore : AnchorDayStore {
-    override fun load(utcDay: Long): CachedAnchorDay? = null
-    override fun save(utcDay: Long, day: CachedAnchorDay) = Unit
 }
 
 /**
@@ -149,11 +143,11 @@ object LocationAnchorRepository {
     private const val MAX_DAYS_IN_MEMORY = 120
     private const val MAX_PAGES_PER_DAY = 5
     /** Local clock time differs from UTC by at most 14 hours (UTC+14). */
-    internal const val MAX_ZONE_OFFSET_MS = 14 * HOUR_MS
+    private const val MAX_ZONE_OFFSET_MS = 14 * HOUR_MS
     /** Days within this distance of now may still receive uploads. */
     private const val RECENT_DAYS_MS = 2 * DAY_MS
-    internal const val RECENT_MAX_AGE_MS = 30 * 60_000L
-    internal const val OLD_MAX_AGE_MS = 30 * DAY_MS
+    private const val RECENT_MAX_AGE_MS = 30 * 60_000L
+    private const val OLD_MAX_AGE_MS = 30 * DAY_MS
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -175,15 +169,15 @@ object LocationAnchorRepository {
 
     /** Test seam: one page of assets in a UTC range, and whether there are more pages. */
     @Volatile
-    var fetchPage = defaultFetchPage
+    internal var fetchPage = defaultFetchPage
 
     /** Test seam: persistent day cache. */
     @Volatile
-    var store: AnchorDayStore = defaultStore
+    internal var store: AnchorDayStore = defaultStore
 
     /** Test seam: current time. */
     @Volatile
-    var now: () -> Long = { System.currentTimeMillis() }
+    internal var now: () -> Long = { System.currentTimeMillis() }
 
     private fun isFresh(utcDay: Long, day: CachedAnchorDay): Boolean {
         val dayEnd = (utcDay + 1) * DAY_MS
@@ -192,7 +186,7 @@ object LocationAnchorRepository {
     }
 
     /** Anchors captured on the UTC day [utcDay] (days since 1970-01-01), or null when Immich could not be asked. */
-    suspend fun anchorsOfUtcDay(utcDay: Long): List<LocationAnchor>? = anchorsOfUtcDays(utcDay..utcDay)
+    internal suspend fun anchorsOfUtcDay(utcDay: Long): List<LocationAnchor>? = anchorsOfUtcDays(utcDay..utcDay)
 
     /**
      * Anchors of all UTC days in [days]. Cached days come from memory or the file cache; the missing ones are
@@ -317,13 +311,13 @@ object LocationAnchorRepository {
     }
 
     /** Test helper: forgets the memory cache only, like an app restart. */
-    fun clearMemory() {
+    internal fun clearMemory() {
         memory.clear()
         inFlight.clear()
     }
 
     /** Test helper. */
-    fun clear() {
+    internal fun clear() {
         clearMemory()
         fetchPage = defaultFetchPage
         store = defaultStore
@@ -347,13 +341,14 @@ object LocationEstimateService {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Result>?): Boolean = size > MAX_ENTRIES
     }
     private val inFlight = mutableMapOf<String, Deferred<Result?>>()
+    private val defaultSettings: () -> LocationEstimateSettings = { LocationEstimatePrefs.current() }
 
     /** Cached result; [estimate] is null when there is none. */
     private class Result(val estimate: LocationEstimate?)
 
     /** Test seam for the settings; production reads the preferences. */
     @Volatile
-    var settings: () -> LocationEstimateSettings = { LocationEstimatePrefs.current() }
+    internal var settings: () -> LocationEstimateSettings = defaultSettings
 
     /**
      * Estimate for [asset] (possibly a partial timeline asset; details are loaded when time or owner are
@@ -404,9 +399,9 @@ object LocationEstimateService {
     }
 
     /** Test helper. */
-    fun clear() {
+    internal fun clear() {
         cache.clear()
         inFlight.clear()
-        settings = { LocationEstimatePrefs.current() }
+        settings = defaultSettings
     }
 }

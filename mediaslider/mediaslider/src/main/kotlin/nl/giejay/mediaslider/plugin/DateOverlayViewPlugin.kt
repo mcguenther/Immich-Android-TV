@@ -64,7 +64,7 @@ class DateOverlayViewPlugin : SliderViewPlugin<Unit?> {
         // A hard cut: end the fade at once.
         views.forEach { it?.animate()?.cancel() }
         views.forEachIndexed { i, view ->
-            view?.alpha = if (i == front && !view?.text.isNullOrEmpty()) 1f else 0f
+            view?.alpha = if (i == front && !view.text.isNullOrEmpty()) 1f else 0f
             if (i != front) view?.visibility = View.GONE
         }
     }

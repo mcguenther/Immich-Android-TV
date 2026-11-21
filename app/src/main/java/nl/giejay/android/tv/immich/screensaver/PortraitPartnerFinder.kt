@@ -32,6 +32,10 @@ fun interface PartnerCandidateSource {
     suspend fun candidatesFor(portrait: Asset, pairing: PortraitPairing): List<Asset>
 }
 
+private const val PARALLEL_LOOKUPS = 4
+private const val MAX_LOOKUPS_PER_BATCH = 40
+private const val RECENT_CAPACITY = 2_000
+
 /**
  * Builds the screensaver's slider pages from one loaded batch of assets.
  *
@@ -46,10 +50,7 @@ fun interface PartnerCandidateSource {
 internal class PortraitPartnerFinder(
     private val source: PartnerCandidateSource,
     private val isAllowed: (Asset) -> Boolean = { true },
-    private val parallelLookups: Int = 4,
-    private val maxLookupsPerBatch: Int = 40,
     private val lookupBatchLimit: Int = 200,
-    private val recentCapacity: Int = 2_000,
     private val random: Random = Random.Default
 ) {
     private val mutex = Mutex()
@@ -74,11 +75,11 @@ internal class PortraitPartnerFinder(
     private suspend fun addPartners(groups: MutableList<List<Asset>>, pairing: PortraitPairing) {
         val lonely = groups.indices
             .filter { groups[it].size == 1 && groups[it][0].isPortraitImage() }
-            .take(maxLookupsPerBatch)
+            .take(MAX_LOOKUPS_PER_BATCH)
         if (lonely.isEmpty()) return
 
         val started = System.nanoTime()
-        val semaphore = Semaphore(parallelLookups)
+        val semaphore = Semaphore(PARALLEL_LOOKUPS)
         val candidates = coroutineScope {
             lonely.map { index ->
                 async { semaphore.withPermit { lookup(groups[index][0], pairing) } }
@@ -112,7 +113,7 @@ internal class PortraitPartnerFinder(
     private fun remember(groups: List<List<Asset>>) {
         groups.forEach { group -> group.forEach { recentIds.remove(it.id); recentIds.add(it.id) } }
         val iterator = recentIds.iterator()
-        while (recentIds.size > recentCapacity && iterator.hasNext()) {
+        while (recentIds.size > RECENT_CAPACITY && iterator.hasNext()) {
             iterator.next()
             iterator.remove()
         }

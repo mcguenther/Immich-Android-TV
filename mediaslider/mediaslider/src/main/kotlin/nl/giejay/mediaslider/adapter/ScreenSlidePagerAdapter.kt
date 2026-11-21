@@ -195,7 +195,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
     /**
      * Binds one photo to its slot.
      *
-     * Page structure (also for the next agent's motion code): the clipping slot is the parent of the mover (ids slot_main/slot_left/slot_right),
+     * Page structure (relevant for the motion code): the clipping slot is the parent of the mover (ids slot_main/slot_left/slot_right),
      * `moverId` (a [TouchImageView]) is the "mover" laid out at the [FitResult]'s displayW x displayH,
      * centered in the slot (larger than the slot when the photo covers it, so the cropped parts still
      * exist and can be revealed by translating the mover). The current [FitResult] sits in the tag

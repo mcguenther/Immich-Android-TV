@@ -48,6 +48,19 @@ include:
 | Searching in and for albums                                                    | Todo         |
 | Dependency injection with Hilt/Dagger                                          | Todo         |
 
+### Location map
+
+Photos without GPS (for example from a system camera) get an estimated location from photos with GPS
+taken before and after them, such as phone photos of the same day (or up to 36 hours around it). The
+estimate is computed in the app; the photos with GPS are loaded per day and cached in memory and in the
+app's cache directory, so a day is asked for once. Nothing is written to Immich. The map marks it by how
+sure it is: a ring next to a phone photo, a dashed line between the phone photos before and after with a
+ring on it (a small cloud when that line would hide under the ring), or a soft cloud across a night or
+with a phone photo on one side only. Flights are not
+interpolated, and an estimate never claims more precision than about 10 km, since camera clocks are often
+off by an hour. The place line reads "near Innsbruck", "between A and B" or "Innsbruck area". Both the
+estimate and the use of partner photos can be switched off in the overlay settings.
+
 ## Required API Permissions
 
 When setting up your API key in Immich, make sure to grant the following permissions for the app to function properly:
@@ -92,16 +105,9 @@ country border data (public domain). To regenerate the bundled file
 `mediaslider/mediaslider/src/main/assets/naturalearth/ne_50m.bin`, run
 `python3 tools/natural-earth/build_map_asset.py`.
 
-Photos without GPS (for example from a system camera) get an estimated location from photos with GPS
-taken before and after them, such as phone photos of the same day (or up to 36 hours around it). The
-estimate is computed in the app; the photos with GPS are loaded per day and cached in memory and in the
-app's cache directory, so a day is asked for once. Nothing is written to Immich. The map marks it by how
-sure it is: a ring next to a phone photo, a dashed line between the phone photos before and after with a
-ring on it (a small cloud when that line would hide under the ring), or a soft cloud across a night or
-with a phone photo on one side only. Flights are not
-interpolated, and an estimate never claims more precision than about 10 km, since camera clocks are often
-off by an hour. The place line reads "near Innsbruck", "between A and B" or "Innsbruck area". Both the
-estimate and the use of partner photos can be switched off in the overlay settings.
+To install a debug build next to the store version of the app, build it with
+`./gradlew assembleDebug -PdevSuffix` (application id suffix `.dev`; `google-services.json` then needs a
+client entry for `nl.giejay.android.tv.immich.dev`).
 
 ## Support the project
 

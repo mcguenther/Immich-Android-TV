@@ -66,7 +66,7 @@ class LocationEstimateServiceTest {
             } else {
                 val from = Instant.parse(after)
                 val to = Instant.parse(before)
-                library.filter { !it.fileCreatedAt!!.toInstant().isBefore(from) && !it.fileCreatedAt!!.toInstant().isAfter(to) }
+                library.filter { !it.fileCreatedAt!!.toInstant().isBefore(from) && !it.fileCreatedAt.toInstant().isAfter(to) }
                     .let { (if (page == 1) it else emptyList()) to false }.right()
             }
         }

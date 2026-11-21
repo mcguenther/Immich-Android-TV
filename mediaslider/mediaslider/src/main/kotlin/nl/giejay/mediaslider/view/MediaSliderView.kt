@@ -300,7 +300,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                     viewPlugins.forEach { it.plugin.onTransitionSkipped(viewPluginContext, it.state) }
                 }
                 // Non-smooth navigation (transition NONE) dispatches no SCROLL_STATE_IDLE, so clean up here too.
-                if (v == 0f) resetMotionOfOtherPages()
+                resetMotionOfOtherPages()
                 val sliderItem = config.items[sliderItemIndex]
                 val mainItem = sliderItem.mainItem
 

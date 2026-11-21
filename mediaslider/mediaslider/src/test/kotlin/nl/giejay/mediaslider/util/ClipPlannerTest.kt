@@ -2,7 +2,6 @@ package nl.giejay.mediaslider.util
 
 import nl.giejay.mediaslider.config.ClipPosition
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -87,9 +86,6 @@ class ClipPlannerTest {
             seen.add(w.startMs)
         }
         assertTrue(seen.size > 10)
-        val first = planner.fraction("x", ClipPosition.RANDOM)
-        planner.forget("x")
-        assertNotEquals(first, planner.fraction("x", ClipPosition.RANDOM), 0.0)
         assertEquals(20_000L, planner.excerpt("m", min, -1, 10, 1f, ClipPosition.MIDDLE)!!.startMs)
     }
 }

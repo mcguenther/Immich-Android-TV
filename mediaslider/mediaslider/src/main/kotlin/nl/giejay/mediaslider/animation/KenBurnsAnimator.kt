@@ -4,7 +4,6 @@ import android.view.View
 import android.view.animation.LinearInterpolator
 import nl.giejay.mediaslider.config.MotionOptions
 import nl.giejay.mediaslider.config.MotionStyle
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -139,9 +138,6 @@ object KenBurnsPlanner {
     }
 
     private enum class Kind { ZOOM_IN, ZOOM_OUT, PAN }
-
-    internal fun travel(plan: MotionPlan): Float =
-        abs(plan.endTranslationX - plan.startTranslationX) + abs(plan.endTranslationY - plan.startTranslationY)
 }
 
 /**
@@ -157,41 +153,10 @@ object KenBurnsPlanner {
  * full-screen composite pass per frame, and a blurry result for strongly scaled photos (panoramas).
  */
 object KenBurnsAnimator {
-    /**
-     * Plans (with `Random(seed)`, so both halves of a portrait pair can share a seed) and starts.
-     * The view must already be laid out (its size is the display size). Returns false when the
-     * options ask for no motion.
-     */
-    fun start(
-        view: View,
-        slotW: Float,
-        slotH: Float,
-        options: MotionOptions,
-        durationMs: Long,
-        seed: Long
-    ): Boolean {
-        val plan = KenBurnsPlanner.plan(
-            slotW, slotH, view.width.toFloat(), view.height.toFloat(), options, Random(seed)
-        )
-        if (plan == null) {
-            cancel(view)
-            return false
-        }
-        start(view, plan, durationMs)
-        return true
-    }
-
     /** Animates from the view's current state to the end of [plan] (continues a motion that was frozen). */
     fun resume(view: View, plan: MotionPlan, durationMs: Long) {
         view.animate().cancel()
-        view.animate()
-            .scaleX(plan.endScale)
-            .scaleY(plan.endScale)
-            .translationX(plan.endTranslationX)
-            .translationY(plan.endTranslationY)
-            .setDuration(durationMs)
-            .setInterpolator(LinearInterpolator())
-            .start()
+        animateToEnd(view, plan, durationMs)
     }
 
     /** Stops the motion where it is, without resetting the transform. */
@@ -208,14 +173,7 @@ object KenBurnsAnimator {
         view.scaleY = plan.startScale
         view.translationX = plan.startTranslationX
         view.translationY = plan.startTranslationY
-        view.animate()
-            .scaleX(plan.endScale)
-            .scaleY(plan.endScale)
-            .translationX(plan.endTranslationX)
-            .translationY(plan.endTranslationY)
-            .setDuration(durationMs)
-            .setInterpolator(LinearInterpolator())
-            .start()
+        animateToEnd(view, plan, durationMs)
     }
 
     /** Stops the motion and restores the identity transform. */
@@ -225,5 +183,16 @@ object KenBurnsAnimator {
         view.scaleY = 1f
         view.translationX = 0f
         view.translationY = 0f
+    }
+
+    private fun animateToEnd(view: View, plan: MotionPlan, durationMs: Long) {
+        view.animate()
+            .scaleX(plan.endScale)
+            .scaleY(plan.endScale)
+            .translationX(plan.endTranslationX)
+            .translationY(plan.endTranslationY)
+            .setDuration(durationMs)
+            .setInterpolator(LinearInterpolator())
+            .start()
     }
 }

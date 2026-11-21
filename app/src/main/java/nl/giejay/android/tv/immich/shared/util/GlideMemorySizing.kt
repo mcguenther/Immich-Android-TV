@@ -7,16 +7,16 @@ package nl.giejay.android.tv.immich.shared.util
  */
 object GlideMemorySizing {
     /** Bytes per pixel of a decoded ARGB_8888 bitmap. */
-    const val BYTES_PER_PIXEL = 4
+    private const val BYTES_PER_PIXEL = 4
 
     /** Slides are decoded slightly larger than the screen so they stay sharp while panning and zooming. */
     private const val SCREEN_MARGIN_PERCENT = 115L
 
     /** Bitmaps kept besides the prefetched ones: the one on screen, the previous one and one spare. */
-    const val EXTRA_BITMAPS = 3
+    private const val EXTRA_BITMAPS = 3
 
     /** The cache may use at most this fraction of the app heap. */
-    const val HEAP_DIVISOR = 5
+    private const val HEAP_DIVISOR = 5
 
     private const val BYTES_PER_MB = 1024L * 1024L
 

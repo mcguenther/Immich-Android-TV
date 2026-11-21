@@ -20,7 +20,6 @@
 
     <string name="media_mute">Stummschalten</string>
     <string name="media_play">Wiedergabe</string>
-    <string name="media_pause">Pause</string>
     <string name="open_in_external_player">In externem Player öffnen</string>
     <string name="no_external_player_found">Kein externer Player gefunden</string>
 </resources>

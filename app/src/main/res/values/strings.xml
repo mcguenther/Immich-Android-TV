@@ -323,10 +323,7 @@
     <string name="favorite_add_failed">Failed to add to favorites</string>
     <string name="favorite_remove_failed">Failed to remove from favorites</string>
     <!-- Slideshow redesign: menu -->
-    <string name="slideshow_settings_desc">Display, motion, portrait pairs, timing, loading</string>
     <string name="browse_settings">Browse</string>
-    <string name="browse_settings_desc">General, ordering, content</string>
-    <string name="slideshow_shared_note">Applies to slideshows in albums, the timeline and the screensaver.</string>
     <string name="slideshow_display">Display</string>
     <string name="slideshow_display_desc">Fill the screen, crop limit, edges</string>
     <string name="slideshow_motion">Motion</string>
@@ -422,7 +419,6 @@
     <string name="slideshow_prefetch">Preload</string>
     <string name="slideshow_prefetch_desc">Load upcoming photos and video starts in the background so they show instantly</string>
     <string name="slideshow_prefetch_off">Off</string>
-    <string name="slideshow_prefetch_n">%d upcoming</string>
     <string name="slideshow_video_cache">Video cache</string>
     <string name="slideshow_video_cache_desc">Storage for preloaded video starts</string>
     <string name="country_name_language">Country name language</string>

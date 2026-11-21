@@ -134,8 +134,6 @@ object LocationEstimator {
     /** Without a known position on the other side, the estimate is shown at most this long after or before. */
     const val ONE_SIDED_MAX_HOURS = 12.0
 
-    private const val HOUR_MS = 3_600_000L
-    private const val DAY_MS = 24 * HOUR_MS
     private const val EARTH_RADIUS_KM = 6371.0
 
     /** Wall time window in which anchors are needed for [estimate] of a photo taken at [wallTimeMs]. */

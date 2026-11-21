@@ -27,11 +27,6 @@ class ClipPlanner(private val random: Random = Random.Default) {
         ClipPosition.RANDOM -> fractions.getOrPut(itemId) { random.nextDouble() }
     }
 
-    /** Forgets the random position of [itemId] so the next play picks a new excerpt. */
-    fun forget(itemId: String) {
-        fractions.remove(itemId)
-    }
-
     /** See [excerpt]; the position is looked up (and for RANDOM remembered) per [itemId]. */
     fun excerpt(
         itemId: String,

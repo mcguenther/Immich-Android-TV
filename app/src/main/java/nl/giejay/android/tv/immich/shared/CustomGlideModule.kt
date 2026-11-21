@@ -80,11 +80,9 @@ class CustomGlideModule : AppGlideModule() {
         builder.setBitmapPool(LruBitmapPool(bytes))
     }
 
-    /** Preference read guarded: at Glide start the preferences are normally initialised already. */
-    private fun prefetchCount(): Int = try {
-        PreferenceManager.get(SLIDESHOW_PREFETCH_COUNT)
-    } catch (e: UninitializedPropertyAccessException) {
-        SLIDESHOW_PREFETCH_COUNT.defaultValue
+    /** The preferences are initialised already: the `prefs` field reads them at construction. */
+    private fun prefetchCount(): Int {
+        return PreferenceManager.get(SLIDESHOW_PREFETCH_COUNT)
     }
 
     override fun registerComponents(
