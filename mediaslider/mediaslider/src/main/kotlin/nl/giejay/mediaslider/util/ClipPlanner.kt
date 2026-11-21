@@ -1,6 +1,7 @@
 package nl.giejay.mediaslider.util
 
 import nl.giejay.mediaslider.config.ClipPosition
+import nl.giejay.mediaslider.config.VideoPlaybackOptions
 import kotlin.math.roundToLong
 import kotlin.random.Random
 
@@ -37,6 +38,20 @@ class ClipPlanner(private val random: Random = Random.Default) {
         position: ClipPosition,
         trimEndSeconds: Int = 0
     ): ClipWindow? = excerpt(durationMs, clipSeconds, intervalSeconds, speed, fraction(itemId, position), trimEndSeconds)
+
+    /**
+     * Excerpt of the video [itemId] for the slideshow settings [video] and [intervalSeconds]. The player
+     * and the prefetcher both use this, so they compute the very same window.
+     */
+    fun excerptFor(
+        itemId: String,
+        durationMs: Long,
+        video: VideoPlaybackOptions,
+        intervalSeconds: Int,
+        speed: Float
+    ): ClipWindow? = excerpt(
+        itemId, durationMs, video.clipLengthSeconds, intervalSeconds, speed, video.clipPosition, video.trimEndSeconds
+    )
 
     companion object {
         private const val MAX_ENTRIES = 256

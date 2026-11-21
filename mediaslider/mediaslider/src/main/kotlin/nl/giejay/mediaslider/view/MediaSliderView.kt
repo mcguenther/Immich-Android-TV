@@ -200,7 +200,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
         }
         controller.initialize(config)
-        controller.clipPlanner = clipPlanner
+        controller.clips.planner = clipPlanner
         viewPlugins.forEach { it.plugin.attachView(viewPluginContext.rootView, it.state) }
         viewPlugins.forEach { it.plugin.onLoadConfig(viewPluginContext, config, it.state) }
         initViewsAndSetAdapter(listener)
