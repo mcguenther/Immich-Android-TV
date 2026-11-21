@@ -4,10 +4,12 @@ import arrow.core.Either
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import nl.giejay.android.tv.immich.ImmichApplication
 import nl.giejay.android.tv.immich.api.ApiClient
 import nl.giejay.android.tv.immich.api.ApiClientConfig
@@ -365,12 +367,19 @@ object LocationEstimateService {
             cache[key]?.let { return it.estimate }
             inFlight.getOrPut(key) {
                 scope.async {
-                    val result = compute(asset, current.includePartners)
-                    mutex.withLock {
-                        if (result != null) cache[key] = result
-                        inFlight.remove(key)
+                    var result: Result? = null
+                    try {
+                        result = compute(asset, current.includePartners)
+                        result
+                    } finally {
+                        // Also on an exception, so a failed lookup is tried again instead of failing forever.
+                        withContext(NonCancellable) {
+                            mutex.withLock {
+                                result?.let { cache[key] = it }
+                                inFlight.remove(key)
+                            }
+                        }
                     }
-                    result
                 }
             }
         }

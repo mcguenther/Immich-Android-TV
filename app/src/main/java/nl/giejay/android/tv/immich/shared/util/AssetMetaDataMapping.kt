@@ -32,11 +32,11 @@ object AssetMetaDataMapping {
     @Volatile
     var countryNameLocale: () -> Locale? = defaultCountryNameLocale
 
-    /** Test helper. */
     /** [country] as Immich returns it (English), translated into the chosen language when one is set. */
     fun displayCountry(country: String): String =
         countryNameLocale()?.let { CountryNameTranslator.translate(country, it) } ?: country
 
+    /** Test helper. */
     fun resetCountryNameLocale() {
         countryNameLocale = defaultCountryNameLocale
     }
