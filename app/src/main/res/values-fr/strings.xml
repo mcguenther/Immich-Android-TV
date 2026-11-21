@@ -297,4 +297,8 @@
     <string name="meta_data_padding_dialog_title">Marge au-dessus et au-dessous de l’élément</string>
     <string name="meta_data_delete_desc">Supprimer l’élément</string>
     <string name="meta_data_save_desc">Enregistrer l’élément</string>
+    <string name="country_name_language">Langue des noms de pays</string>
+    <string name="country_name_language_desc">Langue des noms de pays dans la visionneuse et l’écran de veille. Immich les fournit en anglais ; la traduction se fait hors ligne sur l’appareil.</string>
+    <string name="country_name_language_original">Original (comme dans Immich)</string>
+    <string name="country_name_language_device">Langue de l’appareil</string>
 </resources>
