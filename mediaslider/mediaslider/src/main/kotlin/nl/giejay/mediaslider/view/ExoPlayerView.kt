@@ -47,6 +47,15 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
     private var player: ExoPlayer? = null
     private val backdropView: ImageView
     private var awaitingFirstFrame = false
+    /** Whether the player has drawn a frame since it was last idle (a warmed-up player already has). */
+    private var firstFrameRendered = false
+
+    /**
+     * True while the player is only warmed up for a page that is not in view yet (prepared, paused). Its
+     * events are then not forwarded: an error of a page nobody looks at must not skip the visible slide.
+     * A failed warm-up leaves the player idle, so it is prepared (and its error handled) again once the page is shown.
+     */
+    var warmingUp = false
     private var display = DisplayOptions()
     private var videoSize: VideoSize? = null
     private var backdropUrl: String? = null
@@ -110,6 +119,8 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
                 // Spinner + poster only for the initial first-frame wait. Mid-stream
                 // BUFFERING (seek/rebuffer) would otherwise flash the spinner constantly
                 // during hold-scrub; PlayerView already has show_buffering="never".
+                if (playbackState == Player.STATE_IDLE) firstFrameRendered = false
+                if (warmingUp) return
                 if (playbackState == Player.STATE_BUFFERING && awaitingFirstFrame) {
                     showPosterOverlay()
                 } else if (playbackState == Player.STATE_READY || playbackState == Player.STATE_ENDED) {
@@ -145,15 +156,18 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (warmingUp) return
                 listener.onIsPlayingChanged(isPlaying)
             }
 
             override fun onRenderedFirstFrame() {
+                firstFrameRendered = true
                 awaitingFirstFrame = false
                 hidePosterOverlay()
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                if (warmingUp) return
                 // if not handled, let listener handle it
                 if (!onPlayerError(player!!, error)) {
                     listener.onPlayerError(error)
@@ -193,6 +207,14 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
             .load(thumbnailUrl)
             .centerInside()
             .into(posterView)
+    }
+
+    /**
+     * Covers the black surface with the thumbnail unless a frame is already on screen (a warmed-up player
+     * has one, then the video shows at once). Call when the page becomes the current one.
+     */
+    fun showLoadingPosterIfNeeded(thumbnailUrl: String?) {
+        if (!firstFrameRendered) showLoadingPoster(thumbnailUrl)
     }
 
     /**

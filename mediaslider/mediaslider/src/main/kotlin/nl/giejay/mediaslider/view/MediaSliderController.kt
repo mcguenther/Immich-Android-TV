@@ -279,6 +279,9 @@ class MediaSliderController(
     /** See [VideoClipController.begin]. */
     fun beginVideoClip(item: SliderItem, player: ExoPlayer): Long = clips.begin(item, player)
 
+    /** Delegates to [VideoClipController.plannedStartMs]. */
+    fun plannedVideoClipStart(item: SliderItem): Long = clips.plannedStartMs(item)
+
     // -------------------------------------------------------------------------
     // Navigation
     // -------------------------------------------------------------------------

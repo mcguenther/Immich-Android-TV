@@ -15,6 +15,9 @@ class PageListTest {
         SliderItem(id, "https://immich/$id", SliderItemType.IMAGE, 0, emptyMap(), null, false)
 
     private fun page(id: String) = SliderItemViewHolder(item(id))
+    private fun video(id: String) = SliderItemViewHolder(
+        SliderItem(id, "https://immich/$id", SliderItemType.VIDEO, 0, emptyMap(), null, false)
+    )
     private fun pair(a: String, b: String) = SliderItemViewHolder(item(a), item(b))
     private fun pages(vararg ids: String) = ids.map { page(it) }
     private fun range(prefix: String, count: Int) = List(count) { page("$prefix$it") }
@@ -146,5 +149,29 @@ class PageListTest {
         assertFalse(PageList.canKeepPage(b, 1, listOf(b, a)))
         assertFalse(PageList.canKeepPage(b, 3, listOf(a, b)))
         assertFalse(PageList.canKeepPage(null, 0, listOf(a)))
+    }
+
+    @Test
+    fun separateVideosHoldsBackAVideoThatFollowsAVideo() {
+        val result = PageList.separateVideos(listOf(page("a"), video("v1"), video("v2"), video("v3"), page("b"), page("c")))
+        assertEquals(listOf("a", "v1", "b", "v2", "c", "v3"), ids(result))
+    }
+
+    @Test
+    fun separateVideosKeepsAnOrderWithoutAdjacentVideos() {
+        val input = listOf(video("v1"), page("a"), video("v2"), page("b"))
+        assertEquals(ids(input), ids(PageList.separateVideos(input)))
+    }
+
+    @Test
+    fun separateVideosLooksAtThePreviousPageAndKeepsUnavoidableVideosAtTheEnd() {
+        assertEquals(listOf("a", "v2"), ids(PageList.separateVideos(listOf(video("v2"), page("a")), video("v1"))))
+        assertEquals(listOf("v1", "v2"), ids(PageList.separateVideos(listOf(video("v1"), video("v2")))))
+    }
+
+    @Test
+    fun appendNewDoesNotPlaceAVideoAfterTheLastVideo() {
+        val merged = PageList.appendNew(listOf(page("a"), video("v1")), listOf(video("v2"), page("b")))
+        assertEquals(listOf("a", "v1", "b", "v2"), ids(merged))
     }
 }
