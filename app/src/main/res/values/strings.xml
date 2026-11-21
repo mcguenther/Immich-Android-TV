@@ -272,22 +272,18 @@
     <string name="order_least_updated">Least updated</string>
 
     <!-- Interval titles -->
-    <string name="interval_1_second">1 second</string>
-    <string name="interval_2_seconds">2 seconds</string>
-    <string name="interval_3_seconds">3 seconds</string>
-    <string name="interval_4_seconds">4 seconds</string>
-    <string name="interval_5_seconds">5 seconds</string>
-    <string name="interval_6_seconds">6 seconds</string>
-    <string name="interval_7_seconds">7 seconds</string>
-    <string name="interval_8_seconds">8 seconds</string>
-    <string name="interval_9_seconds">9 seconds</string>
-    <string name="interval_10_seconds">10 seconds</string>
-    <string name="interval_20_seconds">20 seconds</string>
-    <string name="interval_30_seconds">30 seconds</string>
-    <string name="interval_1_minute">1 minute</string>
-    <string name="interval_3_minutes">3 minutes</string>
-    <string name="interval_5_minutes">5 minutes</string>
-    <string name="interval_10_minutes">10 minutes</string>
+    <plurals name="interval_seconds">
+        <item quantity="one">%d second</item>
+        <item quantity="other">%d seconds</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="interval_minutes_seconds">%1$d min %2$d s</string>
+    <string name="interval_picker_minutes">Min.</string>
+    <string name="interval_picker_seconds">Sec.</string>
+    <string name="interval_picker_hint">▲▼ change · ◀▶ switch column · OK confirm</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">All</string>
@@ -422,4 +418,9 @@
     <string name="slideshow_prefetch_n">%d upcoming</string>
     <string name="slideshow_video_cache">Video cache</string>
     <string name="slideshow_video_cache_desc">Storage for preloaded video starts</string>
+    <string name="country_name_language">Country name language</string>
+    <string name="country_name_language_desc">Language for country names in the photo/video viewer and screensaver. Immich provides them in English; translation happens offline on the device.</string>
+    <string name="country_name_language_original">Original (as in Immich)</string>
+    <string name="country_name_language_device">Device language</string>
+    <string name="country_name_language_german" translatable="false">Deutsch</string>
 </resources>

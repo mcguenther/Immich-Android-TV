@@ -259,22 +259,22 @@
     <string name="order_least_updated">Сначала старые</string>
 
     <!-- Interval titles -->
-    <string name="interval_1_second">1 секунда</string>
-    <string name="interval_2_seconds">2 секунды</string>
-    <string name="interval_3_seconds">3 секунды</string>
-    <string name="interval_4_seconds">4 секунды</string>
-    <string name="interval_5_seconds">5 секунд</string>
-    <string name="interval_6_seconds">6 секунд</string>
-    <string name="interval_7_seconds">7 секунд</string>
-    <string name="interval_8_seconds">8 секунд</string>
-    <string name="interval_9_seconds">9 секунд</string>
-    <string name="interval_10_seconds">10 секунд</string>
-    <string name="interval_20_seconds">20 секунд</string>
-    <string name="interval_30_seconds">30 секунд</string>
-    <string name="interval_1_minute">1 минута</string>
-    <string name="interval_3_minutes">3 минуты</string>
-    <string name="interval_5_minutes">5 минут</string>
-    <string name="interval_10_minutes">10 минут</string>
+    <plurals name="interval_seconds">
+        <item quantity="one">%d секунда</item>
+        <item quantity="few">%d секунды</item>
+        <item quantity="many">%d секунд</item>
+        <item quantity="other">%d секунды</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="one">%d минута</item>
+        <item quantity="few">%d минуты</item>
+        <item quantity="many">%d минут</item>
+        <item quantity="other">%d минуты</item>
+    </plurals>
+    <string name="interval_minutes_seconds">%1$d мин %2$d с</string>
+    <string name="interval_picker_minutes">мин</string>
+    <string name="interval_picker_seconds">с</string>
+    <string name="interval_picker_hint">▲▼ изменить · ◀▶ сменить столбец · OK подтвердить</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">Все</string>
@@ -306,4 +306,8 @@
     <string name="meta_data_padding_dialog_title">Отступ сверху и снизу элемента</string>
     <string name="meta_data_delete_desc">Удалить элемент</string>
     <string name="meta_data_save_desc">Сохранить элемент</string>
+    <string name="country_name_language">Язык названий стран</string>
+    <string name="country_name_language_desc">Язык названий стран в просмотрщике и заставке. Immich передаёт их на английском; перевод выполняется офлайн на устройстве.</string>
+    <string name="country_name_language_original">Оригинал (как в Immich)</string>
+    <string name="country_name_language_device">Язык устройства</string>
 </resources>

@@ -257,22 +257,18 @@
     <string name="order_least_updated">Moins récemment mis à jour</string>
 
     <!-- Interval titles -->
-    <string name="interval_1_second">1 seconde</string>
-    <string name="interval_2_seconds">2 secondes</string>
-    <string name="interval_3_seconds">3 secondes</string>
-    <string name="interval_4_seconds">4 secondes</string>
-    <string name="interval_5_seconds">5 secondes</string>
-    <string name="interval_6_seconds">6 secondes</string>
-    <string name="interval_7_seconds">7 secondes</string>
-    <string name="interval_8_seconds">8 secondes</string>
-    <string name="interval_9_seconds">9 secondes</string>
-    <string name="interval_10_seconds">10 secondes</string>
-    <string name="interval_20_seconds">20 secondes</string>
-    <string name="interval_30_seconds">30 secondes</string>
-    <string name="interval_1_minute">1 minute</string>
-    <string name="interval_3_minutes">3 minutes</string>
-    <string name="interval_5_minutes">5 minutes</string>
-    <string name="interval_10_minutes">10 minutes</string>
+    <plurals name="interval_seconds">
+        <item quantity="one">%d seconde</item>
+        <item quantity="other">%d secondes</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="interval_minutes_seconds">%1$d min %2$d s</string>
+    <string name="interval_picker_minutes">min</string>
+    <string name="interval_picker_seconds">s</string>
+    <string name="interval_picker_hint">▲▼ modifier · ◀▶ changer de colonne · OK valider</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">Tous</string>
@@ -304,4 +300,8 @@
     <string name="meta_data_padding_dialog_title">Marge au-dessus et au-dessous de l’élément</string>
     <string name="meta_data_delete_desc">Supprimer l’élément</string>
     <string name="meta_data_save_desc">Enregistrer l’élément</string>
+    <string name="country_name_language">Langue des noms de pays</string>
+    <string name="country_name_language_desc">Langue des noms de pays dans la visionneuse et l’écran de veille. Immich les fournit en anglais ; la traduction se fait hors ligne sur l’appareil.</string>
+    <string name="country_name_language_original">Original (comme dans Immich)</string>
+    <string name="country_name_language_device">Langue de l’appareil</string>
 </resources>

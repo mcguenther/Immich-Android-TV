@@ -30,13 +30,33 @@ fun List<Asset>.toSliderItems(keepOrder: Boolean,
                               random: Random = Random.Default): List<SliderItemViewHolder> {
     val groups = groupForSlider(this, keepOrder, options, keepAssetId)
     val shuffle = !keepOrder && options.pairing != PortraitPairing.OFF
-    return (if (shuffle) groups.shuffled(random) else groups).map { group ->
-        if (group.size == 2) {
-            SliderItemViewHolder(group[0].toSliderItem(), group[1].toSliderItem())
-        } else {
-            SliderItemViewHolder(group[0].toSliderItem())
-        }
+    return (if (shuffle) groups.shuffled(random) else groups).toSliderPages()
+}
+
+/** Turns groups of one asset, or two portrait photos side by side, into slider pages. */
+fun List<List<Asset>>.toSliderPages(): List<SliderItemViewHolder> = map { group ->
+    if (group.size == 2) {
+        SliderItemViewHolder(group[0].toSliderItem(), group[1].toSliderItem())
+    } else {
+        SliderItemViewHolder(group[0].toSliderItem())
     }
+}
+
+/**
+ * The candidate that may share a page with [portrait] under [pairing] and is closest to it in
+ * capture time; on a tie the earlier one. Only candidates passing [accept] are considered.
+ * Null when [portrait] is no portrait photo or no candidate matches.
+ */
+internal fun findClosestPartner(portrait: Asset,
+                                candidates: List<Asset>,
+                                pairing: PortraitPairing,
+                                accept: (Asset) -> Boolean = { true }): Asset? {
+    val keys = pairKeys(listOf(portrait) + candidates.filter { it.id != portrait.id && accept(it) })
+    val first = keys.first()
+    return keys.drop(1)
+        .filter { first.canPairWith(it, pairing) }
+        .minByOrNull { first.captureDistanceTo(it) }
+        ?.asset
 }
 
 /**
@@ -214,7 +234,7 @@ private fun closestPartner(
 }
 
 /** Capture time: EXIF date taken, falling back to the file creation date. */
-private fun Asset.captureTime(): Date? = this.exifInfo?.dateTimeOriginal ?: this.fileCreatedAt
+internal fun Asset.captureTime(): Date? = this.exifInfo?.dateTimeOriginal ?: this.fileCreatedAt
 
 private fun String.normalizedPlace(): String? = this.trim().lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
 

@@ -266,22 +266,16 @@
     <string name="order_least_updated">最久未更新</string>
 
     <!-- Interval titles -->
-    <string name="interval_1_second">1 秒</string>
-    <string name="interval_2_seconds">2 秒</string>
-    <string name="interval_3_seconds">3 秒</string>
-    <string name="interval_4_seconds">4 秒</string>
-    <string name="interval_5_seconds">5 秒</string>
-    <string name="interval_6_seconds">6 秒</string>
-    <string name="interval_7_seconds">7 秒</string>
-    <string name="interval_8_seconds">8 秒</string>
-    <string name="interval_9_seconds">9 秒</string>
-    <string name="interval_10_seconds">10 秒</string>
-    <string name="interval_20_seconds">20 秒</string>
-    <string name="interval_30_seconds">30 秒</string>
-    <string name="interval_1_minute">1 分钟</string>
-    <string name="interval_3_minutes">3 分钟</string>
-    <string name="interval_5_minutes">5 分钟</string>
-    <string name="interval_10_minutes">10 分钟</string>
+    <plurals name="interval_seconds">
+        <item quantity="other">%d 秒</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="other">%d 分钟</item>
+    </plurals>
+    <string name="interval_minutes_seconds">%1$d 分 %2$d 秒</string>
+    <string name="interval_picker_minutes">分</string>
+    <string name="interval_picker_seconds">秒</string>
+    <string name="interval_picker_hint">▲▼ 调整 · ◀▶ 切换列 · OK 确认</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">全部</string>
@@ -312,4 +306,8 @@
     <string name="favorite_removed">已从收藏中移除</string>
     <string name="favorite_add_failed">添加到收藏失败</string>
     <string name="favorite_remove_failed">移除收藏失败</string>
+    <string name="country_name_language">国家名称语言</string>
+    <string name="country_name_language_desc">查看器和屏保中国家名称的显示语言。Immich 提供的是英文名称，翻译在设备上离线完成。</string>
+    <string name="country_name_language_original">原始（与 Immich 相同）</string>
+    <string name="country_name_language_device">设备语言</string>
 </resources>
