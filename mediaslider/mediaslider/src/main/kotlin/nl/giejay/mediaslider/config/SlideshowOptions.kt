@@ -5,6 +5,20 @@ package nl.giejay.mediaslider.config
  * hosting app can build them from its own preferences and the slider stays free of app types.
  */
 
+/**
+ * All option groups as one value, so a [MediaSliderConfiguration] takes the slideshow settings in a
+ * single argument. The configuration exposes each group (`config.display`, ...) directly as well.
+ */
+data class SlideshowOptions(
+    val display: DisplayOptions = DisplayOptions(),
+    val motion: MotionOptions = MotionOptions(),
+    val transition: TransitionOptions = TransitionOptions(),
+    val loading: LoadingOptions = LoadingOptions(),
+    val videoPlayback: VideoPlaybackOptions = VideoPlaybackOptions(),
+    /** When true, [nl.giejay.mediaslider.plugin.LocationMapViewPlugin] shows an offline map behind the bottom-right metadata. */
+    val showLocationMap: Boolean = false
+)
+
 /** How a photo or video is scaled into its slot (the full screen, or one half for portrait pairs). */
 enum class FillMode {
     /** Show the whole asset; empty space is filled according to [EdgeFill]. */

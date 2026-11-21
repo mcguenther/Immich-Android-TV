@@ -18,7 +18,6 @@ import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_INTERVAL
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_DATE_TOP_LEFT
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_LOCATION_MAP
 import nl.giejay.android.tv.immich.shared.util.toCard
 import nl.giejay.android.tv.immich.shared.util.toSliderItems
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
@@ -93,15 +92,10 @@ class FolderFragment : VerticalCardGridFragment<Item>() {
                 { item -> manualUpdatePosition(this.assets.indexOfFirst { item.ids().contains(it.id) }) },
                 gradiantOverlay = false,
                 metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.VIEWER),
-                display = SlideshowSettings.display(),
-                motion = SlideshowSettings.motion(),
-                transition = SlideshowSettings.transition(),
-                loading = SlideshowSettings.loading(),
-                videoPlayback = SlideshowSettings.videoPlayback(),
+                options = SlideshowSettings.sliderOptions(MetaDataScreen.VIEWER),
                 useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
                 dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
-                showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT),
-                showLocationMap = PreferenceManager.get(SLIDER_SHOW_LOCATION_MAP)
+                showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)
             )
             sliderViewModel.configuration = config
             findNavController().navigate(
