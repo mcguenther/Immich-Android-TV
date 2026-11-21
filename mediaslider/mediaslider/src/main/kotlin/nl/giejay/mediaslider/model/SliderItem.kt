@@ -25,21 +25,15 @@ class SliderItem(
     val height: Int? = null,
     /** Video length in milliseconds when known ahead of playback (null for photos or unknown). */
     val durationMs: Long? = null,
-    private val geoLocationProvider: GeoLocationProvider? = null,
-    /** Estimate used by the location map when the asset has no GPS coordinates of its own. */
-    private val locationEstimateProvider: MapLocationProvider? = null
+    /** Position (GPS or estimate) shown by the location map. */
+    private val locationProvider: MapLocationProvider? = null
 ) {
     suspend fun get(metaDataType: MetaDataType): String? {
         return this.metaData[metaDataType]?.getValue()
     }
 
-    suspend fun getGeoLocation(): GeoLocation? = geoLocationProvider?.getLocation()
-
     /** The measured GPS position when there is one, otherwise the estimate (if any). */
-    suspend fun getMapLocation(): MapLocation? {
-        getGeoLocation()?.let { return MapLocation(it) }
-        return locationEstimateProvider?.getMapLocation()
-    }
+    suspend fun getMapLocation(): MapLocation? = locationProvider?.getMapLocation()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

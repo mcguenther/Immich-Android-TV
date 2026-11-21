@@ -4,14 +4,6 @@ package nl.giejay.mediaslider.model
 data class GeoLocation(val latitude: Double, val longitude: Double)
 
 /**
- * Supplies the [GeoLocation] of a [SliderItem], possibly after a lazy network lookup.
- * Returns null when the asset has no coordinates.
- */
-fun interface GeoLocationProvider {
-    suspend fun getLocation(): GeoLocation?
-}
-
-/**
  * How sure the location map is about a position. It decides how the map marks it: the more uncertain,
  * the softer the mark, so an estimate never looks like a measured GPS position.
  */
@@ -45,8 +37,8 @@ data class MapLocation(
 )
 
 /**
- * Supplies an estimated [MapLocation] for a [SliderItem] without GPS coordinates, possibly after network
- * lookups. Returns null when no estimate is possible.
+ * Supplies the [MapLocation] of a [SliderItem]: its measured GPS position, or an estimate when it has none,
+ * possibly after network lookups. Returns null when neither is available.
  */
 fun interface MapLocationProvider {
     suspend fun getMapLocation(): MapLocation?

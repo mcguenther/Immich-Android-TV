@@ -10,6 +10,9 @@ import kotlinx.coroutines.runBlocking
 import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.api.model.AssetExifInfo
 import nl.giejay.android.tv.immich.shared.util.AssetDetailCache
+import nl.giejay.mediaslider.model.GeoLocation
+import nl.giejay.mediaslider.model.LocationPrecision
+import nl.giejay.mediaslider.model.MapLocation
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -89,9 +92,43 @@ class LocationEstimateServiceTest {
     fun `camera photo between phone photos gets a corridor estimate`() = runBlocking {
         LocationEstimateService.settings = { LocationEstimateSettings(enabled = true, includePartners = false) }
         val e = LocationEstimateService.estimate(camera)!!
-        assertEquals(EstimateTier.CORRIDOR, e.tier)
+        assertEquals(LocationPrecision.CORRIDOR, e.precision)
         assertEquals("p1", e.before!!.assetId)
         assertEquals("p2", e.after!!.assetId)
+    }
+
+    private fun gpsAsset(id: String, lat: Double?, lon: Double?) =
+        asset(id, "me", "2025-06-14T12:05:00.000Z", "2025-06-14T12:05:00Z", lat, lon)
+
+    @Test
+    fun `map provider gives exact position without network when the asset has GPS inline`() = runBlocking {
+        var fetches = 0
+        AssetDetailCache.fetchAsset = { fetches++; library.first().right() }
+        val location = AssetMapLocationProvider(gpsAsset("inline", 47.56, 13.65)).getMapLocation()
+        assertEquals(MapLocation(GeoLocation(47.56, 13.65)), location)
+        assertEquals(0, fetches)
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `map provider takes GPS from the loaded detail of a partial asset`() = runBlocking {
+        AssetDetailCache.fetchAsset = { id -> gpsAsset(id, 39.61, 3.28).right() }
+        val location = AssetMapLocationProvider(gpsAsset("lazy", null, null)).getMapLocation()
+        assertEquals(MapLocation(GeoLocation(39.61, 3.28)), location)
+        assertTrue(requests.isEmpty())
+    }
+
+    @Test
+    fun `map provider falls back to the estimate without GPS`() = runBlocking {
+        val location = AssetMapLocationProvider(camera).getMapLocation()!!
+        assertEquals(LocationEstimateService.estimate(camera)!!.toMapLocation(), location)
+        assertTrue(location.precision != LocationPrecision.EXACT)
+    }
+
+    @Test
+    fun `map provider gives nothing without GPS when estimating is switched off`() = runBlocking {
+        LocationEstimateService.settings = { LocationEstimateSettings(enabled = false, includePartners = true) }
+        assertNull(AssetMapLocationProvider(camera).getMapLocation())
     }
 
     @Test

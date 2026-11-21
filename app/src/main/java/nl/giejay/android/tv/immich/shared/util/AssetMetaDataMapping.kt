@@ -1,13 +1,10 @@
 package nl.giejay.android.tv.immich.shared.util
 
 import nl.giejay.android.tv.immich.api.model.Asset
-import nl.giejay.android.tv.immich.location.EstimatedMapLocationProvider
 import nl.giejay.android.tv.immich.location.EstimatedPlaceMetaDataProvider
 import nl.giejay.android.tv.immich.shared.prefs.COUNTRY_NAME_LANGUAGE
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.mediaslider.model.GeoLocation
-import nl.giejay.mediaslider.model.GeoLocationProvider
-import nl.giejay.mediaslider.model.MapLocationProvider
 import nl.giejay.mediaslider.model.MetaDataProvider
 import nl.giejay.mediaslider.model.MetaDataType
 import nl.giejay.mediaslider.model.StaticMetaDataProvider
@@ -100,20 +97,6 @@ object AssetMetaDataMapping {
         if (latitude == 0.0 && longitude == 0.0) return null
         return GeoLocation(latitude, longitude)
     }
-
-    /**
-     * Static when the asset already carries coordinates, otherwise a lazy detail fetch
-     * (timeline/bucket assets have no EXIF). Only called when the location map is shown.
-     */
-    fun geoLocationProviderFor(asset: Asset): GeoLocationProvider =
-        geoLocationOf(asset)?.let { location -> GeoLocationProvider { location } }
-            ?: AssetDetailGeoLocationProvider(asset.id)
-
-    /**
-     * Estimated map position for assets without GPS (e.g. system camera photos), from photos with GPS taken
-     * before and after. Only asked when the asset has no coordinates of its own and the map is shown.
-     */
-    fun locationEstimateProviderFor(asset: Asset): MapLocationProvider = EstimatedMapLocationProvider(asset)
 
     /**
      * Build providers for [Asset.toSliderItem]: static when [valueOf] is known, else lazy

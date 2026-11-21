@@ -60,24 +60,6 @@ class AssetMetaDataMappingTest {
     }
 
     @Test
-    fun `geo location is static when inline and fetched lazily otherwise`() = runBlocking {
-        var fetches = 0
-        AssetDetailCache.fetchAsset = { id ->
-            fetches++
-            assetWithCoordinates(id, 39.61, 3.28).right()
-        }
-
-        val inline = AssetMetaDataMapping.geoLocationProviderFor(assetWithCoordinates("inline", 47.56, 13.65))
-        assertEquals(GeoLocation(47.56, 13.65), inline.getLocation())
-        assertEquals(0, fetches)
-
-        val lazy = AssetMetaDataMapping.geoLocationProviderFor(assetWithCoordinates("lazy", null, null))
-        assertTrue(lazy is AssetDetailGeoLocationProvider)
-        assertEquals(GeoLocation(39.61, 3.28), lazy.getLocation())
-        assertEquals(1, fetches)
-    }
-
-    @Test
     fun `valueOf projects exif city and skips blank camera`() {
         val asset = Asset(
             id = "1",

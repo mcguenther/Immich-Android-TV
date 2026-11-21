@@ -39,7 +39,7 @@ class LocationEstimatorTest {
     @Test
     fun `photo between two phone photos on the same day lies on the corridor`() {
         val e = estimate(t(14, 15, 10))!! // Seefeld in Tirol
-        assertEquals(EstimateTier.CORRIDOR, e.tier)
+        assertEquals(LocationPrecision.CORRIDOR, e.precision)
         assertEquals(eibsee, e.before)
         assertEquals(innsbruck, e.after)
         assertTrue("error ${errorKm(e, 47.329, 11.188)} km", errorKm(e, 47.329, 11.188) < 15)
@@ -52,7 +52,7 @@ class LocationEstimatorTest {
     @Test
     fun `estimate is never more precise than ten kilometres`() {
         val e = estimate(t(14, 13, 45))!! // seven minutes before the Eibsee photo
-        assertEquals(EstimateTier.NEAR, e.tier)
+        assertEquals(LocationPrecision.NEAR, e.precision)
         assertTrue(e.radiusKm >= LocationEstimator.MIN_RADIUS_KM)
         // Even right on a phone photo the radius stays at the floor.
         assertTrue(estimate(eibsee.wallTimeMs)!!.radiusKm >= LocationEstimator.MIN_RADIUS_KM)
@@ -68,7 +68,7 @@ class LocationEstimatorTest {
     @Test
     fun `gap over night is only a rough estimate`() {
         val e = estimate(t(15, 9, 15))!! // Sunday breakfast in Innsbruck, next phone photo in Bozen
-        assertEquals(EstimateTier.ROUGH, e.tier)
+        assertEquals(LocationPrecision.ROUGH, e.precision)
         assertEquals(LocationPrecision.ROUGH, e.toMapLocation().precision)
         assertNull(e.toMapLocation().corridorStart)
     }
@@ -77,7 +77,7 @@ class LocationEstimatorTest {
     fun `no interpolation across a flight, but close to landing the photo is placed at the destination`() {
         assertNull(estimate(t(16, 13, 30))) // somewhere in the air
         val landed = estimate(t(16, 18, 5))!! // 35 minutes before the phone photo in Lisbon
-        assertEquals(EstimateTier.ROUGH, landed.tier)
+        assertEquals(LocationPrecision.ROUGH, landed.precision)
         assertEquals(lisbon, landed.nearest)
         assertTrue(errorKm(landed, 38.7223, -9.1393) < 1)
     }
@@ -85,7 +85,7 @@ class LocationEstimatorTest {
     @Test
     fun `known position on one side only gives a rough estimate for a few hours, then none`() {
         val e = estimate(t(16, 20, 30))!! // evening in Lisbon, no later phone photo
-        assertEquals(EstimateTier.ROUGH, e.tier)
+        assertEquals(LocationPrecision.ROUGH, e.precision)
         assertEquals(lisbon, e.before)
         assertNull(e.after)
         assertNull(LocationEstimator.estimate(t(16, 20, 30), listOf(munich))) // two days earlier
@@ -98,7 +98,7 @@ class LocationEstimatorTest {
         // Next morning, 1,300 km apart over night: the same-day photo in Rome is 8 hours later -> rough at Rome.
         val sameDay = LocationEstimator.estimate(t(21, 8, 0), listOf(hamburg, rome))!!
         assertEquals(rome, sameDay.nearest)
-        assertEquals(EstimateTier.ROUGH, sameDay.tier)
+        assertEquals(LocationPrecision.ROUGH, sameDay.precision)
         // Same evening: the photo in Hamburg five hours earlier counts.
         assertEquals(hamburg, LocationEstimator.estimate(t(20, 23, 0), listOf(hamburg, rome))!!.nearest)
         // In the middle of the night: Rome is 14 hours away, Hamburg on the day before -> nothing.
@@ -112,7 +112,7 @@ class LocationEstimatorTest {
     }
 
     @Test
-    fun `place labels follow the tier`() {
+    fun `place labels follow the precision`() {
         val near = { p: String -> "ca. $p" }
         val between = { a: String, b: String -> "zwischen $a und $b" }
         val area = { p: String -> "Raum $p" }

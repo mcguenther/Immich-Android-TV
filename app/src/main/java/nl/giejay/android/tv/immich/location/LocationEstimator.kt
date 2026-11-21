@@ -29,19 +29,18 @@ data class LocationAnchor(
     val location: GeoLocation get() = GeoLocation(latitude, longitude)
 }
 
-/** How a [LocationEstimate] is shown, from most to least certain. */
-enum class EstimateTier { NEAR, CORRIDOR, ROUGH }
-
 /**
  * Estimated capture position of a photo without GPS.
  *
+ * @param precision how the estimate is shown, from most to least certain: NEAR, CORRIDOR or ROUGH
+ *   (an estimate is never [LocationPrecision.EXACT])
  * @param radiusKm uncertainty, about two standard deviations; never below [LocationEstimator.MIN_RADIUS_KM]
  * @param before known position before the photo (null when there is none)
  * @param after known position after the photo (null when there is none)
  * @param nearest the known position closest in time, used for the place name
  */
 data class LocationEstimate(
-    val tier: EstimateTier,
+    val precision: LocationPrecision,
     val latitude: Double,
     val longitude: Double,
     val radiusKm: Double,
@@ -51,14 +50,10 @@ data class LocationEstimate(
 ) {
     fun toMapLocation(): MapLocation = MapLocation(
         position = GeoLocation(latitude, longitude),
-        precision = when (tier) {
-            EstimateTier.NEAR -> LocationPrecision.NEAR
-            EstimateTier.CORRIDOR -> LocationPrecision.CORRIDOR
-            EstimateTier.ROUGH -> LocationPrecision.ROUGH
-        },
+        precision = precision,
         radiusKm = radiusKm,
-        corridorStart = before?.location?.takeIf { tier == EstimateTier.CORRIDOR },
-        corridorEnd = after?.location?.takeIf { tier == EstimateTier.CORRIDOR }
+        corridorStart = before?.location?.takeIf { precision == LocationPrecision.CORRIDOR },
+        corridorEnd = after?.location?.takeIf { precision == LocationPrecision.CORRIDOR }
     )
 
     /**
@@ -72,7 +67,7 @@ data class LocationEstimate(
         area: (String) -> String,
         countryName: (String) -> String = { it }
     ): String? {
-        if (tier == EstimateTier.CORRIDOR) {
+        if (precision == LocationPrecision.CORRIDOR) {
             val from = before?.city?.takeIf { it.isNotBlank() }
             val to = after?.city?.takeIf { it.isNotBlank() }
             if (from != null && to != null && !from.equals(to, ignoreCase = true)) return between(from, to)
@@ -81,7 +76,7 @@ data class LocationEstimate(
             .firstNotNullOfOrNull { it.city?.takeIf { city -> city.isNotBlank() } }
             ?: country?.let(countryName)
             ?: return null
-        return if (tier == EstimateTier.ROUGH) area(place) else near(place)
+        return if (precision == LocationPrecision.ROUGH) area(place) else near(place)
     }
 
     /** Country when it is unambiguous: all known positions used for the estimate lie in the same country. */
@@ -173,7 +168,7 @@ object LocationEstimator {
             val hoursToEnd = min(hoursBefore, hoursAfter)
             if (hoursToEnd <= JUMP_SNAP_HOURS) {
                 return LocationEstimate(
-                    EstimateTier.ROUGH, nearest.latitude, nearest.longitude,
+                    LocationPrecision.ROUGH, nearest.latitude, nearest.longitude,
                     oneSidedRadiusKm(hoursToEnd), before = nearest.takeIf { it === before }, after = nearest.takeIf { it === after }, nearest = nearest
                 )
             }
@@ -195,9 +190,9 @@ object LocationEstimator {
         if (radiusKm > MAX_RADIUS_KM) return null
 
         val tier = when {
-            min(hoursBefore, hoursAfter) <= NEAR_HOURS && radiusKm <= MAX_NEAR_RADIUS_KM -> EstimateTier.NEAR
-            overnight || gapHours > MAX_CORRIDOR_GAP_HOURS || radiusKm > MAX_CORRIDOR_RADIUS_KM -> EstimateTier.ROUGH
-            else -> EstimateTier.CORRIDOR
+            min(hoursBefore, hoursAfter) <= NEAR_HOURS && radiusKm <= MAX_NEAR_RADIUS_KM -> LocationPrecision.NEAR
+            overnight || gapHours > MAX_CORRIDOR_GAP_HOURS || radiusKm > MAX_CORRIDOR_RADIUS_KM -> LocationPrecision.ROUGH
+            else -> LocationPrecision.CORRIDOR
         }
         return LocationEstimate(tier, latitude, longitude, radiusKm, before, after, nearest)
     }
@@ -212,8 +207,8 @@ object LocationEstimator {
         val hours = abs(t - anchor.wallTimeMs).toDouble() / HOUR_MS
         val overnight = nightOverlapHours(min(t, anchor.wallTimeMs), max(t, anchor.wallTimeMs)) >= NIGHT_OVERLAP_HOURS
         val tier = when {
-            hours <= NEAR_HOURS -> EstimateTier.NEAR
-            hours <= ONE_SIDED_MAX_HOURS && !overnight -> EstimateTier.ROUGH
+            hours <= NEAR_HOURS -> LocationPrecision.NEAR
+            hours <= ONE_SIDED_MAX_HOURS && !overnight -> LocationPrecision.ROUGH
             else -> return null
         }
         val radiusKm = oneSidedRadiusKm(hours)
