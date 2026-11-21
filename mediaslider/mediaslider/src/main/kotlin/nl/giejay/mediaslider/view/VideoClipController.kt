@@ -79,6 +79,17 @@ class VideoClipController(
         return clip.window?.startMs ?: 0L
     }
 
+    /**
+     * Where the clip of [item] would start if it began now (same rule as [begin]): 0 outside the slideshow
+     * or when the duration is unknown or the video plays completely. Lets a player be warmed up at the
+     * right position before its page is shown.
+     */
+    fun plannedStartMs(item: SliderItem): Long {
+        if (!slideShowPlaying()) return 0L
+        val duration = item.durationMs ?: return 0L
+        return planClip(item, duration, 1f)?.startMs ?: 0L
+    }
+
     /** Forwarded player state: resolves an unknown duration when ready, stops the timer when the video ended. */
     fun onPlaybackStateChanged(playbackState: Int) {
         if (playbackState == Player.STATE_READY) resolveClipDuration()
