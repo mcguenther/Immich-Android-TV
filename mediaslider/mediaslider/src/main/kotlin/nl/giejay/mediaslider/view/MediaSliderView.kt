@@ -203,6 +203,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                 controller.onPlayerError(error)
             }
         }
+        // A video is always followed by a photo (see warmUpNextVideo). Not with a chosen start asset: its index must stay.
+        if (config.startPosition < 0) config.items = PageList.separateVideos(config.items)
         controller.initialize(config)
         controller.clips.planner = clipPlanner
         viewPlugins.forEach { it.plugin.attachView(viewPluginContext.rootView, it.state) }

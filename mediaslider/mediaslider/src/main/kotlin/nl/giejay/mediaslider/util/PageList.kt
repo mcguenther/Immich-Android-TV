@@ -1,6 +1,7 @@
 package nl.giejay.mediaslider.util
 
 import nl.giejay.mediaslider.model.SliderItem
+import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import kotlin.math.ceil
 import kotlin.math.min
@@ -55,8 +56,30 @@ object PageList {
         if (added.isEmpty()) return existing
         return ArrayList<SliderItemViewHolder>(existing.size + added.size).apply {
             addAll(existing)
-            addAll(added)
+            addAll(separateVideos(added, existing.lastOrNull()))
         }
+    }
+
+    /**
+     * [pages] reordered so that no video follows a video (the next video player can only be warmed up
+     * while a photo is shown). A video that would follow one is held back and placed after the next photo;
+     * everything else keeps its order. [previous] is the page before the first one. Videos that find no
+     * photo to follow (the list ends or holds only videos) stay together at the end.
+     */
+    fun separateVideos(pages: List<SliderItemViewHolder>, previous: SliderItemViewHolder? = null): List<SliderItemViewHolder> {
+        val out = ArrayList<SliderItemViewHolder>(pages.size)
+        val held = ArrayDeque<SliderItemViewHolder>()
+        fun lastIsVideo() = (out.lastOrNull() ?: previous)?.type == SliderItemType.VIDEO
+        pages.forEach { page ->
+            if (page.type == SliderItemType.VIDEO) {
+                if (lastIsVideo()) held.addLast(page) else out.add(page)
+            } else {
+                out.add(page)
+                held.removeFirstOrNull()?.let { out.add(it) }
+            }
+        }
+        out.addAll(held)
+        return out
     }
 
     /**
