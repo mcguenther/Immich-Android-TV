@@ -56,10 +56,11 @@ class EstimatedPlaceMetaDataProvider(
                 estimate.placeLabel(
                     near = { context.getString(R.string.estimated_place_near, it) },
                     between = { from, to -> context.getString(R.string.estimated_place_between, from, to) },
-                    area = { context.getString(R.string.estimated_place_area, it) }
+                    area = { context.getString(R.string.estimated_place_area, it) },
+                    countryName = { AssetMetaDataMapping.displayCountry(it) }
                 )
             }
-            MetaDataType.COUNTRY -> estimate.country
+            MetaDataType.COUNTRY -> estimate.country?.let { AssetMetaDataMapping.displayCountry(it) }
             else -> null
         }
     }

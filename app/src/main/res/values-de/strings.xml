@@ -251,22 +251,18 @@
     <string name="order_least_updated">Am längsten nicht aktualisiert</string>
 
     <!-- Interval titles -->
-    <string name="interval_1_second">1 Sekunde</string>
-    <string name="interval_2_seconds">2 Sekunden</string>
-    <string name="interval_3_seconds">3 Sekunden</string>
-    <string name="interval_4_seconds">4 Sekunden</string>
-    <string name="interval_5_seconds">5 Sekunden</string>
-    <string name="interval_6_seconds">6 Sekunden</string>
-    <string name="interval_7_seconds">7 Sekunden</string>
-    <string name="interval_8_seconds">8 Sekunden</string>
-    <string name="interval_9_seconds">9 Sekunden</string>
-    <string name="interval_10_seconds">10 Sekunden</string>
-    <string name="interval_20_seconds">20 Sekunden</string>
-    <string name="interval_30_seconds">30 Sekunden</string>
-    <string name="interval_1_minute">1 Minute</string>
-    <string name="interval_3_minutes">3 Minuten</string>
-    <string name="interval_5_minutes">5 Minuten</string>
-    <string name="interval_10_minutes">10 Minuten</string>
+    <plurals name="interval_seconds">
+        <item quantity="one">%d Sekunde</item>
+        <item quantity="other">%d Sekunden</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="one">%d Minute</item>
+        <item quantity="other">%d Minuten</item>
+    </plurals>
+    <string name="interval_minutes_seconds">%1$d Min. %2$d Sek.</string>
+    <string name="interval_picker_minutes">Min.</string>
+    <string name="interval_picker_seconds">Sek.</string>
+    <string name="interval_picker_hint">▲▼ ändern · ◀▶ Spalte wechseln · OK übernehmen</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">Alle</string>
@@ -411,4 +407,8 @@
     <string name="estimated_place_near">ca. %1$s</string>
     <string name="estimated_place_between">zwischen %1$s und %2$s</string>
     <string name="estimated_place_area">Raum %1$s</string>
+    <string name="country_name_language">Sprache der Ländernamen</string>
+    <string name="country_name_language_desc">Sprache für Ländernamen in der Foto- und Videoansicht und im Bildschirmschoner. Immich liefert sie auf Englisch; übersetzt wird offline auf dem Gerät.</string>
+    <string name="country_name_language_original">Original (wie in Immich)</string>
+    <string name="country_name_language_device">Gerätesprache</string>
 </resources>

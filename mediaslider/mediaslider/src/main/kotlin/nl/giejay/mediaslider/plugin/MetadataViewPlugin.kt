@@ -157,8 +157,18 @@ class MetadataLayer(private val context: SliderViewPluginContext, private val co
         token++
         valuesFor = if (left.hasAllValues(newItem.mainItem.id) && right.hasAllValues(newItem.rightItem().id)) newItem.key() else null
         loadingFor = null
+        publishRightItemId()
         left.notifyDataSetChanged()
         right.notifyDataSetChanged()
+    }
+
+    /**
+     * Tags the holder with the id of the right-column item once this layer's values are resolved (null while
+     * they are not), so the location map can find the layer that belongs to its asset and its text height.
+     */
+    fun publishRightItemId() {
+        val current = item
+        holder?.setTag(R.id.metadata_right_item_id, if (valuesFor != null && current != null) current.rightItem().id else null)
     }
 
     fun setFade(itemAlpha: Float, staticAlpha: Float) {
@@ -355,6 +365,7 @@ class MetadataRenderState(val layers: List<MetadataLayer>, private val config: M
                 if (layer.token != token) return@withContext
                 layer.loadingFor = null
                 layer.valuesFor = item.key()
+                layer.publishRightItemId()
                 layer.left.notifyDataSetChanged()
                 layer.right.notifyDataSetChanged()
                 onReady()

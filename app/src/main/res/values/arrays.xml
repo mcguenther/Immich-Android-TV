@@ -1,42 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <array name="interval_titles">
-        <item>@string/interval_1_second</item>
-        <item>@string/interval_2_seconds</item>
-        <item>@string/interval_3_seconds</item>
-        <item>@string/interval_4_seconds</item>
-        <item>@string/interval_5_seconds</item>
-        <item>@string/interval_6_seconds</item>
-        <item>@string/interval_7_seconds</item>
-        <item>@string/interval_8_seconds</item>
-        <item>@string/interval_9_seconds</item>
-        <item>@string/interval_10_seconds</item>
-        <item>@string/interval_20_seconds</item>
-        <item>@string/interval_30_seconds</item>
-        <item>@string/interval_1_minute</item>
-        <item>@string/interval_3_minutes</item>
-        <item>@string/interval_5_minutes</item>
-        <item>@string/interval_10_minutes</item>
-    </array>
-    <string-array name="interval_values">
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-        <item>5</item>
-        <item>6</item>
-        <item>7</item>
-        <item>8</item>
-        <item>9</item>
-        <item>10</item>
-        <item>20</item>
-        <item>30</item>
-        <item>60</item>
-        <item>180</item>
-        <item>300</item>
-        <item>600</item>
-    </string-array>
-
     <array name="meta_data_alignment_labels">
         <item>@string/left</item>
         <item>@string/right</item>

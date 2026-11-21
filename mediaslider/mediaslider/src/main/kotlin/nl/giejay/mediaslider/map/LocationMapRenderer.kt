@@ -28,8 +28,8 @@ import kotlin.math.roundToInt
  */
 object LocationMapRenderer {
     /** Size of the map in dp. It sits behind the bottom-right metadata block. */
-    const val WIDTH_DP = 360
-    const val HEIGHT_DP = 270
+    const val WIDTH_DP = 324
+    const val HEIGHT_DP = 243
 
     /** Where the location dot sits inside the map (fractions of width/height). */
     const val ANCHOR_X = 0.7f
@@ -43,9 +43,15 @@ object LocationMapRenderer {
     private const val BORDER_ALPHA = 0.45f
     private const val BORDER_WIDTH_DP = 1f
 
-    /** Soft edge: opaque up to [MASK_SOLID] of the ellipse radius, then fading to transparent. */
+    /**
+     * Soft edge: the ellipse (radius [MASK_RADIUS] of width/height, centred on the dot) is opaque only up to
+     * [MASK_SOLID] of its radius, then eases out (1 - smoothstep) to fully transparent at the ellipse edge.
+     * The radius in y (0.44 * height) stays inside the distance to the top (0.45 * height) and bottom (0.55 * height);
+     * only the right side may be clipped by the bitmap edge (it coincides with the screen edge).
+     */
     private const val MASK_RADIUS = 0.44f
-    private const val MASK_SOLID = 0.4f
+    private const val MASK_SOLID = 0.1f
+    private const val MASK_STOPS = 9
 
     private const val DOT_RADIUS_DP = 4.5f
     private const val DOT_RING_DP = 2f
@@ -202,10 +208,22 @@ object LocationMapRenderer {
         val cy = ANCHOR_Y * height
         val rx = MASK_RADIUS * width
         val ry = MASK_RADIUS * height
+        // Stop 0 is the solid core; stops 1..MASK_STOPS-1 sample alpha = 1 - smoothstep(u) with u in 0..1
+        // between MASK_SOLID and 1, giving a long, smooth falloff.
+        val positions = FloatArray(MASK_STOPS + 1)
+        val colors = IntArray(MASK_STOPS + 1)
+        positions[0] = 0f
+        colors[0] = Color.BLACK
+        for (i in 0 until MASK_STOPS) {
+            val u = i / (MASK_STOPS - 1).toFloat()
+            positions[i + 1] = MASK_SOLID + (1f - MASK_SOLID) * u
+            val alpha = 1f - u * u * (3f - 2f * u)
+            colors[i + 1] = Color.argb((alpha * 255).roundToInt(), 0, 0, 0)
+        }
         val gradient = RadialGradient(
             cx, cy, rx,
-            intArrayOf(Color.BLACK, Color.BLACK, Color.TRANSPARENT),
-            floatArrayOf(0f, MASK_SOLID, 1f),
+            colors,
+            positions,
             Shader.TileMode.CLAMP
         ).apply { setLocalMatrix(Matrix().apply { setScale(1f, ry / rx, cx, cy) }) }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), Paint().apply {

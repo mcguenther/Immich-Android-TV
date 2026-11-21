@@ -66,7 +66,12 @@ data class LocationEstimate(
      * or "Raum Innsbruck". The three formats come from string resources. Falls back to the country when no
      * known position has a city, and returns null when neither is known.
      */
-    fun placeLabel(near: (String) -> String, between: (String, String) -> String, area: (String) -> String): String? {
+    fun placeLabel(
+        near: (String) -> String,
+        between: (String, String) -> String,
+        area: (String) -> String,
+        countryName: (String) -> String = { it }
+    ): String? {
         if (tier == EstimateTier.CORRIDOR) {
             val from = before?.city?.takeIf { it.isNotBlank() }
             val to = after?.city?.takeIf { it.isNotBlank() }
@@ -74,7 +79,7 @@ data class LocationEstimate(
         }
         val place = listOfNotNull(nearest, before, after)
             .firstNotNullOfOrNull { it.city?.takeIf { city -> city.isNotBlank() } }
-            ?: country
+            ?: country?.let(countryName)
             ?: return null
         return if (tier == EstimateTier.ROUGH) area(place) else near(place)
     }
