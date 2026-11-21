@@ -832,8 +832,14 @@ data object ScreensaverTimingPrefScreen : PrefScreen(str(R.string.slideshow_timi
     listOf(
         PrefCategory("", listOf(
             SCREENSAVER_INTERVAL,
-            SCREENSAVER_PLAY_SOUND
+            SCREENSAVER_PLAY_SOUND,
+            // The screensaver uses the slideshow's transition; the slideshow's own interval is ignored.
+            SLIDESHOW_TRANSITION,
+            SLIDESHOW_TRANSITION_DURATION
         ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_TRANSITION_DURATION to { prefs -> SLIDESHOW_TRANSITION.getValue(prefs) != SlideshowTransition.NONE }
     )
 )
 
@@ -853,6 +859,22 @@ data object ScreensaverOverlaysPrefScreen : PrefScreen(str(R.string.slideshow_ov
     )
 )
 
+/**
+ * The slideshow sub-screens whose settings the screensaver shares. Left out on purpose: the
+ * slideshow's Timing and Overlays screens, because the screensaver has its own.
+ */
+data object ScreensaverAppearancePrefScreen : PrefScreen(str(R.string.screensaver_appearance_link), "screensaver_appearance",
+    listOf(
+        PrefCategory("", listOf(
+            settingsLink("slideshow_display", str(R.string.slideshow_display), str(R.string.slideshow_display_desc)),
+            settingsLink("slideshow_motion", str(R.string.slideshow_motion), str(R.string.slideshow_motion_desc)),
+            settingsLink("slideshow_pairs", str(R.string.slideshow_pairs), str(R.string.slideshow_pairs_desc)),
+            settingsLink("slideshow_videos", str(R.string.slideshow_videos), str(R.string.slideshow_videos_desc)),
+            settingsLink("slideshow_quality", str(R.string.slideshow_quality), str(R.string.slideshow_quality_desc))
+        ))
+    )
+)
+
 data object ScreensaverPrefScreen : PrefScreen(str(R.string.screensaver_settings), "screensaver",
     listOf(
         PrefCategory("",
@@ -862,7 +884,7 @@ data object ScreensaverPrefScreen : PrefScreen(str(R.string.screensaver_settings
                 settingsLink("screensaver_content", str(R.string.screensaver_content), str(R.string.screensaver_content_desc)),
                 settingsLink("screensaver_timing", str(R.string.slideshow_timing), str(R.string.screensaver_timing_desc)),
                 settingsLink("screensaver_overlays", str(R.string.slideshow_overlays), str(R.string.slideshow_overlays_desc)),
-                settingsLink("slideshow", str(R.string.screensaver_appearance_link), str(R.string.screensaver_appearance_link_desc))
+                settingsLink("screensaver_appearance", str(R.string.screensaver_appearance_link), str(R.string.screensaver_appearance_link_desc))
             )
         )
     )

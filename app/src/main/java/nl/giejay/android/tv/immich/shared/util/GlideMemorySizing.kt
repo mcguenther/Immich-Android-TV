@@ -28,7 +28,7 @@ object GlideMemorySizing {
     }
 
     /**
-     * Size in bytes for the memory cache and bitmap pool: room for the prefetched slides plus
+     * Size in bytes for the Glide memory cache: room for the prefetched slides plus
      * [EXTRA_BITMAPS], capped at [HEAP_DIVISOR]th of [heapMb].
      *
      * Returns null when Glide's default should stay: low-RAM devices, unknown screen size or heap size.

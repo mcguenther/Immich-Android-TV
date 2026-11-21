@@ -185,11 +185,6 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
     fun showLoadingPoster(thumbnailUrl: String?) {
         awaitingFirstFrame = true
         showPosterOverlay()
-        if (!thumbnailUrl.isNullOrBlank() && thumbnailUrl != backdropUrl && display.edgeFill == EdgeFill.BLUR) {
-            backdropUrl = thumbnailUrl
-            SliderImageRequests.blurredBackdrop(context, thumbnailUrl).into(backdropView)
-            applyVideoFit()
-        }
         if (thumbnailUrl.isNullOrBlank()) {
             posterView.setImageDrawable(null)
             return
@@ -198,6 +193,24 @@ class ExoPlayerView @JvmOverloads constructor(context: Context, resourceId: Int,
             .load(thumbnailUrl)
             .centerInside()
             .into(posterView)
+    }
+
+    /**
+     * Loads the blurred backdrop shown behind letterboxed video when edge fill is BLUR. Pass null to clear it.
+     */
+    fun setBackdrop(url: String?) {
+        if (url.isNullOrBlank() || display.edgeFill != EdgeFill.BLUR) {
+            if (backdropUrl != null) {
+                Glide.with(backdropView).clear(backdropView)
+                backdropUrl = null
+                applyVideoFit()
+            }
+            return
+        }
+        if (url == backdropUrl) return
+        backdropUrl = url
+        SliderImageRequests.blurredBackdrop(context, url).into(backdropView)
+        applyVideoFit()
     }
 
     fun clearPoster() {

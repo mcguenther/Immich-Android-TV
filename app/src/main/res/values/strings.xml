@@ -352,9 +352,9 @@
     <string name="slideshow_video_trim_end_off">Off</string>
     <string name="screensaver_content">Content</string>
     <string name="screensaver_content_desc">Source, albums, people, videos</string>
-    <string name="screensaver_timing_desc">Interval and sound</string>
+    <string name="screensaver_timing_desc">Interval, transition and sound</string>
     <string name="screensaver_appearance_link">Display, motion &amp; portrait pairs</string>
-    <string name="screensaver_appearance_link_desc">Taken from Slideshow so both look the same</string>
+    <string name="screensaver_appearance_link_desc">Display, motion, portrait pairs, videos and quality, shared with the slideshow</string>
 
     <!-- Slideshow redesign: display -->
     <string name="slideshow_fill_mode">Fill mode</string>

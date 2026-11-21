@@ -303,9 +303,9 @@
     <string name="slideshow_video_trim_end_off">Aus</string>
     <string name="screensaver_content">Inhalt</string>
     <string name="screensaver_content_desc">Quelle, Alben, Personen, Videos</string>
-    <string name="screensaver_timing_desc">Intervall und Ton</string>
+    <string name="screensaver_timing_desc">Intervall, Übergang und Ton</string>
     <string name="screensaver_appearance_link">Darstellung, Bewegung &amp; Hochkant-Paare</string>
-    <string name="screensaver_appearance_link_desc">Wird von der Diashow übernommen, damit beide gleich aussehen</string>
+    <string name="screensaver_appearance_link_desc">Anzeige, Bewegung, Hochkant-Paare, Videos und Qualität, gemeinsam mit der Diashow</string>
 
     <!-- Slideshow redesign: display -->
     <string name="slideshow_fill_mode">Füllmodus</string>

@@ -29,6 +29,10 @@ object SliderImageRequests {
      */
     const val PANORAMA_MAX_DECODE_LONG_EDGE = 4096
 
+    /** Single rule for "this panorama is scrolled": independent of [nl.giejay.mediaslider.config.MotionOptions.enabled]. */
+    fun scrollsAsPanorama(config: MediaSliderConfiguration, item: SliderItem): Boolean =
+        item.isPanorama && config.motion.panoramaScroll
+
     /** Width in pixels of the blurred edge-fill source before [BlurDarkenTransformation] shrinks it. */
     private const val BACKDROP_DECODE_WIDTH = 112
 
@@ -59,7 +63,7 @@ object SliderImageRequests {
             Triple(scaled(slotW), scaled(slotH), DownsampleStrategy.CENTER_OUTSIDE)
         }
         val (rawW, rawH, strategy) = target
-        val panorama = item.isPanorama && config.motion.enabled && config.motion.panoramaScroll
+        val panorama = scrollsAsPanorama(config, item)
         val (tw, th) = if (panorama && w != null && h != null && w > 0 && h > 0) {
             // The scrolling panorama is scaled up by the animator; decode at that size so it stays sharp.
             val fit = FitCalculator.compute(w, h, slotW, slotH, config.display)

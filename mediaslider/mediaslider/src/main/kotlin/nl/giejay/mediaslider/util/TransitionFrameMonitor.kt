@@ -1,6 +1,7 @@
 package nl.giejay.mediaslider.util
 
 import android.view.Choreographer
+import com.zeuskartik.mediaslider.BuildConfig
 import timber.log.Timber
 import kotlin.math.roundToInt
 
@@ -38,12 +39,16 @@ object FrameStats {
 }
 
 /**
- * Cheap, always-on jank diagnostic: measures the intervals between frames (via [Choreographer]) from the
+ * Cheap jank diagnostic, active in debug builds only: measures the intervals between frames (via [Choreographer]) from the
  * start of a slide transition until [stop], and logs one line per transition with Timber at INFO and tag
  * [TAG]. Main thread only. A late main thread (layout, decode callbacks, GC) shows up as long intervals;
  * pure GPU overload shows up as intervals that are a multiple of the vsync interval.
  */
-class TransitionFrameMonitor(private val vsyncMs: () -> Double) {
+class TransitionFrameMonitor(
+    /** When false (release builds), [start] does nothing: no Choreographer callbacks and no log line. */
+    val enabled: Boolean = BuildConfig.DEBUG,
+    private val vsyncMs: () -> Double
+) {
     private var recording = false
     private var startNanos = 0L
     private var lastFrameNanos = 0L
@@ -70,6 +75,7 @@ class TransitionFrameMonitor(private val vsyncMs: () -> Double) {
 
     /** Starts measuring; a running measurement is closed first. [info] is repeated in the log line. */
     fun start(info: String) {
+        if (!enabled) return
         if (recording) stop("interrupted by next transition")
         recording = true
         description = info

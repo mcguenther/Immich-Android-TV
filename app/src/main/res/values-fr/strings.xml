@@ -151,8 +151,8 @@
     <string name="show_date_top_left_viewer_desc">Affiche la date de l’élément en overlay en haut à gauche dans la visionneuse. Indépendant des métadonnées en bas.</string>
     <string name="show_date_top_left_screensaver_desc">Affiche la date de l’élément en overlay en haut à gauche dans l’écran de veille. Indépendant des métadonnées en bas.</string>
     <string name="show_location_map">Afficher une carte du lieu</string>
-    <string name="show_location_map_viewer_desc">Affiche une petite carte hors ligne (contours des terres et frontières) derrière le lieu dans la visionneuse, pour situer l’endroit. Uniquement pour les éléments avec données GPS.</string>
-    <string name="show_location_map_screensaver_desc">Affiche une petite carte hors ligne (contours des terres et frontières) derrière le lieu dans l’écran de veille, pour situer l’endroit. Uniquement pour les éléments avec données GPS.</string>
+    <string name="show_location_map_viewer_desc">Affiche une petite carte hors ligne (contours des terres et frontières) derrière le lieu dans la visionneuse, pour situer l’endroit. Pour les éléments sans données GPS, uniquement si leur lieu peut être estimé.</string>
+    <string name="show_location_map_screensaver_desc">Affiche une petite carte hors ligne (contours des terres et frontières) derrière le lieu dans l’écran de veille, pour situer l’endroit. Pour les éléments sans données GPS, uniquement si leur lieu peut être estimé.</string>
     <string name="estimate_camera_locations">Estimer le lieu des photos d\'appareil</string>
     <string name="estimate_camera_locations_desc">Les photos sans GPS (par ex. d\'un appareil photo) sont situées approximativement grâce aux photos avec GPS prises avant et après, comme celles du téléphone. Affiché sur la carte par un cercle ou un nuage flou, et comme « près de Innsbruck ». Rien n\'est modifié dans Immich.</string>
     <string name="estimate_locations_with_partners">Utiliser les photos des partenaires</string>

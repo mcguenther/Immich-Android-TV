@@ -1,5 +1,6 @@
 package nl.giejay.mediaslider.adapter
 
+import com.zeuskartik.mediaslider.BuildConfig
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.drawable.BitmapDrawable
@@ -169,6 +170,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                     false
                 }
             }
+            view.setBackdrop(model.mainItem.thumbnailUrl)
         }
         view?.tag = "view$position"
         view?.setTag(R.id.slider_page_item, model)
@@ -267,7 +269,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                     // photos), so the real aspect ratio wins when it differs.
                     // Hint the GPU upload now (usually while the page is still off screen) instead of at its first draw.
                     (resource as? BitmapDrawable)?.bitmap?.prepareToDraw()
-                    loadedSources.getOrPut(position) { mutableListOf() }.add(dataSource.name)
+                    if (BuildConfig.DEBUG) loadedSources.getOrPut(position) { mutableListOf() }.add(dataSource.name)
                     val rw = resource.intrinsicWidth
                     val rh = resource.intrinsicHeight
                     if (rw > 0 && rh > 0) {

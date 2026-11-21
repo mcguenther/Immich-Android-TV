@@ -40,6 +40,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.giejay.mediaslider.adapter.ScreenSlidePagerAdapter
+import nl.giejay.mediaslider.adapter.SliderImageRequests
 import nl.giejay.mediaslider.animation.KenBurnsAnimator
 import nl.giejay.mediaslider.animation.KenBurnsPlanner
 import nl.giejay.mediaslider.animation.MotionPlan
@@ -394,6 +395,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
     /** Starts the per-transition frame timing (one INFO line, tag SlideTransition, when it ends). */
     private fun startFrameMonitor(index: Int) {
+        if (!frameMonitor.enabled) return
         val previous = lastSelected
         lastSelected = index
         if (previous < 0 || !transitionActive) return
@@ -523,7 +525,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         val page = mPager.findViewWithTag<View>("view$index") ?: return
         val movers = moversOf(page).filter { !activeMotions.containsKey(it) && !waitingMovers.contains(it) }
         if (movers.isEmpty()) return
-        val panorama = page.findViewById<View>(R.id.mBigImage) != null && item.mainItem.isPanorama && config.motion.panoramaScroll
+        val panorama = page.findViewById<View>(R.id.mBigImage) != null && SliderImageRequests.scrollsAsPanorama(config, item.mainItem)
         startMotionGroup(movers, index, panorama, continuation?.seed ?: System.nanoTime(), continuation)
     }
 
