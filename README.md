@@ -94,9 +94,11 @@ country border data (public domain). To regenerate the bundled file
 
 Photos without GPS (for example from a system camera) get an estimated location from photos with GPS
 taken before and after them, such as phone photos of the same day (or up to 36 hours around it). The
-estimate is computed and cached in the app only; nothing is written to Immich. The map marks it by how
+estimate is computed in the app; the photos with GPS are loaded per day and cached in memory and in the
+app's cache directory, so a day is asked for once. Nothing is written to Immich. The map marks it by how
 sure it is: a ring next to a phone photo, a dashed line between the phone photos before and after with a
-ring on it, or a soft cloud across a night or with a phone photo on one side only. Flights are not
+ring on it (a small cloud when that line would hide under the ring), or a soft cloud across a night or
+with a phone photo on one side only. Flights are not
 interpolated, and an estimate never claims more precision than about 10 km, since camera clocks are often
 off by an hour. The place line reads "near Innsbruck", "between A and B" or "Innsbruck area". Both the
 estimate and the use of partner photos can be switched off in the overlay settings.

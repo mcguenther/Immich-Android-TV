@@ -136,4 +136,16 @@ class LocationMapRenderingTest {
         // 60 km at zoom 4 and 47 degrees north is about 18 px at density 2; 30 px away the cloud is gone.
         assertTrue(Color.alpha(bitmap.getPixel(centerX + 30, centerY)) < Color.alpha(centre))
     }
+
+    @Test
+    fun `short corridor that would hide under the ring is drawn as the small cloud`() {
+        // Eibsee to Innsbruck, 40 km: at zoom 4 both ends lie under the ring.
+        val bitmap = render(
+            MapLocation(seefeld, LocationPrecision.CORRIDOR, 25.0, GeoLocation(47.4566, 10.9726), GeoLocation(47.2692, 11.4041)),
+            "estimate-corridor-short"
+        )
+        val centre = bitmap.getPixel(centerX, centerY)
+        assertTrue("bright centre", Color.alpha(centre) > 200 && Color.red(centre) > 240)
+        assertTrue("no ring", bitmap.getPixel(centerX + 12, centerY) != Color.WHITE)
+    }
 }

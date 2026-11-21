@@ -15,6 +15,7 @@ import nl.giejay.mediaslider.model.GeoLocation
 import nl.giejay.mediaslider.model.LocationPrecision
 import nl.giejay.mediaslider.model.MapLocation
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -59,6 +60,11 @@ object LocationMapRenderer {
     private const val CORRIDOR_END_RADIUS_DP = 2.8f
     /** Smallest cloud, so a rough estimate never shrinks to something that looks like a dot. */
     private const val CLOUD_MIN_RADIUS_DP = 10f
+    /**
+     * A corridor end must lie at least this far outside the ring to be seen. Shorter corridors (at zoom 4
+     * roughly under 100 km) would vanish under the ring, so they are drawn as the small cloud instead.
+     */
+    private const val CORRIDOR_MIN_VISIBLE_DP = 8f
 
     private const val EARTH_CIRCUMFERENCE_KM = 40075.0
 
@@ -109,14 +115,15 @@ object LocationMapRenderer {
             LocationPrecision.EXACT -> drawDot(canvas, x, y, density)
             LocationPrecision.NEAR -> drawRing(canvas, x, y, density)
             LocationPrecision.CORRIDOR -> {
-                val start = location.corridorStart
-                val end = location.corridorEnd
-                if (start != null && end != null) {
-                    val (sx, sy) = viewport.pixelOf(start)
-                    val (ex, ey) = viewport.pixelOf(end)
-                    drawCorridor(canvas, sx, sy, ex, ey, density)
+                val start = location.corridorStart?.let { viewport.pixelOf(it) }
+                val end = location.corridorEnd?.let { viewport.pixelOf(it) }
+                if (start != null && end != null &&
+                    isCorridorVisible(x, y, start.first, start.second, end.first, end.second, density)) {
+                    drawCorridor(canvas, start.first, start.second, end.first, end.second, density)
+                    drawRing(canvas, x, y, density)
+                } else {
+                    drawCloud(canvas, x, y, CLOUD_MIN_RADIUS_DP * density)
                 }
-                drawRing(canvas, x, y, density)
             }
             LocationPrecision.ROUGH -> {
                 val pxPerKm = worldSizePx / (EARTH_CIRCUMFERENCE_KM * cos(Math.toRadians(location.position.latitude)))
@@ -124,6 +131,15 @@ object LocationMapRenderer {
             }
         }
         return bitmap
+    }
+
+    /**
+     * True when at least one corridor end lies visibly outside the ring around ([x], [y]). Otherwise the
+     * line would hide under the ring and the corridor would look like a near estimate.
+     */
+    internal fun isCorridorVisible(x: Float, y: Float, sx: Float, sy: Float, ex: Float, ey: Float, density: Float): Boolean {
+        val minDistance = (RING_RADIUS_DP + CORRIDOR_MIN_VISIBLE_DP) * density
+        return hypot(sx - x, sy - y) >= minDistance || hypot(ex - x, ey - y) >= minDistance
     }
 
     private fun MapViewport.pixelOf(location: GeoLocation): Pair<Float, Float> =

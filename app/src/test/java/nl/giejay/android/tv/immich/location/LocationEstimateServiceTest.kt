@@ -45,8 +45,18 @@ class LocationEstimateServiceTest {
     private val camera = asset("c1", "me", "2025-06-14T12:05:00.000Z", "2025-06-14T12:05:00Z", null, null)
     private val camera2 = asset("c2", "me", "2025-06-14T13:30:00.000Z", "2025-06-14T13:30:00Z", null, null)
 
+    /** Persistent day cache that survives [LocationAnchorRepository.clearMemory], like files on disk. */
+    private val disk = object : AnchorDayStore {
+        val days = mutableMapOf<Long, CachedAnchorDay>()
+        override fun load(utcDay: Long) = days[utcDay]
+        override fun save(utcDay: Long, day: CachedAnchorDay) { days[utcDay] = day }
+    }
+    private var clock = Instant.parse("2026-11-21T12:00:00Z").toEpochMilli()
+
     @Before
     fun setUp() {
+        LocationAnchorRepository.store = disk
+        LocationAnchorRepository.now = { clock }
         library = listOf(myPhoneBefore, partnerPhone, myPhoneAfter, camera, camera2)
         LocationEstimateService.settings = { LocationEstimateSettings(enabled = true, includePartners = true) }
         LocationAnchorRepository.fetchPage = { after, before, page ->
@@ -122,5 +132,55 @@ class LocationEstimateServiceTest {
         assertEquals(parseWallTimeMs("2025-06-14T12:05:00"), parseWallTimeMs("2025-06-14T12:05:00.000Z"))
         assertEquals(parseWallTimeMs("2025-06-14T12:05:00"), parseWallTimeMs("2025-06-14T12:05:00+02:00"))
         assertNull(parseWallTimeMs("not a date"))
+    }
+
+    @Test
+    fun `the days around a photo are loaded in one request`() = runBlocking {
+        assertNotNull(LocationEstimateService.estimate(camera))
+        assertEquals(1, requests.size)
+    }
+
+    @Test
+    fun `loaded days survive an app restart`() = runBlocking {
+        assertNotNull(LocationEstimateService.estimate(camera))
+        val before = requests.size
+        LocationAnchorRepository.clearMemory()
+        LocationEstimateService.clear()
+        LocationEstimateService.settings = { LocationEstimateSettings(enabled = true, includePartners = true) }
+        assertNotNull(LocationEstimateService.estimate(camera))
+        assertEquals(before, requests.size)
+    }
+
+    @Test
+    fun `recent days are reloaded after half an hour, old days are kept`() = runBlocking {
+        val day = Math.floorDiv(Instant.parse("2025-06-14T00:00:00Z").toEpochMilli(), 86_400_000L)
+        LocationAnchorRepository.anchorsOfUtcDay(day)
+        clock += 2 * 3_600_000L
+        LocationAnchorRepository.anchorsOfUtcDay(day)
+        assertEquals("old day still cached", 1, requests.size)
+
+        val today = Math.floorDiv(clock, 86_400_000L)
+        LocationAnchorRepository.anchorsOfUtcDay(today)
+        clock += 10 * 60_000L
+        LocationAnchorRepository.anchorsOfUtcDay(today)
+        assertEquals("today cached for a few minutes", 2, requests.size)
+        clock += 31 * 60_000L
+        LocationAnchorRepository.anchorsOfUtcDay(today)
+        assertEquals("today reloaded", 3, requests.size)
+    }
+
+    @Test
+    fun `days cut off by the page limit are not cached`() = runBlocking {
+        // Every page claims there is more: the request stops at the page limit.
+        LocationAnchorRepository.fetchPage = { after, _, _ ->
+            requests += after
+            (listOf(myPhoneBefore) to true).right()
+        }
+        val day = Math.floorDiv(Instant.parse("2025-06-14T00:00:00Z").toEpochMilli(), 86_400_000L)
+        LocationAnchorRepository.anchorsOfUtcDay(day)
+        val first = requests.size
+        LocationAnchorRepository.anchorsOfUtcDay(day)
+        assertTrue(requests.size > first)
+        assertTrue(disk.days.isEmpty())
     }
 }
