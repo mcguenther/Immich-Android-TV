@@ -14,6 +14,7 @@ import android.graphics.Shader
 import nl.giejay.mediaslider.model.GeoLocation
 import nl.giejay.mediaslider.model.LocationPrecision
 import nl.giejay.mediaslider.model.MapLocation
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
@@ -73,6 +74,9 @@ object LocationMapRenderer {
     private const val CORRIDOR_MIN_VISIBLE_DP = 8f
 
     private const val EARTH_CIRCUMFERENCE_KM = 40075.0
+
+    /** Positions closer than this on the map (about 7 km at zoom 4 and 45 degrees north) look the same. */
+    private const val SAME_MAP_DP = 1.0
 
     fun widthPx(density: Float): Int = (WIDTH_DP * density).roundToInt()
     fun heightPx(density: Float): Int = (HEIGHT_DP * density).roundToInt()
@@ -146,6 +150,30 @@ object LocationMapRenderer {
     internal fun isCorridorVisible(x: Float, y: Float, sx: Float, sy: Float, ex: Float, ey: Float, density: Float): Boolean {
         val minDistance = (RING_RADIUS_DP + CORRIDOR_MIN_VISIBLE_DP) * density
         return hypot(sx - x, sy - y) >= minDistance || hypot(ex - x, ey - y) >= minDistance
+    }
+
+    /**
+     * True when [a] and [b] would be drawn as practically the same map: same kind of mark, and positions
+     * (and for estimates their corridor ends and cloud size) less than [SAME_MAP_DP] apart on the map.
+     * A slide at such a place keeps the map on screen instead of fading it out and in again.
+     */
+    fun isSameMap(a: MapLocation, b: MapLocation): Boolean {
+        if (a.precision != b.precision) return false
+        if (!isClose(a.position, b.position)) return false
+        return when (a.precision) {
+            LocationPrecision.EXACT, LocationPrecision.NEAR -> true
+            LocationPrecision.ROUGH -> abs(a.radiusKm - b.radiusKm) <= 0.1 * max(a.radiusKm, b.radiusKm)
+            LocationPrecision.CORRIDOR -> isClose(a.corridorStart, b.corridorStart) && isClose(a.corridorEnd, b.corridorEnd)
+        }
+    }
+
+    private fun isClose(p: GeoLocation?, q: GeoLocation?): Boolean {
+        if (p == null || q == null) return p == q
+        val world = TILE_DP.toDouble() * (1 shl ZOOM)
+        return hypot(
+            MapViewport.projectX(p.longitude, world) - MapViewport.projectX(q.longitude, world),
+            MapViewport.projectY(p.latitude, world) - MapViewport.projectY(q.latitude, world)
+        ) <= SAME_MAP_DP
     }
 
     private fun MapViewport.pixelOf(location: GeoLocation): Pair<Float, Float> =
