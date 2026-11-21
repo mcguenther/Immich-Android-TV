@@ -133,7 +133,7 @@ class ScreenSaverAssetLoaderTest {
     ) { actual, apiClient ->
         verify(apiClient, times(1)).listAssets(
             eq(1),
-            eq(50),
+            eq(ScreenSaverAssetLoader.BATCH_SIZE),
             eq(true),
             any(),
             any(),

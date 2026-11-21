@@ -68,7 +68,8 @@ internal fun buildListAssetsSearchRequest(
     type: String?,
     personIds: List<UUID>,
     endDate: String?,
-    fromDate: String?
+    fromDate: String?,
+    city: String? = null
 ): SearchRequest = SearchRequest(
     page = page,
     size = pageCount,
@@ -80,7 +81,8 @@ internal fun buildListAssetsSearchRequest(
     takenAfter = fromDate,
     // "timeline" reproduces pre-v3 default for normal browsing; album-scoped search
     // omits it so archived-in-album assets keep showing (VIS-02)
-    visibility = if (albumIds.isEmpty()) "timeline" else null
+    visibility = if (albumIds.isEmpty()) "timeline" else null,
+    city = city
 )
 
 // internal so app/src/test can call it directly without instantiating ApiClient/Retrofit.
@@ -243,6 +245,38 @@ class ApiClient(private val config: ApiClientConfig) {
             search(searchRequest).map { it.toAssetResponse() }
         }
         return assetsResult
+    }
+
+    /**
+     * Photos for the screensaver's portrait partner lookup: a metadata search taken between [fromDate]
+     * and [endDate] sorted by capture time ([order]), or with [random] a random search. [city] narrows
+     * either to one city; [albumIds] and [personIds] narrow to assets in all of them.
+     */
+    suspend fun searchPhotos(size: Int,
+                             fromDate: LocalDateTime? = null,
+                             endDate: LocalDateTime? = null,
+                             order: String = "desc",
+                             random: Boolean = false,
+                             city: String? = null,
+                             albumIds: List<String> = emptyList(),
+                             personIds: List<UUID> = emptyList()): Either<String, List<Asset>> {
+        val searchRequest = buildListAssetsSearchRequest(
+            page = 1,
+            pageCount = size,
+            albumIds = albumIds,
+            order = order,
+            type = ContentType.IMAGE.toString(),
+            personIds = personIds,
+            endDate = endDate?.atZone(ZoneId.systemDefault())?.format(dateTimeFormatter),
+            fromDate = fromDate?.atZone(ZoneId.systemDefault())?.format(dateTimeFormatter),
+            city = city
+        )
+        return if (random) {
+            // RandomSearchDto has no page/order, see listAssets
+            executeAPICall(200) { service.randomAssets(searchRequest.copy(page = null, order = null)) }
+        } else {
+            search(searchRequest).map { it.assets.items }
+        }
     }
 
     private fun excludeByTag() = { asset: Asset ->
