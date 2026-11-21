@@ -20,6 +20,7 @@ import com.zeuskartik.mediaslider.R
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.config.TransitionType
 import nl.giejay.mediaslider.model.SliderItem
+import nl.giejay.mediaslider.util.PageList
 import nl.giejay.mediaslider.util.ClipPlanner
 import nl.giejay.mediaslider.util.ClipWindow
 import nl.giejay.mediaslider.util.PageJump
@@ -378,7 +379,8 @@ class MediaSliderController(
 
     fun goToNextAsset() {
         val count = pager.adapter!!.count
-        goToPage(if (pager.currentItem < count - 1) pager.currentItem + 1 else 0)
+        // Past the last page: continue where the next slides do not repeat the photos just shown.
+        goToPage(if (pager.currentItem < count - 1) pager.currentItem + 1 else PageList.wrapTarget(config.items))
         // Keep controller focus if the overlay is open (e.g. mid D-pad to pause during slideshow).
         if (!isControllerVisible) {
             restorePagerFocus()

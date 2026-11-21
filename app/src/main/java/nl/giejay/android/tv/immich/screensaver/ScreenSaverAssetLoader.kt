@@ -304,7 +304,8 @@ class ScreenSaverAssetLoader(
     }
 
     private suspend fun setInitialAssets(assets: List<Asset>, loadMore: (suspend () -> LoadMoreResult)?) {
-        val pages = toPages(assets)
+        // The slider drops repeats of later batches; the first one must not hold an asset twice either.
+        val pages = toPages(assets.distinctBy { it.id })
         withContext(Dispatchers.Main) { showInitialPages(pages, loadMore) }
     }
 

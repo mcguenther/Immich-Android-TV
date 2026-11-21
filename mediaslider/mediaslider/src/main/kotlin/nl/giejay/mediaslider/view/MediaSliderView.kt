@@ -97,6 +97,10 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     private var videoPrecacher: VideoPrecacher? = null
     private var loading = false
 
+    /** Load-more requests in a row that added no page, and until when (uptime ms) no new request is made. */
+    @Volatile private var emptyLoads = 0
+    @Volatile private var loadMoreBlockedUntil = 0L
+
     // Slide transition bookkeeping (see the pager listener): while a transition animates nothing heavy may start.
     private var transitionActive = false
     private var jumpCandidate = false
@@ -260,15 +264,21 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         mPager.setAdapter(pagerAdapter)
         mPager.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
             override fun onPageScrolled(sliderItemIndex: Int, v: Float, i1: Int) {
-                if (config.loadMore != null && mPager.currentItem > config.items.size - 40 && !loading) {
+                if (config.loadMore != null && mPager.currentItem > config.items.size - 40 && !loading &&
+                    SystemClock.uptimeMillis() >= loadMoreBlockedUntil) {
                     loading = true
                     ioScope.launch {
                         val loadMore = config.loadMore ?: return@launch
                         val result: LoadMoreResult = loadMore()
-                        addItemsMain(result.items)
+                        val added = addItemsMain(result.items)
                         if (!result.canLoadMore) {
                             config.loadMore = null
                         }
+                        // A source that only returns assets shown lately (e.g. a random source that has
+                        // delivered the whole library) would otherwise be asked again on every scroll.
+                        emptyLoads = if (added > 0) 0 else emptyLoads + 1
+                        loadMoreBlockedUntil = if (added > 0) 0L
+                        else SystemClock.uptimeMillis() + PageList.emptyLoadBackoffMs(emptyLoads)
                         loading = false
                     }
                 }
@@ -748,15 +758,17 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         this.defaultExoFactory = defaultExoFactory
     }
 
-    suspend fun addItemsMain(items: List<SliderItemViewHolder>) = withContext(Dispatchers.Main) {
+    /** Appends [items] on the main thread; returns the number of pages added. */
+    suspend fun addItemsMain(items: List<SliderItemViewHolder>): Int = withContext(Dispatchers.Main) {
         addItems(items)
     }
 
-    /** Appends [items], dropping pages that would show an asset again (see [PageList.appendNew]). */
-    private fun addItems(items: List<SliderItemViewHolder>) {
+    /** Appends [items], dropping pages that would show an asset again too soon (see [PageList.appendNew]). */
+    private fun addItems(items: List<SliderItemViewHolder>): Int {
         val merged = PageList.appendNew(config.items, items)
-        if (merged.size == config.items.size) return
-        setItems(merged)
+        val added = merged.size - config.items.size
+        if (added > 0) setItems(merged)
+        return added
     }
 
     fun setItems(items: List<SliderItemViewHolder>) {
