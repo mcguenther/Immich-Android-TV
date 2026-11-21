@@ -16,7 +16,7 @@ object OverlayFade {
 
     /** Fade length in ms: the page transition's duration; 0 (swap instantly) for NONE or a zero duration. */
     fun fadeMs(transition: TransitionOptions): Long =
-        if (transition.type == TransitionType.NONE) 0L else transition.durationMillis.coerceAtLeast(0).toLong()
+        transition.effectiveMs.toLong()
 
     /** Easing of the page transition (the scroller uses it), so labels follow the same curve. */
     fun interpolator(transition: TransitionOptions): Interpolator =
@@ -39,6 +39,14 @@ object OverlayFade {
     /** Ramp length for values that became ready [lateByMs] after the fade started (0 = not late, no extra limit). */
     fun rampMs(lateByMs: Long, fadeMs: Long): Long =
         if (lateByMs <= 32L) 0L else minOf(LATE_FADE_MS, fadeMs.coerceAtLeast(1L))
+
+    /**
+     * Duration for an incoming fade started at [now] although the page transition began at [startedAt]
+     * and lasts [fadeMs]: what is left of the transition, but never below [minMs] so a late value still
+     * fades in briefly.
+     */
+    fun remainingFadeMs(fadeMs: Long, startedAt: Long, now: Long, minMs: Long = LATE_FADE_MS): Long =
+        (fadeMs - (now - startedAt)).coerceAtLeast(minMs)
 }
 
 /**
@@ -46,9 +54,9 @@ object OverlayFade {
  * becomes the incoming one and, as soon as it is called, the front. Overlapping transitions simply
  * flip again, so the layer that was fading in becomes the outgoing one.
  */
-class OverlaySwitcher {
+class OverlaySwitcher(initialFront: Int = 0) {
     /** Index (0/1) of the layer that shows (or fades in) the current slide. */
-    var front: Int = 0
+    var front: Int = initialFront
         private set
     val back: Int get() = 1 - front
 

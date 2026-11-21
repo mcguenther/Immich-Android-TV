@@ -73,7 +73,13 @@ enum class TransitionType { CROSSFADE, SLIDE, NONE }
 data class TransitionOptions(
     val type: TransitionType = TransitionType.CROSSFADE,
     val durationMillis: Int = 1000
-)
+) {
+    /** Transition length in ms that actually runs: 0 for NONE or a non-positive duration. */
+    val effectiveMs: Int get() = if (type == TransitionType.NONE) 0 else durationMillis.coerceAtLeast(0)
+
+    /** True when paging animates (not NONE, duration above zero). */
+    val isAnimated: Boolean get() = effectiveMs > 0
+}
 
 data class LoadingOptions(
     /** Load the original (decoded at screen size) instead of Immich's preview thumbnail. */
