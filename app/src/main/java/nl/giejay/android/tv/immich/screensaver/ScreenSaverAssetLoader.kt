@@ -3,6 +3,7 @@ package nl.giejay.android.tv.immich.screensaver
 import androidx.annotation.StringRes
 import arrow.core.Either
 import arrow.core.getOrElse
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,6 +41,7 @@ import nl.giejay.mediaslider.util.LoadMore
 import nl.giejay.mediaslider.util.LoadMoreResult
 import timber.log.Timber
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 
 // internal so app/src/test can call it directly without instantiating ScreenSaverService
@@ -68,7 +70,9 @@ internal fun buildScreenSaverConfiguration(
     pages: List<SliderItemViewHolder>,
     loadMore: LoadMore?,
     scope: CoroutineScope,
-    favoriteService: FavoriteService
+    favoriteService: FavoriteService,
+    /** The slides are the stored queue of the previous run: the slideshow waits on the last of them for the first batch. */
+    holdOnLastPageUntilLoaded: Boolean = false
 ): MediaSliderConfiguration {
     val enabledPlugins = PreferenceManager.createEnabledSliderPlugins(scope, favoriteService)
     return MediaSliderConfiguration(
@@ -85,7 +89,10 @@ internal fun buildScreenSaverConfiguration(
         showDateTopLeft = PreferenceManager.get(SCREENSAVER_SHOW_DATE_TOP_LEFT),
         controllerPlugins = enabledPlugins.controllerPlugins,
         viewPlugins = enabledPlugins.viewPlugins,
-        keyEventPlugins = enabledPlugins.keyEventPlugins
+        keyEventPlugins = enabledPlugins.keyEventPlugins,
+        // Black until the photos of the first slide are all there, then a fade-in instead of photos popping in.
+        revealWhenLoaded = true,
+        holdOnLastPageUntilLoaded = holdOnLastPageUntilLoaded
     )
 }
 
@@ -100,7 +107,8 @@ class ScreenSaverAssetLoader(
     private val scope: CoroutineScope,
     private val apiClient: ApiClient,
     private val host: Host,
-    private val favoriteService: FavoriteService = FavoriteService()
+    private val favoriteService: FavoriteService = FavoriteService(),
+    private val recentPages: RecentScreenSaverPages = defaultRecentPages()
 ) {
     interface Host {
         /** Host resolves [messageRes] against its own Context and shows a toast. */
@@ -128,6 +136,14 @@ class ScreenSaverAssetLoader(
     private val loadedAssetIds = mutableSetOf<String>()
     private var partnerFinder = partnerFinder()
 
+    /** Every asset that went into a slide, so the shown and queued slides can be stored. */
+    private val assetsById = ConcurrentHashMap<String, Asset>()
+
+    /** The first fresh batch, when the slideshow already started with the stored queue (see [start]). */
+    private var freshBatch: CompletableDeferred<FreshBatch>? = null
+
+    private class FreshBatch(val pages: List<SliderItemViewHolder>, val loadMore: LoadMore?)
+
     private fun partnerFinder(albums: List<String> = emptyList(), people: List<UUID> = emptyList()) =
         PortraitPartnerFinder(
             source = ServerPartnerCandidateSource(apiClient, albums, people),
@@ -135,10 +151,77 @@ class ScreenSaverAssetLoader(
         )
 
     /** Slider pages for one batch, with partners looked up for portrait photos. */
-    private suspend fun toPages(assets: List<Asset>): List<SliderItemViewHolder> =
-        partnerFinder.group(assets, SlideshowSettings.sliderItems()).toSliderPages()
+    private suspend fun toPages(assets: List<Asset>): List<SliderItemViewHolder> {
+        val groups = partnerFinder.group(assets, SlideshowSettings.sliderItems())
+        groups.forEach { group -> group.forEach { assetsById[it.id] = it } }
+        return groups.toSliderPages()
+    }
+
+    /** Identifies the source of the slides, so the queue of another source is never shown. */
+    private fun queueSignature(): String = RecentScreenSaverPages.signature(
+        PreferenceManager.hostName,
+        PreferenceManager.get(SCREENSAVER_TYPE),
+        PreferenceManager.get(SCREENSAVER_ALBUMS).sorted(),
+        PreferenceManager.get(SCREENSAVER_PEOPLE).sorted(),
+        PreferenceManager.get(EXCLUDE_ASSETS_IN_ALBUM).sorted(),
+        PreferenceManager.get(SCREENSAVER_INCLUDE_VIDEOS)
+    )
+
+    /**
+     * [page] of [config] was shown: stores it together with the slides queued behind it, so the next run
+     * continues from here. Slides whose assets are not known (cannot happen in practice) are left out.
+     */
+    private fun recordShown(config: MediaSliderConfiguration, page: SliderItemViewHolder) {
+        val index = config.items.indexOfFirst { it === page }
+        if (index < 0) return
+        val queue = config.items.subList(index, minOf(config.items.size, index + 1 + RecentScreenSaverPages.UPCOMING))
+            .map { slide -> slide.ids().mapNotNull { assetsById[it] } to slide.ids().size }
+            .filter { (assets, expected) -> assets.size == expected }
+            .map { it.first }
+        recentPages.save(queueSignature(), queue)
+    }
+
+    /** [configuration] reports every shown slide to [recordShown]. */
+    private fun MediaSliderConfiguration.recordingShownSlides(): MediaSliderConfiguration = apply {
+        onAssetSelected = { page -> recordShown(this, page) }
+    }
+
+    /**
+     * The stored queue of the previous run (last shown slide first), to start with while the first batch
+     * loads. Only what the server may still show: assets tagged for exclusion are dropped (the excluded
+     * albums are not known yet).
+     */
+    private suspend fun recentSlides(): List<SliderItemViewHolder> {
+        val groups = recentPages.load(queueSignature())
+            .map { group -> filterExcludedAssets(group, emptySet()) }
+            .filter { it.isNotEmpty() }
+        groups.forEach { group -> group.forEach { assetsById[it.id] = it } }
+        return groups.toSliderPages()
+    }
 
     fun start(): Job = scope.launch(Dispatchers.IO) {
+        // Start with the stored queue of the previous run at once; the first batch then follows as "load more".
+        val recent = recentSlides()
+        if (recent.isNotEmpty()) {
+            val fresh = CompletableDeferred<FreshBatch>().also { freshBatch = it }
+            withContext(Dispatchers.Main) {
+                host.onScreenSaverConfigurationReady(
+                    buildScreenSaverConfiguration(
+                        recent, loadMoreAfterRecent(fresh), scope, favoriteService,
+                        holdOnLastPageUntilLoaded = true
+                    ).recordingShownSlides()
+                )
+            }
+        }
+        try {
+            loadAssets()
+        } finally {
+            // Whatever happened, the slideshow must not keep waiting on the last stored slide for a batch that will not come.
+            freshBatch?.complete(FreshBatch(emptyList(), null))
+        }
+    }
+
+    private suspend fun loadAssets() {
         val excludedAlbums = PreferenceManager.get(EXCLUDE_ASSETS_IN_ALBUM)
         if (excludedAlbums.isNotEmpty()) {
             excludedAssetIds = apiClient.listAssetsFromAlbum(excludedAlbums.toList(), pageCount = MAX_SEARCH_PAGE_SIZE)
@@ -181,6 +264,25 @@ class ScreenSaverAssetLoader(
             ScreenSaverType.RECENT -> apiClient.recentAssets(page, BATCH_SIZE, contentType = contentType)
             ScreenSaverType.SIMILAR_TIME_PERIOD -> apiClient.similarAssets(page, BATCH_SIZE, contentType = contentType)
             else -> apiClient.listAssets(page, BATCH_SIZE, true, contentType = contentType)
+        }
+    }
+
+    /**
+     * Load-more for a slideshow that started with stored slides: its first request delivers the first
+     * fresh batch (waiting for it to be loaded), later requests go to that batch's own load-more.
+     */
+    private fun loadMoreAfterRecent(fresh: CompletableDeferred<FreshBatch>): LoadMore {
+        var consumed = false
+        var followUp: LoadMore? = null
+        return suspend {
+            if (!consumed) {
+                val batch = fresh.await()
+                consumed = true
+                followUp = batch.loadMore
+                LoadMoreResult(batch.pages, batch.loadMore != null)
+            } else {
+                followUp?.invoke() ?: LoadMoreResult(emptyList(), false)
+            }
         }
     }
 
@@ -300,7 +402,13 @@ class ScreenSaverAssetLoader(
     private suspend fun setInitialAssets(assets: List<Asset>, loadMore: (suspend () -> LoadMoreResult)?) {
         // The slider drops repeats of later batches; the first one must not hold an asset twice either.
         val pages = toPages(assets.distinctBy { it.id })
-        withContext(Dispatchers.Main) { showInitialPages(pages, loadMore) }
+        val waiting = freshBatch
+        if (waiting != null) {
+            // Already showing the stored slides: the slider appends these when it asks for more.
+            waiting.complete(FreshBatch(pages, loadMore))
+        } else {
+            withContext(Dispatchers.Main) { showInitialPages(pages, loadMore) }
+        }
     }
 
     private fun showInitialPages(pages: List<SliderItemViewHolder>, loadMore: (suspend () -> LoadMoreResult)?) {
@@ -311,12 +419,19 @@ class ScreenSaverAssetLoader(
             }
         } else {
             host.onScreenSaverConfigurationReady(
-                buildScreenSaverConfiguration(pages, loadMore, scope, favoriteService)
+                buildScreenSaverConfiguration(pages, loadMore, scope, favoriteService).recordingShownSlides()
             )
         }
     }
 
     companion object {
+        private fun defaultRecentPages() = RecentScreenSaverPages(
+            read = { PreferenceManager.getString(RECENT_PAGES_KEY, "").ifEmpty { null } },
+            write = { PreferenceManager.sharedPreference.edit().putString(RECENT_PAGES_KEY, it).apply() }
+        )
+
+        private const val RECENT_PAGES_KEY = "screensaver_recent_pages"
+
         /**
          * Assets per request. Portrait partners are looked up per photo, so a batch no longer has to be
          * large to hold two photos of the same day; small batches start the screensaver sooner.
