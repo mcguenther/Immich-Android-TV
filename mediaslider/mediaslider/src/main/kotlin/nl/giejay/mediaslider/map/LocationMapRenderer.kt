@@ -21,8 +21,8 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Draws the slideshow location map: a country-level silhouette of the land (white, half transparent),
- * country borders, transparent water, soft edges that fade into the photo and a mark on the location.
+ * Draws the slideshow location map: a country-level silhouette of the land (white, dense around the location
+ * and fading out quickly, see [MapOpacityProfile]), country borders, transparent water and a mark on the location.
  *
  * The mark follows [MapLocation.precision]: a solid dot for GPS positions, and softer marks for estimates
  * (ring, dashed corridor with ring, soft cloud), so an estimate never looks like a measured position.
@@ -40,22 +40,14 @@ object LocationMapRenderer {
     const val ZOOM = 4
     private const val TILE_DP = 256
 
-    private const val LAND_LAYER_ALPHA = 0.5f
-    private const val BORDER_ALPHA = 0.45f
+    /** Land and border colours; the opacity comes from [MapOpacityProfile]. */
+    private const val LAND_COLOR = 0xFFFAFBFC.toInt()
+    private const val BORDER_COLOR = 0x66141E2D
     private const val BORDER_WIDTH_DP = 1f
-
-    /**
-     * Soft edge: the ellipse (radius [MASK_RADIUS] of width/height, centred on the dot) is opaque only up to
-     * [MASK_SOLID] of its radius, then eases out (1 - smoothstep) to fully transparent at the ellipse edge.
-     * The radius in y (0.44 * height) stays inside the distance to the top (0.45 * height) and bottom (0.55 * height);
-     * only the right side may be clipped by the bitmap edge (it coincides with the screen edge).
-     */
-    private const val MASK_RADIUS = 0.44f
-    private const val MASK_SOLID = 0.1f
-    private const val MASK_STOPS = 9
+    private const val OPACITY_STOPS = 32
 
     private const val DOT_RADIUS_DP = 4.5f
-    private const val DOT_RING_DP = 2f
+    private const val DOT_RING_DP = 2.5f
     private const val DOT_SHADOW_DP = 6f
 
     private const val RING_RADIUS_DP = 6f
@@ -95,13 +87,13 @@ object LocationMapRenderer {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        val layer = canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), (LAND_LAYER_ALPHA * 255).roundToInt())
+        val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
 
         val land = Path().apply { fillType = Path.FillType.EVEN_ODD }
         viewport.visibleShapes(data.land, data.landBounds, scale, 0.0, minStep).forEach { land.addPoints(it, close = true) }
         canvas.drawPath(land, Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
-            color = Color.WHITE
+            color = LAND_COLOR
         })
 
         val borderWidth = BORDER_WIDTH_DP * density
@@ -113,10 +105,10 @@ object LocationMapRenderer {
             strokeWidth = borderWidth
             strokeJoin = Paint.Join.ROUND
             strokeCap = Paint.Cap.ROUND
-            color = Color.argb((BORDER_ALPHA * 255).roundToInt(), 0, 0, 0)
+            color = BORDER_COLOR
         })
 
-        applySoftEdges(canvas, width, height)
+        applyOpacity(canvas, width, height, density)
         canvas.restoreToCount(layer)
 
         val x = ANCHOR_X * width
@@ -231,29 +223,19 @@ object LocationMapRenderer {
         })
     }
 
-    private fun applySoftEdges(canvas: Canvas, width: Int, height: Int) {
+    /**
+     * Multiplies the layer with [MapOpacityProfile]: a radial gradient centred on the dot, stretched to the
+     * map's aspect ratio. Land is drawn opaque first, so the result's alpha is the profile itself.
+     */
+    private fun applyOpacity(canvas: Canvas, width: Int, height: Int, density: Float) {
         val cx = ANCHOR_X * width
         val cy = ANCHOR_Y * height
-        val rx = MASK_RADIUS * width
-        val ry = MASK_RADIUS * height
-        // Stop 0 is the solid core; stops 1..MASK_STOPS-1 sample alpha = 1 - smoothstep(u) with u in 0..1
-        // between MASK_SOLID and 1, giving a long, smooth falloff.
-        val positions = FloatArray(MASK_STOPS + 1)
-        val colors = IntArray(MASK_STOPS + 1)
-        positions[0] = 0f
-        colors[0] = Color.BLACK
-        for (i in 0 until MASK_STOPS) {
-            val u = i / (MASK_STOPS - 1).toFloat()
-            positions[i + 1] = MASK_SOLID + (1f - MASK_SOLID) * u
-            val alpha = 1f - u * u * (3f - 2f * u)
-            colors[i + 1] = Color.argb((alpha * 255).roundToInt(), 0, 0, 0)
-        }
-        val gradient = RadialGradient(
-            cx, cy, rx,
-            colors,
-            positions,
-            Shader.TileMode.CLAMP
-        ).apply { setLocalMatrix(Matrix().apply { setScale(1f, ry / rx, cx, cy) }) }
+        val rx = MapOpacityProfile.REACH_DP * density
+        val ry = rx * height / width
+        val (positions, alphas) = MapOpacityProfile.stops(OPACITY_STOPS)
+        val colors = IntArray(OPACITY_STOPS) { Color.argb((alphas[it] * 255).roundToInt(), 0, 0, 0) }
+        val gradient = RadialGradient(cx, cy, rx, colors, positions, Shader.TileMode.CLAMP)
+            .apply { setLocalMatrix(Matrix().apply { setScale(1f, ry / rx, cx, cy) }) }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), Paint().apply {
             shader = gradient
             xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
@@ -263,7 +245,7 @@ object LocationMapRenderer {
     private fun drawDot(canvas: Canvas, x: Float, y: Float, density: Float) {
         val radius = DOT_RADIUS_DP * density
         canvas.drawCircle(x, y, radius + DOT_RING_DP * density, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(140, 0, 0, 0)
+            color = Color.argb(217, 0, 0, 0)
             setShadowLayer(DOT_SHADOW_DP * density, 0f, 0f, Color.argb(153, 0, 0, 0))
         })
         canvas.drawCircle(x, y, radius, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })

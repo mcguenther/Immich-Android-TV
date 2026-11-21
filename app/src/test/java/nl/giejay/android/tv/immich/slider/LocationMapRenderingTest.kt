@@ -21,7 +21,7 @@ import kotlin.math.roundToInt
 
 /**
  * Renders the slideshow location map with real Android graphics (Robolectric native mode)
- * and checks the silhouette style: white dot, half-transparent land, transparent water, soft edges.
+ * and checks the silhouette style: white dot, dense land near the location, transparent water, soft edges.
  *
  * Set LOCATION_MAP_PREVIEW_DIR to also write the rendered maps as PNG files for a visual check.
  */
@@ -67,14 +67,22 @@ class LocationMapRenderingTest {
     }
 
     @Test
-    fun `land is a half transparent white silhouette and water stays transparent`() {
-        val bitmap = render(mallorca, "mallorca-land-water")
+    fun `land is dense near the location and fully transparent far away`() {
+        val hallstatt = GeoLocation(47.562, 13.649)
+        val bitmap = render(hallstatt, "hallstatt-land")
 
-        val (lx, ly) = pixelOf(mallorca, GeoLocation(39.2, -0.8), bitmap) // inland Valencia region
-        val land = bitmap.getPixel(lx, ly)
-        assertTrue("land alpha ${Color.alpha(land)}", Color.alpha(land) in 70..150)
-        assertTrue("land is white", Color.red(land) > 240 && Color.green(land) > 240 && Color.blue(land) > 240)
+        val (nx, ny) = pixelOf(hallstatt, GeoLocation(48.3, 14.29), bitmap) // Linz, about 14 dp from the dot
+        val near = bitmap.getPixel(nx, ny)
+        assertTrue("near land alpha ${Color.alpha(near)}", Color.alpha(near) in 190..235)
+        assertTrue("land is white", Color.red(near) > 240 && Color.green(near) > 240 && Color.blue(near) > 240)
 
+        val (fx, fy) = pixelOf(hallstatt, GeoLocation(41.9, 12.5), bitmap) // Rome, about 110 dp south
+        assertEquals("far land alpha", 0, Color.alpha(bitmap.getPixel(fx, fy)))
+    }
+
+    @Test
+    fun `water stays transparent`() {
+        val bitmap = render(mallorca, "mallorca-water")
         val (wx, wy) = pixelOf(mallorca, GeoLocation(39.0, 5.5), bitmap) // open sea east of Mallorca
         assertEquals("water alpha", 0, Color.alpha(bitmap.getPixel(wx, wy)))
     }
