@@ -4,26 +4,63 @@
     android:layout_height="match_parent"
     android:background="@color/blackDark">
 
+    <!-- Slot widths and the gap between them are set in code (see FitCalculator.slotWidth). -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:gravity="center_horizontal"
         android:orientation="horizontal">
 
-        <nl.giejay.mediaslider.view.TouchImageView
-            android:id="@+id/left_image"
+        <FrameLayout
+            android:id="@+id/slot_left"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:scaleType="centerInside"
-            android:src="@drawable/images" />
+            android:background="@color/blackDark"
+            android:clipChildren="true">
+            <ImageView
+                android:id="@+id/edge_left"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+            <nl.giejay.mediaslider.view.TouchImageView
+                android:id="@+id/left_image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:scaleType="fitCenter" />
+        </FrameLayout>
 
-        <nl.giejay.mediaslider.view.TouchImageView
-            android:id="@+id/right_image"
+        <View
+            android:id="@+id/pair_gap"
+            android:layout_width="0dp"
+            android:layout_height="match_parent" />
+
+        <FrameLayout
+            android:id="@+id/slot_right"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:scaleType="centerInside"
-            android:src="@drawable/images" />
+            android:background="@color/blackDark"
+            android:clipChildren="true">
+            <ImageView
+                android:id="@+id/edge_right"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+            <nl.giejay.mediaslider.view.TouchImageView
+                android:id="@+id/right_image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:scaleType="fitCenter" />
+        </FrameLayout>
 
     </LinearLayout>
 

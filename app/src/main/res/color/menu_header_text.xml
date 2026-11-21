@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Left home menu: focused entry = dark text on white pill, current page = full white, others dimmed. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:color="@color/screen_black" />
+    <item android:state_activated="true" android:color="@color/screen_white" />
+    <item android:color="@color/screen_white_60" />
+</selector>

@@ -21,21 +21,13 @@ import nl.giejay.android.tv.immich.home.HomeFragmentDirections
 import nl.giejay.android.tv.immich.homescreenchannels.ChannelDeepLinks
 import nl.giejay.android.tv.immich.homescreenchannels.DeepLinkTarget
 import nl.giejay.android.tv.immich.shared.prefs.MetaDataScreen
+import nl.giejay.android.tv.immich.shared.prefs.SlideshowSettings
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
-import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_ANIMATE_ASSET_SLIDE
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ANIMATION_SPEED
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_GLIDE_TRANSFORMATION
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_INTERVAL
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MAX_CUT_OFF_HEIGHT
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_MAX_CUT_OFF_WIDTH
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ONLY_USE_THUMBNAILS
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_PAN_EFFECT
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_DATE_TOP_LEFT
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_LOCATION_MAP
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_EFFECT
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_ZOOM_SCROLL_PANORAMAS
 import nl.giejay.android.tv.immich.shared.util.toSliderItem
 import nl.giejay.android.tv.immich.shared.viewmodel.KeyEventsViewModel
 import nl.giejay.android.tv.immich.slider.ImmichMediaSliderArgs
@@ -139,20 +131,16 @@ class MainActivity : FragmentActivity() {
             val config = MediaSliderConfiguration(
                 startPosition = 0,
                 interval = PreferenceManager.get(SLIDER_INTERVAL),
-                isOnlyUseThumbnails = PreferenceManager.get(SLIDER_ONLY_USE_THUMBNAILS),
                 isVideoSoundEnable = true,
                 items = listOf(SliderItemViewHolder(asset.toSliderItem())),
                 loadMore = null,
-                animationSpeedMillis = PreferenceManager.get(SLIDER_ANIMATION_SPEED),
-                maxCutOffHeight = PreferenceManager.get(SLIDER_MAX_CUT_OFF_HEIGHT),
-                maxCutOffWidth = PreferenceManager.get(SLIDER_MAX_CUT_OFF_WIDTH),
-                glideTransformation = PreferenceManager.get(SLIDER_GLIDE_TRANSFORMATION),
                 gradiantOverlay = false,
-                enableSlideAnimation = PreferenceManager.get(SCREENSAVER_ANIMATE_ASSET_SLIDE),
                 metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.VIEWER),
-                zoomAndScrollPanorama = PreferenceManager.get(SLIDER_ZOOM_SCROLL_PANORAMAS),
-                zoomEffectPercent = PreferenceManager.get(SLIDER_ZOOM_EFFECT),
-                panEffectPercent = PreferenceManager.get(SLIDER_PAN_EFFECT),
+                display = SlideshowSettings.display(),
+                motion = SlideshowSettings.motion(),
+                transition = SlideshowSettings.transition(),
+                loading = SlideshowSettings.loading(),
+                videoPlayback = SlideshowSettings.videoPlayback(),
                 useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
                 dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
                 showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT),

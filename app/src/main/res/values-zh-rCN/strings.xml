@@ -196,11 +196,6 @@
     <string name="excluded_albums_desc">在随机/往年同期视图中排除指定相册内的媒体项</string>
 
     <!-- Preference screens and categories -->
-    <string name="view_settings">视图设置</string>
-    <string name="display">显示</string>
-    <string name="display_desc">更改媒体的显示方式</string>
-    <string name="effects">效果</string>
-    <string name="effects_desc">缩放、平移和裁剪效果</string>
     <string name="content">内容</string>
     <string name="content_desc">配置要显示的内容</string>
     <string name="general">通用</string>
@@ -271,22 +266,13 @@
     <string name="order_least_updated">最久未更新</string>
 
     <!-- Interval titles -->
-    <string name="interval_1_second">1 秒</string>
-    <string name="interval_2_seconds">2 秒</string>
-    <string name="interval_3_seconds">3 秒</string>
-    <string name="interval_4_seconds">4 秒</string>
-    <string name="interval_5_seconds">5 秒</string>
-    <string name="interval_6_seconds">6 秒</string>
-    <string name="interval_7_seconds">7 秒</string>
-    <string name="interval_8_seconds">8 秒</string>
-    <string name="interval_9_seconds">9 秒</string>
-    <string name="interval_10_seconds">10 秒</string>
-    <string name="interval_20_seconds">20 秒</string>
-    <string name="interval_30_seconds">30 秒</string>
-    <string name="interval_1_minute">1 分钟</string>
-    <string name="interval_3_minutes">3 分钟</string>
-    <string name="interval_5_minutes">5 分钟</string>
-    <string name="interval_10_minutes">10 分钟</string>
+    <plurals name="interval_seconds">
+        <item quantity="other">%d 秒</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="other">%d 分钟</item>
+    </plurals>
+    <string name="interval_minutes_seconds">%1$d 分 %2$d 秒</string>
 
     <!-- Content type filter -->
     <string name="content_type_all">全部</string>

@@ -23,7 +23,7 @@ import nl.giejay.android.tv.immich.homescreenchannels.HomeScreenChannelManager
 import nl.giejay.android.tv.immich.people.PeopleFragmentDirections
 import nl.giejay.android.tv.immich.screensaver.ScreenSaverType
 import nl.giejay.android.tv.immich.security.ApiKeyCipher
-import nl.giejay.mediaslider.transformations.GlideTransformations
+import nl.giejay.mediaslider.config.MotionOptions
 import java.util.Collections.emptySet
 
 // general
@@ -130,11 +130,9 @@ private fun intentAvailable(intent: Intent, context: Context): Boolean {
     return infos.isNotEmpty()
 }
 
-data object SCREENSAVER_INTERVAL : IntListPref(3,
-    ImmichApplication.appContext!!.getString(R.string.interval),
-    ImmichApplication.appContext!!.getString(R.string.screensaver_interval_desc),
-    R.array.interval_titles,
-    R.array.interval_values)
+data object SCREENSAVER_INTERVAL : IntervalPref(10,
+    ImmichApplication.appContext!!.getString(R.string.interval_screensaver),
+    ImmichApplication.appContext!!.getString(R.string.screensaver_interval_desc))
 
 data object SCREENSAVER_SHOW_DESCRIPTION : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_description),
@@ -160,10 +158,6 @@ data object SCREENSAVER_SHOW_CLOCK : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_clock),
     ImmichApplication.appContext!!.getString(R.string.show_clock_screensaver))
 
-data object SCREENSAVER_ANIMATE_ASSET_SLIDE : BooleanPref(true,
-    ImmichApplication.appContext!!.getString(R.string.slide_new_asset_in),
-    ImmichApplication.appContext!!.getString(R.string.slide_new_asset_in_desc))
-
 data object SCREENSAVER_ALBUMS : StringSetPref(mutableSetOf(),
     ImmichApplication.appContext!!.getString(R.string.set_albums_screensaver),
     ImmichApplication.appContext!!.getString(R.string.set_albums_screensaver_desc)) {
@@ -172,7 +166,7 @@ data object SCREENSAVER_ALBUMS : StringSetPref(mutableSetOf(),
             AlbumFragmentDirections.actionGlobalAlbumFragment(
                 true,
                 SelectionType.SET_SCREENSAVER.toString(),
-                "screensaver"
+                "screensaver_content"
             )
         )
         return true
@@ -187,7 +181,7 @@ data object SCREENSAVER_PEOPLE : StringSetPref(mutableSetOf(),
             PeopleFragmentDirections.actionGlobalPeopleFragment(
                 true,
                 SelectionType.SET_SCREENSAVER.toString(),
-                "screensaver"
+                "screensaver_content"
             )
         )
         return true
@@ -252,17 +246,9 @@ data object CHANNEL_REFRESH_NOW : ActionPref(null, ImmichApplication.appContext!
     })
 
 // slider/viewer
-data object SLIDER_INTERVAL : IntListPref(6,
+data object SLIDER_INTERVAL : IntervalPref(6,
     ImmichApplication.appContext!!.getString(R.string.interval_slideshow),
-    ImmichApplication.appContext!!.getString(R.string.interval_slideshow_desc),
-    R.array.interval_titles,
-    R.array.interval_values)
-
-data object SLIDER_ANIMATION_SPEED : IntListPref(0,
-    ImmichApplication.appContext!!.getString(R.string.slide_animation_speed_ms),
-    ImmichApplication.appContext!!.getString(R.string.slide_animation_speed_desc),
-    R.array.animation_speed_ms,
-    R.array.animation_speed_ms)
+    ImmichApplication.appContext!!.getString(R.string.interval_slideshow_desc))
 
 data object SLIDER_SHOW_DESCRIPTION : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_description_slideshow),
@@ -310,43 +296,141 @@ data object SLIDER_METADATA_CUSTOMIZER : ActionPref(null, ImmichApplication.appC
         true
     })
 
-data object SLIDER_ONLY_USE_THUMBNAILS : BooleanPref(true,
-    ImmichApplication.appContext!!.getString(R.string.use_hd_thumbnails),
-    ImmichApplication.appContext!!.getString(R.string.use_hd_thumbnails_text))
+// slideshow: display (shared by viewer slideshow and screensaver)
+private fun str(res: Int) = ImmichApplication.appContext!!.getString(res)
 
-data object SLIDER_MERGE_PORTRAIT_PHOTOS : BooleanPref(true,
-    ImmichApplication.appContext!!.getString(R.string.merge_portrait_photos),
-    ImmichApplication.appContext!!.getString(R.string.merge_portrait_photos_desc))
-
-data object SLIDER_MAX_CUT_OFF_WIDTH : IntSeekbarPref(20,
-    ImmichApplication.appContext!!.getString(R.string.safe_center_crop_max_cutoff_height),
-    ImmichApplication.appContext!!.getString(R.string.safe_center_crop_max_cutoff_height_desc))
-
-data object SLIDER_MAX_CUT_OFF_HEIGHT : IntSeekbarPref(20,
-    ImmichApplication.appContext!!.getString(R.string.safe_center_crop_max_cutoff_width),
-    ImmichApplication.appContext!!.getString(R.string.safe_center_crop_max_cutoff_width_desc))
-
-data object SLIDER_GLIDE_TRANSFORMATION : EnumPref<GlideTransformations>(GlideTransformations.CENTER_INSIDE,
-    ImmichApplication.appContext!!.getString(R.string.photo_transformation),
-    ImmichApplication.appContext!!.getString(R.string.photo_transformation_desc),
-    R.array.glide_transformation_labels,
-    R.array.glide_transformation_keys) {
-    override fun fromPrefValue(prefValue: String): GlideTransformations {
-        return GlideTransformations.valueOfSafe(prefValue, defaultValue)
-    }
+data object SLIDESHOW_FILL_MODE : EnumByTitlePref<SlideshowFillMode>(SlideshowFillMode.FILL,
+    str(R.string.slideshow_fill_mode), str(R.string.slideshow_fill_mode_desc)) {
+    override fun key() = "slideshow_fill_mode"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = SlideshowFillMode.entries.toTypedArray()
 }
 
-data object SLIDER_ZOOM_SCROLL_PANORAMAS : BooleanPref(false,
-    ImmichApplication.appContext!!.getString(R.string.zoom_scroll_panoramas),
-    ImmichApplication.appContext!!.getString(R.string.zoom_scroll_panoramas_desc))
+data object SLIDESHOW_MAX_CROP : IntListPref(30,
+    str(R.string.slideshow_max_crop), str(R.string.slideshow_max_crop_desc),
+    R.array.slideshow_max_crop_titles, R.array.slideshow_max_crop_values) {
+    override fun key() = "slideshow_max_crop"
+}
 
-data object SLIDER_ZOOM_EFFECT : IntSeekbarPref(50,
-    ImmichApplication.appContext!!.getString(R.string.zoom_effect_percent),
-    ImmichApplication.appContext!!.getString(R.string.zoom_effect_percent_desc))
+data object SLIDESHOW_FILL_VIDEOS : BooleanPref(true,
+    str(R.string.slideshow_fill_videos), str(R.string.slideshow_fill_videos_desc)) {
+    override fun key() = "slideshow_fill_videos"
+}
 
-data object SLIDER_PAN_EFFECT : IntSeekbarPref(50,
-    ImmichApplication.appContext!!.getString(R.string.pan_effect_percent),
-    ImmichApplication.appContext!!.getString(R.string.pan_effect_percent_desc))
+data object SLIDESHOW_EDGE_FILL : EnumByTitlePref<SlideshowEdgeFill>(SlideshowEdgeFill.BLUR,
+    str(R.string.slideshow_edge_fill), str(R.string.slideshow_edge_fill_desc)) {
+    override fun key() = "slideshow_edge_fill"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = SlideshowEdgeFill.entries.toTypedArray()
+}
+
+// slideshow: motion
+data object SLIDESHOW_MOTION_ENABLED : BooleanPref(true,
+    str(R.string.slideshow_motion_enabled), str(R.string.slideshow_motion_enabled_desc)) {
+    override fun key() = "slideshow_motion_enabled"
+}
+
+data object SLIDESHOW_MOTION_ZOOM : IntSeekbarPref(5,
+    str(R.string.slideshow_motion_zoom), str(R.string.slideshow_motion_zoom_desc),
+    min = 0, max = MotionOptions.MAX_ZOOM_PERCENT) {
+    override fun key() = "slideshow_motion_zoom"
+}
+
+data object SLIDESHOW_MOTION_PAN : IntSeekbarPref(3,
+    str(R.string.slideshow_motion_pan), str(R.string.slideshow_motion_pan_desc),
+    min = 0, max = MotionOptions.MAX_PAN_PERCENT) {
+    override fun key() = "slideshow_motion_pan"
+}
+
+data object SLIDESHOW_MOTION_STYLE : EnumByTitlePref<SlideshowMotionStyle>(SlideshowMotionStyle.MIXED,
+    str(R.string.slideshow_motion_style), str(R.string.slideshow_motion_style_desc)) {
+    override fun key() = "slideshow_motion_style"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = SlideshowMotionStyle.entries.toTypedArray()
+}
+
+data object SLIDESHOW_PANORAMA_SCROLL : BooleanPref(true,
+    str(R.string.slideshow_panorama_scroll), str(R.string.slideshow_panorama_scroll_desc)) {
+    override fun key() = "slideshow_panorama_scroll"
+}
+
+// slideshow: portrait pairs
+data object SLIDESHOW_PORTRAIT_PAIRING : EnumByTitlePref<PortraitPairing>(PortraitPairing.SAME_DAY,
+    str(R.string.slideshow_pairing), str(R.string.slideshow_pairing_desc)) {
+    override fun key() = "slideshow_portrait_pairing"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = PortraitPairing.entries.toTypedArray()
+}
+
+data object SLIDESHOW_SHOW_PORTRAIT_VIDEOS : BooleanPref(true,
+    str(R.string.slideshow_show_portrait_videos), str(R.string.slideshow_show_portrait_videos_desc)) {
+    override fun key() = "slideshow_show_portrait_videos"
+}
+
+// slideshow: timing
+data object SLIDESHOW_TRANSITION : EnumByTitlePref<SlideshowTransition>(SlideshowTransition.CROSSFADE,
+    str(R.string.slideshow_transition), str(R.string.slideshow_transition_desc)) {
+    override fun key() = "slideshow_transition"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = SlideshowTransition.entries.toTypedArray()
+}
+
+data object SLIDESHOW_TRANSITION_DURATION : IntListPref(1000,
+    str(R.string.slideshow_transition_duration), str(R.string.slideshow_transition_duration_desc),
+    R.array.slideshow_transition_duration_titles, R.array.slideshow_transition_duration_values) {
+    override fun key() = "slideshow_transition_duration"
+}
+
+data object SLIDESHOW_VIDEO_CLIP_LENGTH : IntListPref(-1,
+    str(R.string.slideshow_video_clip_length), str(R.string.slideshow_video_clip_length_desc),
+    R.array.slideshow_video_clip_length_titles, R.array.slideshow_video_clip_length_values) {
+    override fun key() = "slideshow_video_clip_length"
+}
+
+data object SLIDESHOW_VIDEO_CLIP_POSITION : EnumByTitlePref<VideoClipPosition>(VideoClipPosition.START,
+    str(R.string.slideshow_video_clip_position), str(R.string.slideshow_video_clip_position_desc)) {
+    override fun key() = "slideshow_video_clip_position"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = VideoClipPosition.entries.toTypedArray()
+}
+
+data object SLIDESHOW_VIDEO_TRIM_END : IntListPref(1,
+    str(R.string.slideshow_video_trim_end), str(R.string.slideshow_video_trim_end_desc),
+    R.array.slideshow_video_trim_end_titles, R.array.slideshow_video_trim_end_values) {
+    override fun key() = "slideshow_video_trim_end"
+}
+
+data object SLIDESHOW_VIDEO_CINEMA_FPS : EnumByTitlePref<CinemaFrameRateOption>(CinemaFrameRateOption.OFF,
+    str(R.string.slideshow_video_cinema_fps), str(R.string.slideshow_video_cinema_fps_desc)) {
+    override fun key() = "slideshow_video_cinema_fps"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = CinemaFrameRateOption.entries.toTypedArray()
+}
+
+data object SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED : BooleanPref(true,
+    str(R.string.slideshow_video_cinema_only_muted), str(R.string.slideshow_video_cinema_only_muted_desc)) {
+    override fun key() = "slideshow_video_cinema_only_muted"
+}
+
+// slideshow: quality & loading
+data object SLIDESHOW_IMAGE_SOURCE : EnumByTitlePref<SlideshowImageSource>(SlideshowImageSource.FULL_RESOLUTION,
+    str(R.string.slideshow_image_source), str(R.string.slideshow_image_source_desc)) {
+    override fun key() = "slideshow_image_source"
+    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
+    override fun getEnumEntries() = SlideshowImageSource.entries.toTypedArray()
+}
+
+data object SLIDESHOW_PREFETCH_COUNT : IntListPref(3,
+    str(R.string.slideshow_prefetch), str(R.string.slideshow_prefetch_desc),
+    R.array.slideshow_prefetch_titles, R.array.slideshow_prefetch_values) {
+    override fun key() = "slideshow_prefetch_count"
+}
+
+data object SLIDESHOW_VIDEO_CACHE_MB : IntListPref(500,
+    str(R.string.slideshow_video_cache), str(R.string.slideshow_video_cache_desc),
+    R.array.slideshow_video_cache_titles, R.array.slideshow_video_cache_values) {
+    override fun key() = "slideshow_video_cache_mb"
+}
 
 data object SLIDER_FORCE_ORIGINAL_VIDEO : BooleanPref(false,
     ImmichApplication.appContext!!.getString(R.string.force_original_video),
@@ -409,7 +493,7 @@ data class PHOTOS_SORTING_FOR_SPECIFIC_ALBUM(val albumId: String, val albumName:
 
     override fun createPreference(context: Context): ListPreference {
         val createPref = super.createPreference(context)
-        createPref.summary = PreferenceManager.get(this).getTitle()
+        createPref.summary = listSummary(PreferenceManager.get(this).getTitle())
         return createPref
     }
 }
@@ -432,7 +516,7 @@ data class FILTER_CONTENT_TYPE_FOR_SPECIFIC_ALBUM(val albumId: String, val album
 
     override fun createPreference(context: Context): ListPreference {
         val createPref = super.createPreference(context)
-        createPref.summary = PreferenceManager.get(this).getTitle()
+        createPref.summary = listSummary(PreferenceManager.get(this).getTitle())
         return createPref
     }
 }
@@ -455,7 +539,7 @@ object FILTER_CONTENT_TYPE : EnumByTitlePref<ContentType>(ContentType.ALL,
 
     override fun createPreference(context: Context): ListPreference {
         val createPref = super.createPreference(context)
-        createPref.summary = PreferenceManager.get(this).getTitle()
+        createPref.summary = listSummary(PreferenceManager.get(this).getTitle())
         return createPref
     }
 }
@@ -552,48 +636,118 @@ data object EXCLUDE_ASSETS_IN_ALBUM : StringSetPref(emptySet(),
 }
 
 // Building the view
-data object ViewSlideshowDisplayPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.display), "view_slideshow_display",
+/** Opens the settings screen with the given [screenKey]. */
+private fun settingsLink(screenKey: String, title: String, summary: String) =
+    ActionPref(screenKey, title, summary) { _, navController ->
+        navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog(screenKey))
+        true
+    }
+
+data object SlideshowDisplayPrefScreen : PrefScreen(str(R.string.slideshow_display), "slideshow_display",
     listOf(
         PrefCategory("", listOf(
-            SLIDER_ONLY_USE_THUMBNAILS,
+            SLIDESHOW_FILL_MODE,
+            SLIDESHOW_MAX_CROP,
+            SLIDESHOW_EDGE_FILL
+        ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_MAX_CROP to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL }
+    )
+)
+
+data object SlideshowMotionPrefScreen : PrefScreen(str(R.string.slideshow_motion), "slideshow_motion",
+    listOf(
+        PrefCategory("", listOf(
+            SLIDESHOW_MOTION_ENABLED,
+            SLIDESHOW_MOTION_ZOOM,
+            SLIDESHOW_MOTION_PAN,
+            SLIDESHOW_MOTION_STYLE,
+            SLIDESHOW_PANORAMA_SCROLL
+        ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_MOTION_ZOOM to { prefs -> SLIDESHOW_MOTION_ENABLED.getValue(prefs) },
+        SLIDESHOW_MOTION_PAN to { prefs -> SLIDESHOW_MOTION_ENABLED.getValue(prefs) },
+        SLIDESHOW_MOTION_STYLE to { prefs -> SLIDESHOW_MOTION_ENABLED.getValue(prefs) }
+    )
+)
+
+data object SlideshowPairsPrefScreen : PrefScreen(str(R.string.slideshow_pairs), "slideshow_pairs",
+    listOf(
+        PrefCategory("", listOf(
+            SLIDESHOW_PORTRAIT_PAIRING
+        ))
+    )
+)
+
+data object SlideshowVideosPrefScreen : PrefScreen(str(R.string.slideshow_videos), "slideshow_videos",
+    listOf(
+        PrefCategory("", listOf(
+            SLIDESHOW_VIDEO_CLIP_LENGTH,
+            SLIDESHOW_VIDEO_CLIP_POSITION,
+            SLIDESHOW_VIDEO_TRIM_END,
+            SLIDESHOW_VIDEO_CINEMA_FPS,
+            SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED,
+            SLIDESHOW_SHOW_PORTRAIT_VIDEOS,
+            SLIDESHOW_FILL_VIDEOS,
             SLIDER_FORCE_ORIGINAL_VIDEO,
             SLIDER_DPAD_SEEK_IN_VIDEO,
-            SLIDER_LOAD_EDITED_PHOTO,
-            SLIDER_MERGE_PORTRAIT_PHOTOS,
-            SLIDER_GLIDE_TRANSFORMATION
+            SLIDESHOW_VIDEO_CACHE_MB
         ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_VIDEO_CLIP_POSITION to { prefs -> SLIDESHOW_VIDEO_CLIP_LENGTH.getValue(prefs) != 0 },
+        SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED to { prefs -> SLIDESHOW_VIDEO_CINEMA_FPS.getValue(prefs) != CinemaFrameRateOption.OFF },
+        SLIDESHOW_FILL_VIDEOS to { prefs -> SLIDESHOW_FILL_MODE.getValue(prefs) == SlideshowFillMode.FILL }
     )
 )
 
-data object ViewSlideshowEffectsPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.effects), "view_slideshow_effects",
+data object SlideshowTimingPrefScreen : PrefScreen(str(R.string.slideshow_timing), "slideshow_timing",
     listOf(
         PrefCategory("", listOf(
-            SLIDER_ZOOM_SCROLL_PANORAMAS,
-            SLIDER_ZOOM_EFFECT,
-            SLIDER_PAN_EFFECT,
-            SLIDER_MAX_CUT_OFF_WIDTH,
-            SLIDER_MAX_CUT_OFF_HEIGHT
-        ))
-    )
-)
-
-data object ViewSlideshowPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.slideshow), "view_slideshow",
-    listOf(
-        PrefCategory("", listOf(
-            ActionPref("view_slideshow_display", ImmichApplication.appContext!!.getString(R.string.display), ImmichApplication.appContext!!.getString(R.string.display_desc)) { _, navController ->
-                navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_slideshow_display"))
-                true
-            },
-            ActionPref("view_slideshow_effects", ImmichApplication.appContext!!.getString(R.string.effects), ImmichApplication.appContext!!.getString(R.string.effects_desc)) { _, navController ->
-                navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_slideshow_effects"))
-                true
-            },
             SLIDER_INTERVAL,
-            SLIDER_ANIMATION_SPEED,
+            SLIDESHOW_TRANSITION,
+            SLIDESHOW_TRANSITION_DURATION
+        ))
+    ),
+    visibility = mapOf(
+        SLIDESHOW_TRANSITION_DURATION to { prefs -> SLIDESHOW_TRANSITION.getValue(prefs) != SlideshowTransition.NONE }
+    )
+)
+
+data object SlideshowOverlaysPrefScreen : PrefScreen(str(R.string.slideshow_overlays), "slideshow_overlays",
+    listOf(
+        PrefCategory("", listOf(
             SLIDER_SHOW_DATE_TOP_LEFT,
             SLIDER_SHOW_LOCATION_MAP,
             COUNTRY_NAME_LANGUAGE,
             SLIDER_METADATA_CUSTOMIZER
+        ))
+    )
+)
+
+data object SlideshowQualityPrefScreen : PrefScreen(str(R.string.slideshow_quality), "slideshow_quality",
+    listOf(
+        PrefCategory("", listOf(
+            SLIDESHOW_IMAGE_SOURCE,
+            SLIDESHOW_PREFETCH_COUNT,
+            SLIDER_LOAD_EDITED_PHOTO
+        ))
+    )
+)
+
+/** Slideshow settings, shared by the viewer slideshow and the screensaver. */
+data object SlideshowPrefScreen : PrefScreen(str(R.string.slideshow), "slideshow",
+    listOf(
+        PrefCategory("", listOf(
+            settingsLink("slideshow_display", str(R.string.slideshow_display), str(R.string.slideshow_display_desc)),
+            settingsLink("slideshow_motion", str(R.string.slideshow_motion), str(R.string.slideshow_motion_desc)),
+            settingsLink("slideshow_pairs", str(R.string.slideshow_pairs), str(R.string.slideshow_pairs_desc)),
+            settingsLink("slideshow_videos", str(R.string.slideshow_videos), str(R.string.slideshow_videos_desc)),
+            settingsLink("slideshow_timing", str(R.string.slideshow_timing), str(R.string.slideshow_timing_desc)),
+            settingsLink("slideshow_overlays", str(R.string.slideshow_overlays), str(R.string.slideshow_overlays_desc)),
+            settingsLink("slideshow_quality", str(R.string.slideshow_quality), str(R.string.slideshow_quality_desc))
         ))
     )
 )
@@ -618,7 +772,7 @@ data object ViewGeneralPrefScreen : PrefScreen(ImmichApplication.appContext!!.ge
     )
 )
 
-data object ViewPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.view_settings), "view",
+data object ViewPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.browse_settings), "view",
     listOf(
         PrefCategory("",
             listOf(
@@ -628,10 +782,6 @@ data object ViewPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString
                 },
                 ActionPref("view_ordering", ImmichApplication.appContext!!.getString(R.string.ordering), ImmichApplication.appContext!!.getString(R.string.ordering)) { _, navController ->
                     navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_ordering"))
-                    true
-                },
-                ActionPref("view_slideshow", ImmichApplication.appContext!!.getString(R.string.slideshow), ImmichApplication.appContext!!.getString(R.string.slideshow)) { _, navController ->
-                    navController.navigate(AlbumFragmentDirections.actionGlobalToSettingsDialog("view_slideshow"))
                     true
                 },
                 ActionPref("view_content", ImmichApplication.appContext!!.getString(R.string.content), ImmichApplication.appContext!!.getString(R.string.content_desc)) { _, navController ->
@@ -654,23 +804,48 @@ data object ViewOrderingPrefScreen : PrefScreen(ImmichApplication.appContext!!.g
     )
 )
 
-data object ScreensaverPrefScreen : PrefScreen(ImmichApplication.appContext!!.getString(R.string.screensaver_settings), "screensaver",
+data object ScreensaverContentPrefScreen : PrefScreen(str(R.string.screensaver_content), "screensaver_content",
+    listOf(
+        PrefCategory("", listOf(
+            SCREENSAVER_TYPE,
+            SCREENSAVER_ALBUMS,
+            SCREENSAVER_PEOPLE,
+            SCREENSAVER_INCLUDE_VIDEOS
+        ))
+    )
+)
+
+data object ScreensaverTimingPrefScreen : PrefScreen(str(R.string.slideshow_timing), "screensaver_timing",
+    listOf(
+        PrefCategory("", listOf(
+            SCREENSAVER_INTERVAL,
+            SCREENSAVER_PLAY_SOUND
+        ))
+    )
+)
+
+data object ScreensaverOverlaysPrefScreen : PrefScreen(str(R.string.slideshow_overlays), "screensaver_overlays",
+    listOf(
+        PrefCategory("", listOf(
+            SCREENSAVER_SHOW_DATE_TOP_LEFT,
+            SCREENSAVER_SHOW_LOCATION_MAP,
+            COUNTRY_NAME_LANGUAGE,
+            SCREENSAVER_METADATA_CUSTOMIZER
+        ))
+    )
+)
+
+data object ScreensaverPrefScreen : PrefScreen(str(R.string.screensaver_settings), "screensaver",
     listOf(
         PrefCategory("",
             listOf(
                 SCREENSAVER_START_NOW,
                 SCREENSAVER_SET,
-                SCREENSAVER_INTERVAL,
-                SCREENSAVER_TYPE,
-                SCREENSAVER_ALBUMS,
-                SCREENSAVER_PEOPLE,
-                SCREENSAVER_SHOW_DATE_TOP_LEFT,
-                SCREENSAVER_SHOW_LOCATION_MAP,
-                COUNTRY_NAME_LANGUAGE,
-                SCREENSAVER_METADATA_CUSTOMIZER,
-                SCREENSAVER_INCLUDE_VIDEOS,
-                SCREENSAVER_PLAY_SOUND,
-                SCREENSAVER_ANIMATE_ASSET_SLIDE)
+                settingsLink("screensaver_content", str(R.string.screensaver_content), str(R.string.screensaver_content_desc)),
+                settingsLink("screensaver_timing", str(R.string.slideshow_timing), str(R.string.screensaver_timing_desc)),
+                settingsLink("screensaver_overlays", str(R.string.slideshow_overlays), str(R.string.slideshow_overlays_desc)),
+                settingsLink("slideshow", str(R.string.screensaver_appearance_link), str(R.string.screensaver_appearance_link_desc))
+            )
         )
     )
 )

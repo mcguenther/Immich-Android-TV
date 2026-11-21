@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Left home menu entry background: white pill when focused, subtle fill + accent bar for the current page. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="22dp" />
+            <solid android:color="@color/screen_white" />
+        </shape>
+    </item>
+    <item android:state_activated="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="22dp" />
+                    <solid android:color="@color/screen_white_10" />
+                </shape>
+            </item>
+            <item android:gravity="start|center_vertical" android:left="6dp" android:width="4dp" android:height="22dp">
+                <shape android:shape="rectangle">
+                    <corners android:radius="2dp" />
+                    <solid android:color="@color/timeline_scrubber_accent" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="22dp" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+</selector>

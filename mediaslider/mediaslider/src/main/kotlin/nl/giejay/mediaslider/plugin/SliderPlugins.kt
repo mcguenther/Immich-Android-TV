@@ -12,7 +12,6 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.zeuskartik.mediaslider.R
 import kotlinx.coroutines.CoroutineScope
-import nl.giejay.mediaslider.adapter.MetaDataAdapter
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
@@ -77,7 +76,17 @@ interface SliderViewPlugin<T> {
     ) {
     }
 
+    /**
+     * Fires when a slide change STARTS (the pager's current item is already the new slide, the transition
+     * is still running). Overlays that show slide-dependent content cross-fade it from here.
+     */
     fun onPageSelected(context: SliderViewPluginContext, sliderItemIndex: Int, state: T?) {}
+
+    /**
+     * The change announced by [onPageSelected] was a hard cut (no animated scroll followed, e.g. a wrap-around
+     * jump), so any running cross-fade should end at once. [onPageSettled] follows right after.
+     */
+    fun onTransitionSkipped(context: SliderViewPluginContext, state: T?) {}
     fun onDestroy(context: SliderViewPluginContext, state: T?) {}
 }
 
@@ -132,9 +141,3 @@ interface SliderControllerPlugin {
     fun onSlideShowStopped(controller: MediaSliderController, handler: Handler) {}
     fun onDestroy(controller: MediaSliderController) {}
 }
-
-data class MetadataRenderState(
-    val leftAdapter: MetaDataAdapter,
-    val rightAdapter: MetaDataAdapter
-)
-

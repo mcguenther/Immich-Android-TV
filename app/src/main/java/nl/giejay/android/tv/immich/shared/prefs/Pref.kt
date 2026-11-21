@@ -12,7 +12,24 @@ import androidx.preference.SeekBarPreference
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager.sharedPreference
 
 
-sealed class PrefScreen(val title: String, val key: String, val children: List<PrefCategory>, val onViewCreated: (PreferenceManager) -> Unit = {}) {
+/**
+ * A screen of preferences.
+ *
+ * @param visibility optional rules that show a preference only while the rule returns true. The rules are evaluated when
+ * the screen opens and re-evaluated every time a preference changes, so dependent options appear and disappear live.
+ */
+/**
+ * [ListPreference.getSummary] runs its summary through [String.format], so a literal '%' (e.g. "30%" or
+ * "4:3 needs 25%, ...") throws UnknownFormatConversionException and crashes the settings screen.
+ * Always set ListPreference summaries through this escape.
+ */
+fun listSummary(text: CharSequence?): String? = text?.toString()?.replace("%", "%%")
+
+sealed class PrefScreen(val title: String,
+                        val key: String,
+                        val children: List<PrefCategory>,
+                        val onViewCreated: (PreferenceManager) -> Unit = {},
+                        val visibility: Map<Pref<*, *, *>, (SharedPreferences) -> Boolean> = emptyMap()) {
     fun findByKey(key: String): Pref<*, *, *>? {
         return children.firstNotNullOfOrNull { it.findByKey(key) }
     }
@@ -47,7 +64,7 @@ sealed class Pref<T, PREF : Preference, PREFTYPE>(val defaultValue: T, val title
         createPref.key = key()
         createPref.title = title
         createPref.setDefaultValue(toPrefValue(defaultValue))
-        createPref.summary = summary
+        createPref.summary = if (createPref is ListPreference) listSummary(summary) else summary
         return createPref
     }
 
@@ -193,17 +210,22 @@ sealed class StringSetPref(defaultValue: Set<String>, title: String, summary: St
     }
 }
 
-sealed class IntSeekbarPref(defaultValue: Int, title: String, summary: String) : Pref<Int, SeekBarPreference, Int>(defaultValue, title, summary) {
+sealed class IntSeekbarPref(defaultValue: Int, title: String, summary: String,
+                             val min: Int = 0, val max: Int = 100) : Pref<Int, SeekBarPreference, Int>(defaultValue, title, summary) {
     override fun save(sharedPreferences: SharedPreferences, value: Int) {
-        sharedPreference.edit().putInt(key(), value).apply()
+        sharedPreference.edit().putInt(key(), value.coerceIn(min, max)).apply()
     }
 
     override fun createPref(context: Context): SeekBarPreference {
-        return SeekBarPreference(context)
+        val seekBar = SeekBarPreference(context)
+        seekBar.min = min
+        seekBar.max = max
+        seekBar.showSeekBarValue = true
+        return seekBar
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): Int {
-        return sharedPreferences.getInt(key(), defaultValue)
+        return sharedPreferences.getInt(key(), defaultValue).coerceIn(min, max)
     }
 }
 
@@ -221,15 +243,33 @@ sealed class IntListPref(defaultValue: Int, title: String, summary: String,
         return prefValue.toInt()
     }
 
+    /** Entry titles and values shown in the list. Defaults to the string arrays; override to build them at runtime. */
+    protected open fun entries(context: Context): Pair<Array<CharSequence>, Array<CharSequence>> =
+        context.resources.getTextArray(titlesResourceId) to context.resources.getTextArray(valuesResourceId)
+
     override fun createPref(context: Context): ListPreference {
         val listPreference = ListPreference(context)
-        listPreference.setEntries(titlesResourceId)
+        val (titles, values) = entries(context)
+        listPreference.entries = titles
         listPreference.dialogTitle = summary
-        listPreference.setEntryValues(valuesResourceId)
+        listPreference.entryValues = values
         return listPreference
     }
 
     override fun getValue(sharedPreferences: SharedPreferences): Int {
         return sharedPreferences.getString(key(), defaultValue.toString())!!.toInt()
+    }
+}
+
+/**
+ * Seconds-per-item setting for the slideshow and screensaver. The options are generated rather than listed in XML:
+ * 1 s steps up to 9 s, 2 s steps from 10 s to 1 minute and 10 s steps from there on (see [IntervalOptions]).
+ */
+sealed class IntervalPref(defaultValue: Int, title: String, summary: String) :
+    IntListPref(defaultValue, title, summary, 0, 0) {
+    override fun entries(context: Context): Pair<Array<CharSequence>, Array<CharSequence>> {
+        val seconds = IntervalOptions.seconds
+        return seconds.map<Int, CharSequence> { IntervalOptions.title(context.resources, it) }.toTypedArray() to
+                seconds.map<Int, CharSequence> { it.toString() }.toTypedArray()
     }
 }

@@ -19,14 +19,14 @@ allprojects {
 
 subprojects {
     apply plugin: "com.diffplug.spotless"
-    ext.ktlintVer = "0.37.2"
     spotless {
         // Don't fail `./gradlew check` on Spotless: licenseHeaderFile pointed at a never-committed
-        // copyright.kt, and this ktlint version aborts on many existing sources.
+        // copyright.kt, and ktlint aborts on many existing sources.
         enforceCheck false
         kotlin {
             target("**/*.kt")
-            ktlint(ktlintVer).userData(["disabled_rules": "max-line-length"])
+            // Spotless 7+ removed userData(); rules are configured via editorConfigOverride.
+            ktlint().editorConfigOverride(["ktlint_standard_max-line-length": "disabled"])
         }
     }
 

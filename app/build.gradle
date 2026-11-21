@@ -32,6 +32,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Opt-in side-by-side install next to the store version: ./gradlew assembleDebug -PdevSuffix
+            // (google-services.json then needs a client entry for nl.giejay.android.tv.immich.dev).
+            if (project.hasProperty("devSuffix")) {
+                applicationIdSuffix ".dev"
+                versionNameSuffix "-dev"
+            }
+        }
         release {
             minifyEnabled true
             shrinkResources true
