@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.map.LocationMapRenderer
 import nl.giejay.mediaslider.map.WorldMapData
+import nl.giejay.mediaslider.model.MapLocation
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.util.OverlayFade
 import nl.giejay.mediaslider.util.OverlaySwitcher
@@ -46,6 +47,8 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
     private var shownAssetId: String? = null
     /** Asset each map view currently shows (null = none); the metadata layer for it carries the same tag id. */
     private val mapAssetIds = arrayOfNulls<String>(2)
+    /** Location each map view was drawn for, so a slide at the same place can keep the map instead of re-fading it. */
+    private val mapLocations = arrayOfNulls<MapLocation>(2)
     /** Running glide of a map view's translationY (separate from the alpha fade) and the value it heads to. */
     private val translators = arrayOfNulls<ObjectAnimator>(2)
     private val translationTargets = floatArrayOf(Float.NaN, Float.NaN)
@@ -103,7 +106,10 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         return (0 until group.childCount).map { group.getChildAt(it) }.filter { it.id == R.id.meta_data_holder }
     }
 
-    /** Transition start: fade the old map out and render + fade in the new one during the same transition. */
+    /**
+     * Transition start: look up the new slide's map. The old map stays until the new one is known: it is kept
+     * when the new slide shows the same place, otherwise it fades out while the new one fades in.
+     */
     override fun onPageSelected(context: SliderViewPluginContext, sliderItemIndex: Int, state: Unit?) {
         val config = config ?: return
         val holder = config.items.getOrNull(sliderItemIndex)
@@ -114,7 +120,6 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         }
         val item = mapItem(holder)
         if (item.id == shownAssetId && visibleIndex >= 0) return
-        fadeOutVisible(fadeMs, config)
         render(context, item.id, item, fadeMs, config, startedAt = SystemClock.uptimeMillis())
         prefetchNext(context, config, sliderItemIndex)
     }
@@ -137,11 +142,21 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         }
     }
 
-    /** Hard cut (wrap-around jump, transition NONE): drop the old map at once; onPageSettled renders the new one. */
+    /**
+     * Hard cut (wrap-around jump, transition NONE): end the running fades at once. [onPageSelected] has already
+     * started the map of the new page, so it is kept: dropping it here would make it vanish and be rendered
+     * and faded in a second time by [onPageSettled].
+     */
     override fun onTransitionSkipped(context: SliderViewPluginContext, state: Unit?) {
-        renderJob?.cancel()
-        pendingAssetId = null
-        fadeOutVisible(0L, config)
+        mapViews.forEachIndexed { index, view ->
+            view.animate().cancel()
+            if (index == visibleIndex) {
+                cancelTranslator(index)
+                if (view.visibility == View.VISIBLE) view.alpha = 1f
+            } else if (view.visibility == View.VISIBLE) {
+                hideMap(index)
+            }
+        }
     }
 
     /** Idempotent fallback (first page, hard cuts): render if the settled asset's map is not shown yet. */
@@ -163,7 +178,6 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         }
         val item = mapItem(sliderItem)
         if (item.id == shownAssetId || item.id == pendingAssetId) return
-        fadeOutVisible(0L, config)
         render(context, item.id, item, FADE_IN_MS, config, startedAt = SystemClock.uptimeMillis())
     }
 
@@ -178,6 +192,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         observedViews.clear()
         translators.forEachIndexed { i, a -> a?.cancel(); translators[i] = null }
         mapAssetIds.fill(null)
+        mapLocations.fill(null)
         translationTargets.fill(Float.NaN)
         mapViews.forEach { view ->
             view.animate().cancel()
@@ -196,17 +211,41 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         pendingAssetId = assetId
         val density = context.context.resources.displayMetrics.density
         renderJob = context.ioScope.launch {
+            val location = try {
+                item.getMapLocation()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Could not look up the map location of asset $assetId")
+                null
+            }
+            // Decide on the main thread, where the state of the shown map lives.
+            val needsBitmap = withContext(Dispatchers.Main) {
+                if (pendingAssetId != assetId) return@withContext false
+                when {
+                    // No map for this slide: the old one goes (pendingAssetId stays set so onPageSettled does not retry).
+                    location == null -> { fadeOutVisible(outgoingFadeMs(fadeMs, startedAt), config); false }
+                    // Same place as the map on screen: keep it, no fade out and in.
+                    keepsShownMap(location) -> { keepShownMap(assetId); false }
+                    else -> true
+                }
+            }
+            if (!needsBitmap || location == null) return@launch
             val bitmap = try {
-                val location = item.getMapLocation() ?: return@launch
                 LocationMapRenderer.render(WorldMapData.load(context.context), location, density)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Timber.w(e, "Could not render location map for asset $assetId")
+                withContext(Dispatchers.Main) {
+                    if (pendingAssetId == assetId) fadeOutVisible(outgoingFadeMs(fadeMs, startedAt), config)
+                }
                 return@launch
             }
             withContext(Dispatchers.Main) {
                 if (pendingAssetId != assetId || mapViews.size < 2) return@withContext
+                // The old map fades out now, together with the incoming one.
+                fadeOutVisible(outgoingFadeMs(fadeMs, startedAt), config)
                 // Use the other view than last time: the outgoing map may still be fading out in it.
                 val index = switcher.begin()
                 val view = mapViews[index]
@@ -216,6 +255,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
                 view.alpha = 0f
                 view.visibility = View.VISIBLE
                 mapAssetIds[index] = assetId
+                mapLocations[index] = location
                 visibleIndex = index
                 shownAssetId = assetId
                 pendingAssetId = null
@@ -241,6 +281,24 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         }
     }
 
+    /** Fade-out length of the old map: what is left of the page transition; 0 (at once) for a hard cut. */
+    private fun outgoingFadeMs(fadeMs: Long, startedAt: Long): Long =
+        if (fadeMs <= 0L) 0L else OverlayFade.remainingFadeMs(fadeMs, startedAt, SystemClock.uptimeMillis())
+
+    /** True when the map on screen already shows [location] (see [LocationMapRenderer.isSameMap]). */
+    private fun keepsShownMap(location: MapLocation): Boolean {
+        val shown = mapLocations.getOrNull(visibleIndex) ?: return false
+        return LocationMapRenderer.isSameMap(shown, location)
+    }
+
+    /** The new slide shows the same place: the map stays, only the text block it sits above may differ. */
+    private fun keepShownMap(assetId: String) {
+        mapAssetIds[visibleIndex] = assetId
+        shownAssetId = assetId
+        pendingAssetId = null
+        updateVerticalOffset()
+    }
+
     /** Fades the currently visible map out over [fadeMs] (0 = at once) and frees its bitmap afterwards. */
     private fun fadeOutVisible(fadeMs: Long, config: MediaSliderConfiguration?) {
         val index = visibleIndex
@@ -250,11 +308,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         view.animate().cancel()
         // The outgoing map keeps its position: freeze any glide in progress.
         cancelTranslator(index)
-        val hide = Runnable {
-            view.visibility = View.GONE
-            view.setImageDrawable(null)
-            mapAssetIds[index] = null
-        }
+        val hide = Runnable { hideMap(index) }
         if (fadeMs <= 0L || config == null) {
             view.alpha = 0f
             hide.run()
@@ -264,6 +318,14 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
                 .withEndAction { if (visibleIndex != index) hide.run() }
                 .start()
         }
+    }
+
+    private fun hideMap(index: Int) {
+        val view = mapViews.getOrNull(index) ?: return
+        view.visibility = View.GONE
+        view.setImageDrawable(null)
+        mapAssetIds[index] = null
+        mapLocations[index] = null
     }
 
     /**

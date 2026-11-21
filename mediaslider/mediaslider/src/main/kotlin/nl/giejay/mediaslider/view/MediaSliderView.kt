@@ -101,6 +101,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     // Slide transition bookkeeping (see the pager listener): while a transition animates nothing heavy may start.
     private var transitionActive = false
     private var jumpCandidate = false
+    /** Last state reported by the pager; a selection while not idle is part of an animated scroll, not a hard cut. */
+    private var pagerScrollState = ViewPager.SCROLL_STATE_IDLE
     private var playerStoppedForScroll = false
     private var lastSelected = -1
     private var transitionSeq = 0
@@ -375,7 +377,10 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
             override fun onPageSelected(i: Int) {
                 transitionActive = hasAnimatedTransition()
-                jumpCandidate = true
+                // ViewPager reports SETTLING (smooth scroll) or DRAGGING before it selects the page, so this is
+                // only a hard cut when the pager is idle. Without the check every animated transition would end
+                // as a "hard cut" and plugins would reset their fades (the location map vanished and faded in again).
+                jumpCandidate = pagerScrollState == ViewPager.SCROLL_STATE_IDLE
                 viewPlugins.forEach { it.plugin.onPageSelected(viewPluginContext, i, it.state) }
                 // Prefetching decodes big photos and starts video I/O: wait for the transition to be over.
                 mainHandler.removeCallbacks(prefetchRunnable)
@@ -393,6 +398,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             }
 
             override fun onPageScrollStateChanged(state: Int) {
+                pagerScrollState = state
                 if (state != ViewPager.SCROLL_STATE_IDLE) {
                     jumpCandidate = false
                 } else {
