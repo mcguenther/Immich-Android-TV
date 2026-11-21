@@ -23,6 +23,25 @@ android {
     }
 
     signingConfigs {
+        // Fork: debug builds are signed with the shared debug key from the environment variable
+        // DEBUG_KEYSTORE_BASE64 (base64 of a standard Android debug keystore, alias androiddebugkey,
+        // password android), so debug APKs from any machine or cloud session update each other.
+        // Without the variable the usual ~/.android/debug.keystore is used.
+        def debugKeystoreBase64 = System.getenv("DEBUG_KEYSTORE_BASE64")?.replaceAll("\\s", "")
+        if (debugKeystoreBase64) {
+            def debugKeystore = layout.buildDirectory.file("debug-keystore/debug.keystore").get().asFile
+            byte[] keystoreBytes = debugKeystoreBase64.decodeBase64()
+            if (!debugKeystore.isFile() || debugKeystore.bytes != keystoreBytes) {
+                debugKeystore.parentFile.mkdirs()
+                debugKeystore.bytes = keystoreBytes
+            }
+            debug {
+                storeFile debugKeystore
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
+            }
+        }
         release {
             storeFile file(System.getenv("RELEASE_KEYSTORE_PATH") ?: "keystore")
             storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "dummy"
