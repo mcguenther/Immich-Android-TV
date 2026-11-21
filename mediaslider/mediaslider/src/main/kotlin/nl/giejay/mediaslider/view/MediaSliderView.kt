@@ -227,7 +227,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
      */
     private fun applyTransition() {
         val transition = config.transition
-        if (transition.type == TransitionType.NONE || transition.durationMillis <= 0) {
+        if (!transition.isAnimated) {
             return
         }
         try {
@@ -441,8 +441,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
     /** Transition length in ms that actually runs: 0 for NONE or a zero duration. */
     private fun effectiveTransitionMs(): Int {
-        val t = config.transition
-        return if (t.type == TransitionType.NONE) 0 else t.durationMillis.coerceAtLeast(0)
+        return config.transition.effectiveMs
     }
 
     private fun hasAnimatedTransition(): Boolean = isConfigReady && effectiveTransitionMs() > 0

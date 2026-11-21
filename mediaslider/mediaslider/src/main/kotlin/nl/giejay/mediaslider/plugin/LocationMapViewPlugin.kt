@@ -18,6 +18,7 @@ import nl.giejay.mediaslider.map.LocationMapRenderer
 import nl.giejay.mediaslider.map.WorldMapData
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.util.OverlayFade
+import nl.giejay.mediaslider.util.OverlaySwitcher
 import timber.log.Timber
 
 /**
@@ -38,7 +39,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
     private val mapViews = mutableListOf<ImageView>()
     private var visibleIndex = -1
     /** View used for the most recent map; the next map takes the other one, so a running fade-out is never cut. */
-    private var lastUsedIndex = 1
+    private val switcher = OverlaySwitcher(initialFront = 1)
     private var renderJob: Job? = null
     private var prefetchJob: Job? = null
     private var pendingAssetId: String? = null
@@ -207,8 +208,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
             withContext(Dispatchers.Main) {
                 if (pendingAssetId != assetId || mapViews.size < 2) return@withContext
                 // Use the other view than last time: the outgoing map may still be fading out in it.
-                val index = 1 - lastUsedIndex
-                lastUsedIndex = index
+                val index = switcher.begin()
                 val view = mapViews[index]
                 view.animate().cancel()
                 cancelTranslator(index)
@@ -233,9 +233,8 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
                     view.translationY = lastTranslation
                 }
                 // Fade in over what is left of the page transition; a late map still fades in briefly.
-                val remaining = fadeMs - (SystemClock.uptimeMillis() - startedAt)
                 view.animate().alpha(1f)
-                    .setDuration(remaining.coerceAtLeast(OverlayFade.LATE_FADE_MS))
+                    .setDuration(OverlayFade.remainingFadeMs(fadeMs, startedAt, SystemClock.uptimeMillis()))
                     .setInterpolator(OverlayFade.interpolator(config.transition))
                     .start()
             }

@@ -18,7 +18,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.viewpager.widget.ViewPager
 import com.zeuskartik.mediaslider.R
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
-import nl.giejay.mediaslider.config.TransitionType
 import nl.giejay.mediaslider.model.SliderItem
 import nl.giejay.mediaslider.util.PageList
 import nl.giejay.mediaslider.util.PageJump
@@ -227,7 +226,7 @@ class MediaSliderController(
 
     /** False when the transition is NONE (or has no duration): paging then jumps without animation. */
     private val smoothScroll: Boolean
-        get() = config.transition.type != TransitionType.NONE && config.transition.durationMillis > 0
+        get() = config.transition.isAnimated
 
     /** Moves to [target]; only neighbouring pages animate, a wrap-around is a hard cut (see [PageJump.smooth]). */
     private fun goToPage(target: Int) {
