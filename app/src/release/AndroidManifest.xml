@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fork-only: 16:9 TV banner, overrides the upstream banner without editing the main manifest -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:banner="@mipmap/icon_banner_tv"
+        tools:replace="android:banner" />
+</manifest>
