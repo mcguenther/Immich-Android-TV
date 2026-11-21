@@ -24,7 +24,18 @@ class MediaSliderConfiguration(
     val showDateTopLeft: Boolean = false,
     var controllerPlugins: List<SliderControllerPlugin> = emptyList(),
     var viewPlugins: List<SliderViewPlugin<*>> = emptyList(),
-    var keyEventPlugins: List<SliderKeyEventPlugin> = emptyList()
+    var keyEventPlugins: List<SliderKeyEventPlugin> = emptyList(),
+    /**
+     * Keep the slider hidden (black) until the photos of the first page are loaded, then fade it in, so a
+     * photo or a portrait pair never pops in piece by piece.
+     */
+    val revealWhenLoaded: Boolean = false,
+    /**
+     * The first [loadMore] request delivers the pages that follow the initial (e.g. cached) ones. Until it
+     * has finished the slideshow stays on the last page instead of wrapping around to the first one; the
+     * slider clears the flag itself.
+     */
+    @Volatile var holdOnLastPageUntilLoaded: Boolean = false
 ) {
     val display: DisplayOptions get() = options.display
     val motion: MotionOptions get() = options.motion

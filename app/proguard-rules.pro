@@ -40,3 +40,5 @@
 # by fully-qualified name from nav_graph.xml's argType -- all of this breaks silently under R8
 # renaming/shrinking without keeping the whole package intact.
 -keep class nl.giejay.android.tv.immich.shared.prefs.** { *; }
+# The screensaver history is stored as JSON of this class (Gson reflection, see RecentScreenSaverPages).
+-keep class nl.giejay.android.tv.immich.screensaver.RecentScreenSaverPages$Stored { *; }
