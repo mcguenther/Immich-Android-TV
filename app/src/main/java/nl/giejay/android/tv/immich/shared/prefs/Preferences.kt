@@ -282,18 +282,9 @@ data object SLIDER_SHOW_CITY : BooleanPref(true,
     ImmichApplication.appContext!!.getString(R.string.show_city),
     ImmichApplication.appContext!!.getString(R.string.show_city_desc))
 
-data object COUNTRY_NAME_LANGUAGE : EnumByTitlePref<CountryNameLanguage>(CountryNameLanguage.ORIGINAL,
+data object COUNTRY_NAME_LANGUAGE : SafeEnumPref<CountryNameLanguage>(CountryNameLanguage.entries.toTypedArray(), CountryNameLanguage.ORIGINAL,
     ImmichApplication.appContext!!.getString(R.string.country_name_language),
-    ImmichApplication.appContext!!.getString(R.string.country_name_language_desc)) {
-
-    override fun fromPrefValue(prefValue: String): CountryNameLanguage {
-        return CountryNameLanguage.entries.firstOrNull { it.name == prefValue } ?: defaultValue
-    }
-
-    override fun getEnumEntries(): Array<CountryNameLanguage> {
-        return CountryNameLanguage.entries.toTypedArray()
-    }
-}
+    ImmichApplication.appContext!!.getString(R.string.country_name_language_desc))
 
 data object SLIDER_METADATA_CUSTOMIZER : ActionPref(null, ImmichApplication.appContext!!.getString(R.string.customize_metadata_viewer),
     ImmichApplication.appContext!!.getString(R.string.configure_metadata_viewer),
@@ -307,11 +298,9 @@ data object SLIDER_METADATA_CUSTOMIZER : ActionPref(null, ImmichApplication.appC
 // slideshow: display (shared by viewer slideshow and screensaver)
 private fun str(res: Int) = ImmichApplication.appContext!!.getString(res)
 
-data object SLIDESHOW_FILL_MODE : EnumByTitlePref<SlideshowFillMode>(SlideshowFillMode.FILL,
+data object SLIDESHOW_FILL_MODE : SafeEnumPref<SlideshowFillMode>(SlideshowFillMode.entries.toTypedArray(), SlideshowFillMode.FILL,
     str(R.string.slideshow_fill_mode), str(R.string.slideshow_fill_mode_desc)) {
     override fun key() = "slideshow_fill_mode"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = SlideshowFillMode.entries.toTypedArray()
 }
 
 data object SLIDESHOW_MAX_CROP : IntListPref(30,
@@ -325,11 +314,9 @@ data object SLIDESHOW_FILL_VIDEOS : BooleanPref(true,
     override fun key() = "slideshow_fill_videos"
 }
 
-data object SLIDESHOW_EDGE_FILL : EnumByTitlePref<SlideshowEdgeFill>(SlideshowEdgeFill.BLUR,
+data object SLIDESHOW_EDGE_FILL : SafeEnumPref<SlideshowEdgeFill>(SlideshowEdgeFill.entries.toTypedArray(), SlideshowEdgeFill.BLUR,
     str(R.string.slideshow_edge_fill), str(R.string.slideshow_edge_fill_desc)) {
     override fun key() = "slideshow_edge_fill"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = SlideshowEdgeFill.entries.toTypedArray()
 }
 
 // slideshow: motion
@@ -350,11 +337,9 @@ data object SLIDESHOW_MOTION_PAN : IntSeekbarPref(3,
     override fun key() = "slideshow_motion_pan"
 }
 
-data object SLIDESHOW_MOTION_STYLE : EnumByTitlePref<SlideshowMotionStyle>(SlideshowMotionStyle.MIXED,
+data object SLIDESHOW_MOTION_STYLE : SafeEnumPref<SlideshowMotionStyle>(SlideshowMotionStyle.entries.toTypedArray(), SlideshowMotionStyle.MIXED,
     str(R.string.slideshow_motion_style), str(R.string.slideshow_motion_style_desc)) {
     override fun key() = "slideshow_motion_style"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = SlideshowMotionStyle.entries.toTypedArray()
 }
 
 data object SLIDESHOW_PANORAMA_SCROLL : BooleanPref(true,
@@ -363,11 +348,9 @@ data object SLIDESHOW_PANORAMA_SCROLL : BooleanPref(true,
 }
 
 // slideshow: portrait pairs
-data object SLIDESHOW_PORTRAIT_PAIRING : EnumByTitlePref<PortraitPairing>(PortraitPairing.SAME_DAY,
+data object SLIDESHOW_PORTRAIT_PAIRING : SafeEnumPref<PortraitPairing>(PortraitPairing.entries.toTypedArray(), PortraitPairing.SAME_DAY,
     str(R.string.slideshow_pairing), str(R.string.slideshow_pairing_desc)) {
     override fun key() = "slideshow_portrait_pairing"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = PortraitPairing.entries.toTypedArray()
 }
 
 data object SLIDESHOW_SHOW_PORTRAIT_VIDEOS : BooleanPref(true,
@@ -376,11 +359,9 @@ data object SLIDESHOW_SHOW_PORTRAIT_VIDEOS : BooleanPref(true,
 }
 
 // slideshow: timing
-data object SLIDESHOW_TRANSITION : EnumByTitlePref<SlideshowTransition>(SlideshowTransition.CROSSFADE,
+data object SLIDESHOW_TRANSITION : SafeEnumPref<SlideshowTransition>(SlideshowTransition.entries.toTypedArray(), SlideshowTransition.CROSSFADE,
     str(R.string.slideshow_transition), str(R.string.slideshow_transition_desc)) {
     override fun key() = "slideshow_transition"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = SlideshowTransition.entries.toTypedArray()
 }
 
 data object SLIDESHOW_TRANSITION_DURATION : IntListPref(1000,
@@ -395,11 +376,9 @@ data object SLIDESHOW_VIDEO_CLIP_LENGTH : IntListPref(-1,
     override fun key() = "slideshow_video_clip_length"
 }
 
-data object SLIDESHOW_VIDEO_CLIP_POSITION : EnumByTitlePref<VideoClipPosition>(VideoClipPosition.START,
+data object SLIDESHOW_VIDEO_CLIP_POSITION : SafeEnumPref<VideoClipPosition>(VideoClipPosition.entries.toTypedArray(), VideoClipPosition.START,
     str(R.string.slideshow_video_clip_position), str(R.string.slideshow_video_clip_position_desc)) {
     override fun key() = "slideshow_video_clip_position"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = VideoClipPosition.entries.toTypedArray()
 }
 
 data object SLIDESHOW_VIDEO_TRIM_END : IntListPref(1,
@@ -408,11 +387,9 @@ data object SLIDESHOW_VIDEO_TRIM_END : IntListPref(1,
     override fun key() = "slideshow_video_trim_end"
 }
 
-data object SLIDESHOW_VIDEO_CINEMA_FPS : EnumByTitlePref<CinemaFrameRateOption>(CinemaFrameRateOption.OFF,
+data object SLIDESHOW_VIDEO_CINEMA_FPS : SafeEnumPref<CinemaFrameRateOption>(CinemaFrameRateOption.entries.toTypedArray(), CinemaFrameRateOption.OFF,
     str(R.string.slideshow_video_cinema_fps), str(R.string.slideshow_video_cinema_fps_desc)) {
     override fun key() = "slideshow_video_cinema_fps"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = CinemaFrameRateOption.entries.toTypedArray()
 }
 
 data object SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED : BooleanPref(true,
@@ -421,11 +398,9 @@ data object SLIDESHOW_VIDEO_CINEMA_ONLY_MUTED : BooleanPref(true,
 }
 
 // slideshow: quality & loading
-data object SLIDESHOW_IMAGE_SOURCE : EnumByTitlePref<SlideshowImageSource>(SlideshowImageSource.FULL_RESOLUTION,
+data object SLIDESHOW_IMAGE_SOURCE : SafeEnumPref<SlideshowImageSource>(SlideshowImageSource.entries.toTypedArray(), SlideshowImageSource.FULL_RESOLUTION,
     str(R.string.slideshow_image_source), str(R.string.slideshow_image_source_desc)) {
     override fun key() = "slideshow_image_source"
-    override fun fromPrefValue(prefValue: String) = enumValueOfOr(prefValue, defaultValue)
-    override fun getEnumEntries() = SlideshowImageSource.entries.toTypedArray()
 }
 
 data object SLIDESHOW_PREFETCH_COUNT : IntListPref(3,
