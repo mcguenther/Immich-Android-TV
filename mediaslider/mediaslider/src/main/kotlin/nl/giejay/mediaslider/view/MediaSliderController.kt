@@ -19,6 +19,7 @@ import androidx.viewpager.widget.ViewPager
 import com.zeuskartik.mediaslider.R
 import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.model.SliderItem
+import nl.giejay.mediaslider.util.AdvanceGate
 import nl.giejay.mediaslider.util.PageList
 import nl.giejay.mediaslider.util.PageJump
 import nl.giejay.mediaslider.model.SliderItemType
@@ -68,8 +69,23 @@ class MediaSliderController(
 
     /** True while the slideshow plays backwards (previous instead of next); used to prefetch in that direction. */
     val isReverseSlideshow: Boolean get() = reverseSlideShowDirection
-    private val goToNextAssetRunnable = Runnable { goToNextAsset() }
-    private val goToPreviousAssetRunnable = Runnable { goToPreviousAsset() }
+    private val goToNextAssetRunnable = Runnable { advanceWhenReady(reverse = false) }
+    private val goToPreviousAssetRunnable = Runnable { advanceWhenReady(reverse = true) }
+
+    /** Re-check of [advanceWhenReady] while the next page is not ready; [advanceReverse]/[advanceWaitedMs] are its state. */
+    private val advancePollRunnable = Runnable { pollAdvance() }
+    private var advanceReverse = false
+    private var advanceWaitedMs = 0L
+
+    /** Whether the photos of a page position are loaded; set by the view, pages without anything to wait for are ready. */
+    var pageReady: (Int) -> Boolean = { true }
+
+    /**
+     * False while the first page is still hidden: its screen time must only start once it is visible.
+     * The view calls [onAssetTimerGateOpened] when it flips to true.
+     */
+    var canStartAssetTimer: () -> Boolean = { true }
+    private var timerStartDeferred = false
 
     private val progressUpdateRunnable = object : Runnable {
         override fun run() {
@@ -99,12 +115,7 @@ class MediaSliderController(
     fun onPlaybackStateChanged(playbackState: Int) {
         clips.onPlaybackStateChanged(playbackState)
         if (playbackState == Player.STATE_ENDED && slideShowPlaying) {
-            if(reverseSlideShowDirection) {
-                goToPreviousAsset()
-            }
-            else{
-                goToNextAsset()
-            }
+            advanceWhenReady(reverseSlideShowDirection)
         }
     }
 
@@ -128,7 +139,7 @@ class MediaSliderController(
         Timber.e(error, "Player error")
         clips.cancel()
         if (slideShowPlaying) {
-            goToNextAsset()
+            advanceWhenReady(reverse = false)
         }
         clearKeepScreenOnFlags()
         stopProgressUpdates()
@@ -170,6 +181,10 @@ class MediaSliderController(
 
     fun startTimerNextAsset() {
         removeGoToAssetCallbackFromMainHandler()
+        if (!canStartAssetTimer()) {
+            timerStartDeferred = true
+            return
+        }
         val intervalMs = (config.interval * 1000).toLong()
         if(reverseSlideShowDirection) {
             mainHandler.postDelayed(goToPreviousAssetRunnable, intervalMs)
@@ -181,7 +196,50 @@ class MediaSliderController(
             it.onAssetTimerStarted(intervalMs, this, config, context, mainHandler)
         }
     }
+
+    /** Starts the screen time that was postponed by [canStartAssetTimer], if the slideshow is still playing. */
+    fun onAssetTimerGateOpened() {
+        if (!timerStartDeferred) return
+        timerStartDeferred = false
+        if (slideShowPlaying && currentItemTypeOrNull() == SliderItemType.IMAGE) startTimerNextAsset()
+    }
+
+    /**
+     * Automatic advance (timer, end of video): moves on once the photos of the target page are loaded, so the
+     * cross-fade never reveals a page that is still filling in. Waits at most [AdvanceGate.MAX_READY_WAIT_MS];
+     * on the last page it also waits while more pages are on their way. Manual navigation does not wait.
+     */
+    private fun advanceWhenReady(reverse: Boolean) {
+        advanceReverse = reverse
+        advanceWaitedMs = 0L
+        pollAdvance()
+    }
+
+    private fun pollAdvance() {
+        mainHandler.removeCallbacks(advancePollRunnable)
+        val count = pager.adapter?.count ?: return
+        val current = pager.currentItem
+        val reverse = advanceReverse
+        val atLastPage = !reverse && current >= count - 1
+        val target = when {
+            reverse -> (if (0 == current) count else current) - 1
+            atLastPage -> PageList.wrapTarget(config.items)
+            else -> current + 1
+        }
+        val ready = pageReady(target)
+        // Without a loader there is nothing to wait for.
+        val holdOnLast = config.holdOnLastPageUntilLoaded && config.loadMore != null
+        if (AdvanceGate.shouldWait(atLastPage, holdOnLast, ready, advanceWaitedMs)) {
+            // Waiting for more pages is not limited: it ends when they arrive or the loader gave up.
+            if (!(atLastPage && holdOnLast)) advanceWaitedMs += AdvanceGate.POLL_MS
+            mainHandler.postDelayed(advancePollRunnable, AdvanceGate.POLL_MS)
+            return
+        }
+        if (reverse) goToPreviousAsset() else goToNextAsset()
+    }
+
     fun removeGoToAssetCallbackFromMainHandler(){
+        mainHandler.removeCallbacks(advancePollRunnable)
         if(reverseSlideShowDirection) {
             mainHandler.removeCallbacks(goToPreviousAssetRunnable)
         }
@@ -192,6 +250,7 @@ class MediaSliderController(
 
     /** Cancels any pending auto-advance timer without starting a new one. */
     fun cancelNextAssetTimer() {
+        timerStartDeferred = false
         removeGoToAssetCallbackFromMainHandler()
         config.controllerPlugins.forEach { it.onSlideShowStopped(this, mainHandler) }
     }
@@ -214,7 +273,7 @@ class MediaSliderController(
         config = { config },
         currentPlayer = { currentPlayer },
         slideShowPlaying = { slideShowPlaying },
-        advance = { if (reverseSlideShowDirection) goToPreviousAsset() else goToNextAsset() }
+        advance = { advanceWhenReady(reverseSlideShowDirection) }
     )
 
     /** See [VideoClipController.begin]. */

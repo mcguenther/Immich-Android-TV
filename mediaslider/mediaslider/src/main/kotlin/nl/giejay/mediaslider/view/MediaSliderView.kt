@@ -123,6 +123,10 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
             effectiveTransitionMs()
         }
     }
+    /** True while the first page is hidden until its photos are loaded ([MediaSliderConfiguration.revealWhenLoaded]). */
+    private var revealPending = false
+    private var revealWaitedMs = 0L
+    private val revealRunnable = Runnable { checkReveal() }
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
     private data class ViewPluginEntry(val plugin: SliderViewPlugin<Any?>, val state: Any?)
     private val viewPlugins = mutableListOf<ViewPluginEntry>()
@@ -141,6 +145,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         val playButton: View = findViewById(R.id.playPause)
         mPager = findViewById(R.id.pager)
         controller = MediaSliderController(context, mainHandler, mPager, playButton, this)
+        controller.pageReady = { position -> pagerAdapter?.isPageReady(position) ?: true }
+        controller.canStartAssetTimer = { !revealPending }
         playButton.setOnClickListener { controller.toggleSlideshow(true) }
         controller.onSlideshowPlayingChanged = { playing ->
             if (playing) {
@@ -279,17 +285,24 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
                     loading = true
                     ioScope.launch {
                         val loadMore = config.loadMore ?: return@launch
-                        val result: LoadMoreResult = loadMore()
-                        val added = addItemsMain(result.items)
-                        if (!result.canLoadMore) {
-                            config.loadMore = null
+                        var added = 0
+                        try {
+                            val result: LoadMoreResult = loadMore()
+                            added = addItemsMain(result.items)
+                            if (!result.canLoadMore) {
+                                config.loadMore = null
+                            }
+                        } finally {
+                            // The first request delivers what follows the initial pages; the slideshow was
+                            // holding on the last of them for it (also when it failed: then it loops).
+                            config.holdOnLastPageUntilLoaded = false
+                            loading = false
                         }
                         // A source that only returns assets shown lately (e.g. a random source that has
                         // delivered the whole library) would otherwise be asked again on every scroll.
                         emptyLoads = if (added > 0) 0 else emptyLoads + 1
                         loadMoreBlockedUntil = if (added > 0) 0L
                         else SystemClock.uptimeMillis() + PageList.emptyLoadBackoffMs(emptyLoads)
-                        loading = false
                     }
                 }
                 // Stop the player once per transition (and at rest), not on every scroll frame.
@@ -390,10 +403,48 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
         })
         // Register the listener before selecting the start page so the first asset
         // still gets onPageSelected / onPageSettled (metadata, date overlay, etc.).
+        if (config.revealWhenLoaded) hideUntilLoaded()
         setStartPosition()
         prefetcher?.onPageChanged(mPager.currentItem, config.items)
         // The neighbouring page only exists after the first layout pass.
         mainHandler.postDelayed(prefetchRunnable, PrefetchDeferral.SETTLE_DELAY_MS)
+        if (revealPending) mainHandler.post(revealRunnable)
+    }
+
+    private fun setContentAlpha(alpha: Float) {
+        mPager.alpha = alpha
+        findViewById<View>(R.id.plugin_layer)?.alpha = alpha
+    }
+
+    /** Keeps the pager and its overlays invisible (the background is black) until [checkReveal] fades them in. */
+    private fun hideUntilLoaded() {
+        revealPending = true
+        revealWaitedMs = 0L
+        setContentAlpha(0f)
+    }
+
+    /**
+     * Fades the slider in as soon as the start page exists and all its photos are loaded (or after
+     * [REVEAL_TIMEOUT_MS], when the network is slow: the page is then shown as it is).
+     */
+    private fun checkReveal() {
+        if (!revealPending || destroyed) return
+        val index = mPager.currentItem
+        val inflated = mPager.findViewWithTag<View>("view$index") != null
+        val ready = inflated && (config.items.getOrNull(index)?.type != SliderItemType.IMAGE || pagerAdapter?.isPageReady(index) == true)
+        if (!ready && revealWaitedMs < REVEAL_TIMEOUT_MS) {
+            revealWaitedMs += REVEAL_POLL_MS
+            mainHandler.postDelayed(revealRunnable, REVEAL_POLL_MS)
+            return
+        }
+        revealPending = false
+        val fadeMs = effectiveTransitionMs().takeIf { it > 0 }?.toLong() ?: REVEAL_FALLBACK_FADE_MS
+        val interpolator = OverlayFade.interpolator(config.transition)
+        listOf<View?>(mPager, findViewById(R.id.plugin_layer)).forEach { view ->
+            view?.animate()?.alpha(1f)?.setDuration(fadeMs)?.setInterpolator(interpolator)?.start()
+        }
+        // The first photo's screen time starts now that it is visible.
+        controller.onAssetTimerGateOpened()
     }
 
     /**
@@ -539,6 +590,7 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     fun onDestroy() {
         if (destroyed) return
         destroyed = true
+        mainHandler.removeCallbacks(revealRunnable)
         tearDownPrefetching()
         ioScope.cancel()
         destroyPluginsOnce()
@@ -608,6 +660,11 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
 
         /** A warmed-up video is not seeked again at settle when it already sits this close to its clip start. */
         private const val WARM_UP_SEEK_TOLERANCE_MS = 200L
+
+        /** Check interval, longest wait and fade length (transition NONE) of the initial reveal. */
+        private const val REVEAL_POLL_MS = 50L
+        private const val REVEAL_TIMEOUT_MS = 4000L
+        private const val REVEAL_FALLBACK_FADE_MS = 600L
 
         @SuppressLint("UnsafeOptInUsageError")
         fun prepareMedia(mediaUrl: String, player: ExoPlayer, factory: DataSource.Factory, startPositionMs: Long = 0L) {
