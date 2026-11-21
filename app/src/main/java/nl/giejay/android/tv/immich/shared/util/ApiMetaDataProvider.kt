@@ -66,7 +66,8 @@ class AssetDetailMetaDataProvider(
 /** Lazy coordinates for assets loaded without EXIF (e.g. timeline buckets), via [AssetDetailCache]. */
 class AssetDetailGeoLocationProvider(private val assetId: String) : GeoLocationProvider {
     override suspend fun getLocation(): GeoLocation? {
-        return AssetDetailCache.get(assetId).fold(
+        // Detached: the map cancels this lookup on every slide change, which must not fail other waiters.
+        return fetchAssetDetailDetached(assetId).fold(
             { error ->
                 Timber.w("Failed to load asset $assetId for location: $error")
                 null

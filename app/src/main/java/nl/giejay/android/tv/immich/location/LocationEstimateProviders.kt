@@ -6,8 +6,8 @@ import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.shared.prefs.ESTIMATE_CAMERA_LOCATIONS
 import nl.giejay.android.tv.immich.shared.prefs.ESTIMATE_LOCATIONS_WITH_PARTNERS
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
-import nl.giejay.android.tv.immich.shared.util.AssetDetailCache
 import nl.giejay.android.tv.immich.shared.util.AssetMetaDataMapping
+import nl.giejay.android.tv.immich.shared.util.fetchAssetDetailDetached
 import nl.giejay.mediaslider.model.MapLocation
 import nl.giejay.mediaslider.model.MapLocationProvider
 import nl.giejay.mediaslider.model.MetaDataProvider
@@ -39,7 +39,7 @@ class EstimatedPlaceMetaDataProvider(
 ) : MetaDataProvider {
 
     override suspend fun getValue(): String? {
-        val detail = AssetDetailCache.get(asset.id).fold(
+        val detail = fetchAssetDetailDetached(asset.id).fold(
             { error ->
                 Timber.w("Failed to load asset ${asset.id} for field $field: $error")
                 null
