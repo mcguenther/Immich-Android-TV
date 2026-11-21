@@ -24,6 +24,7 @@ import nl.giejay.mediaslider.config.MediaSliderConfiguration
 import nl.giejay.mediaslider.model.SliderItem
 import nl.giejay.mediaslider.model.SliderItemType
 import nl.giejay.mediaslider.model.SliderItemViewHolder
+import nl.giejay.mediaslider.util.PageList
 import nl.giejay.mediaslider.view.ExoPlayerListener
 import nl.giejay.mediaslider.view.ExoPlayerView
 import nl.giejay.mediaslider.view.FitCalculator
@@ -82,9 +83,25 @@ class ScreenSlidePagerAdapter(private val context: Context,
         return if (sources.size >= expected) "loaded(${sources.joinToString("+")})" else "pending(${sources.size}/$expected)"
     }
 
+    /**
+     * Replaces the pages. Pages whose item is unchanged at their position keep their view (see
+     * [getItemPosition]); only changed and new positions are built.
+     */
     fun setItems(items: List<SliderItemViewHolder>) {
         this.items = items
         notifyDataSetChanged()
+    }
+
+    /** While true, [getItemPosition] drops every page, so [notifyDataSetChanged] rebuilds all of them. */
+    private var recreateAllPages = false
+
+    private fun recreateAll() {
+        recreateAllPages = true
+        try {
+            notifyDataSetChanged()
+        } finally {
+            recreateAllPages = false
+        }
     }
 
     fun hideProgressBar(position: Int) {
@@ -96,8 +113,17 @@ class ScreenSlidePagerAdapter(private val context: Context,
         }
     }
 
+    /**
+     * Keeps a page when its item is still at the same position (e.g. when more items are appended),
+     * so the current photo is not rebuilt: rebuilding it would reload it and restart its motion from
+     * the beginning, a visible jump.
+     */
     override fun getItemPosition(`object`: Any): Int {
-        return POSITION_NONE
+        if (recreateAllPages) return POSITION_NONE
+        val view = `object` as? View ?: return POSITION_NONE
+        val position = (view.tag as? String)?.removePrefix("view")?.toIntOrNull() ?: return POSITION_NONE
+        val shown = view.getTag(R.id.slider_page_item) as? SliderItemViewHolder
+        return if (PageList.canKeepPage(shown, position, items)) POSITION_UNCHANGED else POSITION_NONE
     }
 
     @SuppressLint("UnsafeOptInUsageError")
@@ -136,7 +162,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                     // Release the current player to avoid memory leaks
                     player.release()
                     // Trigger recreation of this item
-                    notifyDataSetChanged()
+                    recreateAll()
                     true
                 } else {
                     Toast.makeText(context, "Cannot play video: ${error.message}", Toast.LENGTH_LONG).show()
@@ -145,6 +171,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
             }
         }
         view?.tag = "view$position"
+        view?.setTag(R.id.slider_page_item, model)
         container.addView(view)
         return view!!
     }

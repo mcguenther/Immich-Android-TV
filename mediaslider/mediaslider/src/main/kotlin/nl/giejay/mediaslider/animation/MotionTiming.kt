@@ -16,4 +16,15 @@ object MotionTiming {
      */
     fun resumeDurationMs(intervalSeconds: Int, transitionMs: Int): Long =
         intervalSeconds * 1000L + transitionMs.coerceAtLeast(0)
+
+    /**
+     * Progress (0..1) of a motion segment that started at [startProgress] and reaches the end (1) after
+     * [durationMs]; [elapsedMs] is the time since the segment started.
+     */
+    fun progress(startProgress: Float, elapsedMs: Long, durationMs: Long): Float {
+        val start = startProgress.coerceIn(0f, 1f)
+        if (durationMs <= 0L) return 1f
+        val t = (elapsedMs.toDouble() / durationMs).coerceIn(0.0, 1.0).toFloat()
+        return start + (1f - start) * t
+    }
 }
