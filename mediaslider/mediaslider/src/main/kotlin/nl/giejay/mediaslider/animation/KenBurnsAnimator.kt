@@ -19,7 +19,21 @@ data class MotionPlan(
     val startTranslationY: Float,
     val endTranslationX: Float,
     val endTranslationY: Float
-)
+) {
+    /**
+     * The rest of this motion from [progress] (0 = start, 1 = end): starts where the linear motion is
+     * at that point and ends at the same end state. Used to continue a motion instead of restarting it.
+     */
+    fun from(progress: Float): MotionPlan {
+        val p = progress.coerceIn(0f, 1f)
+        fun lerp(a: Float, b: Float) = a + (b - a) * p
+        return copy(
+            startScale = lerp(startScale, endScale),
+            startTranslationX = lerp(startTranslationX, endTranslationX),
+            startTranslationY = lerp(startTranslationY, endTranslationY)
+        )
+    }
+}
 
 /**
  * Pure planning of a calm, cinematic camera move. Contains no Android types so it can be unit tested.
