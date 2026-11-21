@@ -25,7 +25,8 @@ import timber.log.Timber
  * can be placed at a glance. The land is drawn as a soft white silhouette with country borders
  * (Natural Earth 1:50m, bundled with the app, no network access) and a dot marks the location.
  *
- * Controlled by [MediaSliderConfiguration.showLocationMap]. Assets without coordinates show no map.
+ * Controlled by [MediaSliderConfiguration.showLocationMap]. Assets without coordinates show the estimate of
+ * [SliderItem.getMapLocation] with a softer mark, or no map when there is no estimate either.
  * For merged portrait pairs the map follows the right-hand photo, like the right metadata column.
  * The map cross-fades with the page transition instead of popping in after it.
  */
@@ -39,6 +40,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
     /** View used for the most recent map; the next map takes the other one, so a running fade-out is never cut. */
     private var lastUsedIndex = 1
     private var renderJob: Job? = null
+    private var prefetchJob: Job? = null
     private var pendingAssetId: String? = null
     private var shownAssetId: String? = null
     /** Asset each map view currently shows (null = none); the metadata layer for it carries the same tag id. */
@@ -113,6 +115,25 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         if (item.id == shownAssetId && visibleIndex >= 0) return
         fadeOutVisible(fadeMs, config)
         render(context, item.id, item, fadeMs, config, startedAt = SystemClock.uptimeMillis())
+        prefetchNext(context, config, sliderItemIndex)
+    }
+
+    /**
+     * Looks up the next slide's location in the background, so an estimate (which needs network lookups)
+     * is cached by the time that slide appears and its map fades in with the transition.
+     */
+    private fun prefetchNext(context: SliderViewPluginContext, config: MediaSliderConfiguration, sliderItemIndex: Int) {
+        val next = config.items.getOrNull(sliderItemIndex + 1) ?: return
+        prefetchJob?.cancel()
+        prefetchJob = context.ioScope.launch {
+            try {
+                mapItem(next).getMapLocation()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.d(e, "Could not prefetch location for the next slide")
+            }
+        }
     }
 
     /** Hard cut (wrap-around jump, transition NONE): drop the old map at once; onPageSettled renders the new one. */
@@ -148,6 +169,8 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
     override fun onDestroy(context: SliderViewPluginContext, state: Unit?) {
         renderJob?.cancel()
         renderJob = null
+        prefetchJob?.cancel()
+        prefetchJob = null
         pendingAssetId = null
         shownAssetId = null
         observedViews.forEach { it.removeOnLayoutChangeListener(layoutListener) }
@@ -173,7 +196,7 @@ class LocationMapViewPlugin : SliderViewPlugin<Unit?> {
         val density = context.context.resources.displayMetrics.density
         renderJob = context.ioScope.launch {
             val bitmap = try {
-                val location = item.getGeoLocation() ?: return@launch
+                val location = item.getMapLocation() ?: return@launch
                 LocationMapRenderer.render(WorldMapData.load(context.context), location, density)
             } catch (e: CancellationException) {
                 throw e

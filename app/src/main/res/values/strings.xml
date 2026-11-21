@@ -154,8 +154,15 @@
     <string name="show_date_top_left_viewer_desc">Show the asset date as a top-left overlay in the photo/video viewer. Independent of bottom metadata.</string>
     <string name="show_date_top_left_screensaver_desc">Show the asset date as a top-left overlay in the screensaver. Independent of bottom metadata.</string>
     <string name="show_location_map">Show location map</string>
-    <string name="show_location_map_viewer_desc">Show a small offline map (land outline and country borders) behind the location in the photo/video viewer, so you can see where a place is. Only for assets with GPS data.</string>
-    <string name="show_location_map_screensaver_desc">Show a small offline map (land outline and country borders) behind the location in the screensaver, so you can see where a place is. Only for assets with GPS data.</string>
+    <string name="show_location_map_viewer_desc">Show a small offline map (land outline and country borders) behind the location in the photo/video viewer, so you can see where a place is. For assets without GPS data only when their location can be estimated.</string>
+    <string name="show_location_map_screensaver_desc">Show a small offline map (land outline and country borders) behind the location in the screensaver, so you can see where a place is. For assets without GPS data only when their location can be estimated.</string>
+    <string name="estimate_camera_locations">Estimate location of camera photos</string>
+    <string name="estimate_camera_locations_desc">Photos without GPS (e.g. from a system camera) are placed roughly from photos with GPS taken before and after, such as phone photos. Shown with a ring or soft cloud on the map and as \"near Innsbruck\". Nothing is changed in Immich.</string>
+    <string name="estimate_locations_with_partners">Use partner photos for estimates</string>
+    <string name="estimate_locations_with_partners_desc">Photos from partners who share their library with you also serve as reference points.</string>
+    <string name="estimated_place_near">near %1$s</string>
+    <string name="estimated_place_between">between %1$s and %2$s</string>
+    <string name="estimated_place_area">%1$s area</string>
     <string name="show_city">Show city</string>
     <string name="show_city_desc">Show city of asset in slideshow</string>
     <string name="customize_metadata_viewer">Customize metadata</string>

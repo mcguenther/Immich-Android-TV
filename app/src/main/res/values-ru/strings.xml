@@ -154,6 +154,13 @@
     <string name="show_location_map">Показывать карту места</string>
     <string name="show_location_map_viewer_desc">Показывать небольшую офлайн-карту (контуры суши и границы стран) за местоположением в просмотрщике, чтобы было видно, где это. Только для элементов с GPS-данными.</string>
     <string name="show_location_map_screensaver_desc">Показывать небольшую офлайн-карту (контуры суши и границы стран) за местоположением в заставке, чтобы было видно, где это. Только для элементов с GPS-данными.</string>
+    <string name="estimate_camera_locations">Определять место снимков с камеры</string>
+    <string name="estimate_camera_locations_desc">Снимки без GPS (например, с фотокамеры) примерно привязываются к месту по снимкам с GPS, сделанным до и после, например на телефон. На карте — кольцо или размытое облако, в названии — «около Инсбрука». В Immich ничего не изменяется.</string>
+    <string name="estimate_locations_with_partners">Использовать фото партнёров</string>
+    <string name="estimate_locations_with_partners_desc">Фото партнёров, которые делятся с вами библиотекой, тоже служат опорными точками.</string>
+    <string name="estimated_place_near">около %1$s</string>
+    <string name="estimated_place_between">между %1$s и %2$s</string>
+    <string name="estimated_place_area">район %1$s</string>
     <string name="show_city">Показывать город</string>
     <string name="show_city_desc">Показывать город элемента в слайд-шоу</string>
     <string name="customize_metadata_viewer">Настроить метаданные</string>
