@@ -31,6 +31,16 @@ class FileAnchorDayStoreTest {
     }
 
     @Test
+    fun `saveAll writes every day of a request`() {
+        val store = FileAnchorDayStore { folder.root }
+        val days = (10L..12L).associateWith { CachedAnchorDay(1_700_000_000_000L + it, emptyList()) }
+        store.saveAll(days)
+
+        days.forEach { (utcDay, day) -> assertEquals(day, store.load(utcDay)) }
+        assertEquals(3, folder.root.listFiles { f -> f.name.endsWith(".tsv") }!!.size)
+    }
+
+    @Test
     fun `unreadable files are ignored`() {
         folder.root.resolve("5.tsv").writeText("1700000000000\nbroken line\n")
         assertNull(FileAnchorDayStore { folder.root }.load(5L))

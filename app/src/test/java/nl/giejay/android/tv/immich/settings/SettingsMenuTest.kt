@@ -64,6 +64,16 @@ class SettingsMenuTest {
     }
 
     @Test
+    fun screensaverAppearanceLinksOnlyToSharedScreens() {
+        fun links(key: String) = screens().first { it.key == key }.children.flatMap { it.children }
+            .filterIsInstance<ActionPref>().map { it.key() }
+        assertThat(links("screensaver")).contains("screensaver_appearance")
+        assertThat(links("screensaver")).doesNotContain("slideshow")
+        assertThat(links("screensaver_appearance")).doesNotContain("slideshow_timing")
+        assertThat(links("screensaver_appearance")).doesNotContain("slideshow_overlays")
+    }
+
+    @Test
     fun dependentOptionsFollowTheirSwitch() {
         val prefs: SharedPreferences = mock()
         whenever(prefs.getString(eq(SLIDESHOW_FILL_MODE.key()), any())).thenReturn(SlideshowFillMode.FIT.toString())

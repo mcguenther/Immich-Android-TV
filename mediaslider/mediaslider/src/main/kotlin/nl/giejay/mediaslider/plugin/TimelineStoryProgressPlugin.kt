@@ -191,7 +191,7 @@ class TimelineStoryProgressPlugin : SliderViewPlugin<Any>, SliderControllerPlugi
                 if (config.items[currentIndex].type != SliderItemType.VIDEO) return
 
                 val player = controller.currentPlayer
-                val clipProgress = controller.videoClipProgress()
+                val clipProgress = controller.clips.progress()
                 if (clipProgress != null) {
                     updateStoryProgressChrome(config, context, currentIndex, clipProgress)
                 } else if (player != null) {

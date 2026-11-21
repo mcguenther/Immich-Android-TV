@@ -85,5 +85,18 @@ enum class SlideshowImageSource(@StringRes private val titleRes: Int) : EnumWith
     override fun getTitle() = title(titleRes)
 }
 
-internal inline fun <reified E : Enum<E>> enumValueOfOr(name: String, default: E): E =
-    enumValues<E>().firstOrNull { it.name == name } ?: default
+/**
+ * Fork-only base for enum prefs: lists [entries] in the settings dialog and falls back to the
+ * default when a stored value no longer matches any entry.
+ */
+sealed class SafeEnumPref<T>(
+    private val entries: Array<T>,
+    defaultValue: T,
+    title: String,
+    summary: String
+) : EnumByTitlePref<T>(defaultValue, title, summary) where T : Enum<T>, T : EnumWithTitle {
+    override fun fromPrefValue(prefValue: String): T =
+        entries.firstOrNull { it.name == prefValue } ?: defaultValue
+
+    override fun getEnumEntries(): Array<T> = entries
+}

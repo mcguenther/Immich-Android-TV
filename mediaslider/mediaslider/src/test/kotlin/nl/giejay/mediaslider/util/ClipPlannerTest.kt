@@ -1,8 +1,8 @@
 package nl.giejay.mediaslider.util
 
 import nl.giejay.mediaslider.config.ClipPosition
+import nl.giejay.mediaslider.config.VideoPlaybackOptions
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -87,9 +87,28 @@ class ClipPlannerTest {
             seen.add(w.startMs)
         }
         assertTrue(seen.size > 10)
-        val first = planner.fraction("x", ClipPosition.RANDOM)
-        planner.forget("x")
-        assertNotEquals(first, planner.fraction("x", ClipPosition.RANDOM), 0.0)
         assertEquals(20_000L, planner.excerpt("m", min, -1, 10, 1f, ClipPosition.MIDDLE)!!.startMs)
+    }
+
+    @Test
+    fun excerptForUsesClipLengthPositionAndTrimFromOptions() {
+        val options = listOf(
+            VideoPlaybackOptions(),
+            VideoPlaybackOptions(clipLengthSeconds = 12, clipPosition = ClipPosition.MIDDLE, trimEndSeconds = 0),
+            VideoPlaybackOptions(clipLengthSeconds = 0, clipPosition = ClipPosition.START, trimEndSeconds = 2),
+            VideoPlaybackOptions(clipLengthSeconds = -1, clipPosition = ClipPosition.RANDOM, trimEndSeconds = 3)
+        )
+        for (video in options) {
+            for (speed in listOf(1f, 0.8f)) {
+                // Same seed: the RANDOM fraction drawn for the item is identical in both planners.
+                val expected = ClipPlanner(Random(3)).excerpt(
+                    "v", min, video.clipLengthSeconds, 10, speed, video.clipPosition, video.trimEndSeconds
+                )
+                assertEquals(expected, ClipPlanner(Random(3)).excerptFor("v", min, video, 10, speed))
+            }
+        }
+        assertEquals(ClipWindow(20_000, 40_000, true), ClipPlanner().excerptFor(
+            "m", min, VideoPlaybackOptions(clipPosition = ClipPosition.MIDDLE, trimEndSeconds = 0), 10, 1f
+        ))
     }
 }

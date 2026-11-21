@@ -16,22 +16,23 @@ class MediaSliderConfiguration(
     var onAssetSelected: (SliderItemViewHolder) -> Unit = {},
     val gradiantOverlay: Boolean,
     val metaDataConfig: List<MetaDataItem>,
-    val display: DisplayOptions = DisplayOptions(),
-    val motion: MotionOptions = MotionOptions(),
-    val transition: TransitionOptions = TransitionOptions(),
-    val loading: LoadingOptions = LoadingOptions(),
-    val videoPlayback: VideoPlaybackOptions = VideoPlaybackOptions(),
+    val options: SlideshowOptions = SlideshowOptions(),
     val useLargeVideoBuffer: Boolean = false,
     /** When true, D-pad Left/Right seek in video; when false (default), they change assets. */
     val dpadSeeksInVideo: Boolean = false,
     /** When true, [nl.giejay.mediaslider.plugin.DateOverlayViewPlugin] shows DATE at the top. */
     val showDateTopLeft: Boolean = false,
-    /** When true, [nl.giejay.mediaslider.plugin.LocationMapViewPlugin] shows an offline map behind the bottom-right metadata. */
-    val showLocationMap: Boolean = false,
     var controllerPlugins: List<SliderControllerPlugin> = emptyList(),
     var viewPlugins: List<SliderViewPlugin<*>> = emptyList(),
     var keyEventPlugins: List<SliderKeyEventPlugin> = emptyList()
 ) {
+    val display: DisplayOptions get() = options.display
+    val motion: MotionOptions get() = options.motion
+    val transition: TransitionOptions get() = options.transition
+    val loading: LoadingOptions get() = options.loading
+    val videoPlayback: VideoPlaybackOptions get() = options.videoPlayback
+    val showLocationMap: Boolean get() = options.showLocationMap
+
     val isGradiantOverlayVisible: Boolean
         get() = (metaDataConfig.isNotEmpty()) && this.gradiantOverlay
 }

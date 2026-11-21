@@ -6,6 +6,7 @@ import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.android.tv.immich.api.util.ApiUtil
 import nl.giejay.android.tv.immich.api.model.Asset
 import nl.giejay.android.tv.immich.card.Card
+import nl.giejay.android.tv.immich.location.AssetMapLocationProvider
 import nl.giejay.android.tv.immich.shared.prefs.PortraitPairing
 import nl.giejay.android.tv.immich.shared.prefs.PreferenceManager
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
@@ -15,23 +16,17 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.random.Random
 
 /**
  * Turns assets into slider pages, pairing portrait photos per [options].
  *
- * @param keepOrder keep the given order (albums, folders, timeline) instead of shuffling
+ * @param keepOrder keep the given order (albums, folders, timeline); see [groupForSlider]
  * @param keepAssetId an asset the user explicitly opened; it is never filtered out
- * @param random source of the shuffle used when [keepOrder] is false and pairing is enabled
  */
 fun List<Asset>.toSliderItems(keepOrder: Boolean,
                               options: SliderItemOptions,
-                              keepAssetId: String? = null,
-                              random: Random = Random.Default): List<SliderItemViewHolder> {
-    val groups = groupForSlider(this, keepOrder, options, keepAssetId)
-    val shuffle = !keepOrder && options.pairing != PortraitPairing.OFF
-    return (if (shuffle) groups.shuffled(random) else groups).toSliderPages()
-}
+                              keepAssetId: String? = null): List<SliderItemViewHolder> =
+    groupForSlider(this, keepOrder, options, keepAssetId).toSliderPages()
 
 /** Turns groups of one asset, or two portrait photos side by side, into slider pages. */
 fun List<List<Asset>>.toSliderPages(): List<SliderItemViewHolder> = map { group ->
@@ -50,7 +45,7 @@ fun List<List<Asset>>.toSliderPages(): List<SliderItemViewHolder> = map { group 
 internal fun findClosestPartner(portrait: Asset,
                                 candidates: List<Asset>,
                                 pairing: PortraitPairing,
-                                accept: (Asset) -> Boolean = { true }): Asset? {
+                                accept: (Asset) -> Boolean): Asset? {
     val keys = pairKeys(listOf(portrait) + candidates.filter { it.id != portrait.id && accept(it) })
     val first = keys.first()
     return keys.drop(1)
@@ -65,8 +60,7 @@ internal fun findClosestPartner(portrait: Asset,
  *
  * Portrait videos are dropped unless [options] shows them or the asset is [keepAssetId].
  * With [keepOrder] only directly following assets are paired. Without it, each portrait photo
- * is paired with the matching remaining portrait photo closest in capture time; the groups are
- * returned unshuffled and [toSliderItems] shuffles them.
+ * is paired with the matching remaining portrait photo closest in capture time.
  */
 internal fun groupForSlider(assets: List<Asset>,
                             keepOrder: Boolean,
@@ -238,24 +232,28 @@ internal fun Asset.captureTime(): Date? = this.exifInfo?.dateTimeOriginal ?: thi
 
 private fun String.normalizedPlace(): String? = this.trim().lowercase(Locale.ROOT).takeIf { it.isNotEmpty() }
 
+/**
+ * Displayed (width, height) of the asset. EXIF width/height are stored before rotation and
+ * orientations 5..8 are rotated by 90 degrees, so those are swapped. Non-positive sizes are null.
+ */
+private fun Asset.displaySize(): Pair<Int?, Int?> {
+    val exifW = this.exifInfo?.exifImageWidth?.takeIf { it > 0 }
+    val exifH = this.exifInfo?.exifImageHeight?.takeIf { it > 0 }
+    val rotated = (this.exifInfo?.orientation ?: 1) in 5..8
+    return if (rotated) exifH to exifW else exifW to exifH
+}
+
 /** True when the asset is a video whose displayed orientation (EXIF rotation 5-8 swaps width/height) is portrait. */
-fun Asset.isPortraitVideo(): Boolean {
+internal fun Asset.isPortraitVideo(): Boolean {
     if (this.type != SliderItemType.VIDEO.toString()) return false
-    val width = this.exifInfo?.exifImageWidth ?: return false
-    val height = this.exifInfo.exifImageHeight ?: return false
-    if (width <= 0 || height <= 0) return false
-    val rotated = this.exifInfo.orientation in listOf(5, 6, 7, 8)
-    val displayWidth = if (rotated) height else width
-    val displayHeight = if (rotated) width else height
+    val (displayWidth, displayHeight) = displaySize()
+    if (displayWidth == null || displayHeight == null) return false
     return displayHeight > displayWidth
 }
 
 fun Asset.toSliderItem(): SliderItem {
     val itemType = SliderItemType.valueOf(this.type.uppercase())
-    // EXIF width/height are stored before rotation; orientations 5..8 are rotated by 90 degrees.
-    val exifW = this.exifInfo?.exifImageWidth?.takeIf { it > 0 }
-    val exifH = this.exifInfo?.exifImageHeight?.takeIf { it > 0 }
-    val swap = (this.exifInfo?.orientation ?: 1) in 5..8
+    val (displayWidth, displayHeight) = displaySize()
     return SliderItem(
         this.id,
         ApiUtil.getFileUrl(
@@ -270,11 +268,10 @@ fun Asset.toSliderItem(): SliderItem {
         ApiUtil.getThumbnailUrl(this.id, "preview", PreferenceManager.get(SLIDER_LOAD_EDITED_PHOTO)),
         isPanorama = this.isPanoramaImage(),
         isFavorite = this.isFavorite,
-        width = if (swap) exifH else exifW,
-        height = if (swap) exifW else exifH,
+        width = displayWidth,
+        height = displayHeight,
         durationMs = if (itemType == SliderItemType.VIDEO) parseImmichDurationMs(this.duration) else null,
-        geoLocationProvider = AssetMetaDataMapping.geoLocationProviderFor(this),
-        locationEstimateProvider = AssetMetaDataMapping.locationEstimateProviderFor(this)
+        locationProvider = AssetMapLocationProvider(this)
     )
 }
 

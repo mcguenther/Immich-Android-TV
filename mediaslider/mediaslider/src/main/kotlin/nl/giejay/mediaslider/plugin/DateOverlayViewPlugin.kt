@@ -14,6 +14,7 @@ import nl.giejay.mediaslider.model.MetaDataType
 import nl.giejay.mediaslider.model.SliderItem
 import nl.giejay.mediaslider.model.SliderItemViewHolder
 import nl.giejay.mediaslider.util.OverlayFade
+import nl.giejay.mediaslider.util.OverlaySwitcher
 
 /**
  * Optional top-of-screen date overlay with a dark-to-transparent scrim.
@@ -25,7 +26,7 @@ import nl.giejay.mediaslider.util.OverlayFade
  */
 class DateOverlayViewPlugin : SliderViewPlugin<Unit?> {
     private val views = arrayOfNulls<TextView>(2)
-    private var front = 0
+    private val switcher = OverlaySwitcher()
     private var config: MediaSliderConfiguration? = null
 
     /** Asset the front view shows or is about to show; guards late results. */
@@ -64,8 +65,8 @@ class DateOverlayViewPlugin : SliderViewPlugin<Unit?> {
         // A hard cut: end the fade at once.
         views.forEach { it?.animate()?.cancel() }
         views.forEachIndexed { i, view ->
-            view?.alpha = if (i == front && !view?.text.isNullOrEmpty()) 1f else 0f
-            if (i != front) view?.visibility = View.GONE
+            view?.alpha = if (i == switcher.front && !view.text.isNullOrEmpty()) 1f else 0f
+            if (i != switcher.front) view?.visibility = View.GONE
         }
     }
 
@@ -112,14 +113,14 @@ class DateOverlayViewPlugin : SliderViewPlugin<Unit?> {
             val value = sliderItem.get(MetaDataType.DATE).orEmpty().trim()
             withContext(Dispatchers.Main) {
                 if (pendingDateAssetId != sliderItem.id) return@withContext
-                swapTo(value, fadeMs, fadeMs - (SystemClock.uptimeMillis() - started))
+                swapTo(value, fadeMs, OverlayFade.remainingFadeMs(fadeMs, started, SystemClock.uptimeMillis(), minOf(OverlayFade.LATE_FADE_MS, fadeMs)))
             }
         }
     }
 
     private fun swapTo(value: String, fadeMs: Long, remainingMs: Long) {
-        val outgoing = views[front] ?: return
-        val incoming = views[1 - front] ?: return
+        val outgoing = views[switcher.front] ?: return
+        val incoming = views[switcher.back] ?: return
         val shown = outgoing.text.toString()
         if (value.isNotEmpty() && value == shown && outgoing.visibility == View.VISIBLE) {
             // Same date: leave it alone (also settles a half-faded outgoing view of an aborted fade).
@@ -132,7 +133,7 @@ class DateOverlayViewPlugin : SliderViewPlugin<Unit?> {
         }
         val cfg = config
         val interpolator = cfg?.let { OverlayFade.interpolator(it.transition) }
-        val duration = if (fadeMs <= 0L) 0L else remainingMs.coerceAtLeast(OverlayFade.LATE_FADE_MS.coerceAtMost(fadeMs))
+        val duration = if (fadeMs <= 0L) 0L else remainingMs
 
         outgoing.animate().cancel()
         incoming.animate().cancel()
@@ -158,6 +159,6 @@ class DateOverlayViewPlugin : SliderViewPlugin<Unit?> {
                 incoming.visibility = View.GONE
             }
         }
-        front = 1 - front
+        switcher.begin()
     }
 }

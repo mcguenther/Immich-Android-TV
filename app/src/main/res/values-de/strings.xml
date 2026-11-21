@@ -63,8 +63,6 @@
     <string name="screensaver">Bildschirmschoner</string>
     <string name="debug">Debug</string>
     <string name="donate">Spenden</string>
-    <string name="use_hd_thumbnails">Hochauflösende Vorschaubilder verwenden</string>
-    <string name="use_hd_thumbnails_text">Statt der Originalbilder hochauflösende Vorschaubilder verwenden. Beschleunigt das Laden erheblich.</string>
     <string name="show_partner_photos_in_timeline">Partnerfotos in der Zeitleiste anzeigen</string>
     <string name="show_partner_photos_in_timeline_desc">Von deinem Partner geteilte Fotos zusätzlich in der Haupt-Zeitleiste anzeigen, nicht nur in der Foto- und Suchansicht.</string>
     <string name="albums_sorting_text">Reihenfolge der Alben festlegen</string>
@@ -89,7 +87,6 @@
     <string name="screensaver_not_possible_title">Bildschirmschoner kann nicht festgelegt werden</string>
     <string name="screensaver_not_possible">Der Bildschirmschoner konnte wegen eines ungültigen Hostnamens oder API-Schlüssels nicht gestartet werden.</string>
     <string name="close">Schließen</string>
-    <string name="interval">Intervall</string>
     <string name="screensaver_interval_desc">Sekunden pro Foto im Bildschirmschoner</string>
     <string name="interval_screensaver">Intervall (Bildschirmschoner)</string>
     <string name="show_media_count">Anzahl der Medien anzeigen</string>
@@ -102,8 +99,6 @@
     <string name="show_date_screensaver">Datum des Mediums im Bildschirmschoner anzeigen</string>
     <string name="show_clock">Uhr anzeigen</string>
     <string name="show_clock_screensaver">Uhr im Bildschirmschoner anzeigen</string>
-    <string name="slide_new_asset_in">Neues Medium hineinschieben</string>
-    <string name="slide_new_asset_in_desc">Neues Medium beim Wechsel hineinschieben</string>
     <string name="set_albums_screensaver">Alben für den Bildschirmschoner festlegen</string>
     <string name="set_albums_screensaver_desc">Alben festlegen, die im Bildschirmschoner angezeigt werden</string>
     <string name="set_albums_screensaver_error">Lege in den Einstellungen des Bildschirmschoners die anzuzeigenden Immich-Alben fest</string>
@@ -124,8 +119,6 @@
     <!-- Slider/viewer preferences -->
     <string name="interval_slideshow">Intervall (Diashow)</string>
     <string name="interval_slideshow_desc">Sekunden pro Foto in der Diashow (Alben, Zeitleiste). Videos richten sich nach der Cliplänge.</string>
-    <string name="slide_animation_speed_ms">Geschwindigkeit der Wischanimation (ms)</string>
-    <string name="slide_animation_speed_desc">Geschwindigkeit der Wischanimation in Millisekunden</string>
     <string name="show_description_slideshow">Beschreibung anzeigen</string>
     <string name="show_description_slideshow_desc">Beschreibung des Mediums in der Diashow anzeigen</string>
     <string name="show_media_count_slideshow">Anzahl der Medien anzeigen</string>
@@ -139,26 +132,12 @@
     <string name="show_city_desc">Ort des Mediums in der Diashow anzeigen</string>
     <string name="customize_metadata_viewer">Metadaten anpassen</string>
     <string name="configure_metadata_viewer">Festlegen, was in der Ansicht angezeigt wird</string>
-    <string name="merge_portrait_photos">Hochkantfotos paaren</string>
-    <string name="merge_portrait_photos_desc">Zwei Hochkantfotos nebeneinander anzeigen</string>
-    <string name="safe_center_crop_max_cutoff_height">Max. Beschnitt der Höhe (%)</string>
-    <string name="safe_center_crop_max_cutoff_height_desc">Maximaler Anteil der Bildhöhe, der beim sicheren Zuschnitt abgeschnitten wird</string>
-    <string name="safe_center_crop_max_cutoff_width">Max. Beschnitt der Breite (%)</string>
-    <string name="safe_center_crop_max_cutoff_width_desc">Maximaler Anteil der Bildbreite, der beim sicheren Zuschnitt abgeschnitten wird</string>
-    <string name="photo_transformation">Fotoanpassung</string>
-    <string name="photo_transformation_desc">Fotoanpassung</string>
     <string name="force_original_video">Originalvideo erzwingen</string>
     <string name="force_original_video_desc">Originalvideo abspielen, auch wenn eine transkodierte Version verfügbar ist</string>
     <string name="dpad_seek_in_video">Steuerkreuz spult im Video</string>
     <string name="dpad_seek_in_video_desc">Links/Rechts springt ca. 10 s im Video, statt das Medium zu wechseln. Vor- und Zurückspulen auf der Fernbedienung spult immer. Standardmäßig aus.</string>
     <string name="load_edited_photo">Bearbeitete Fotos laden</string>
     <string name="load_edited_photo_desc">Die bearbeitete Version von Fotos statt des Originals laden</string>
-    <string name="zoom_scroll_panoramas">Zoom- und Schwenkeffekt</string>
-    <string name="zoom_scroll_panoramas_desc">In Diashows Zoom- und Schwenkeffekte auf einzelne Fotos anwenden. Panoramafotos werden automatisch bildschirmfüllend gezoomt und von unten nach oben bzw. von links nach rechts gescrollt.</string>
-    <string name="zoom_effect_percent">Zoomstärke (%)</string>
-    <string name="zoom_effect_percent_desc">Stärke des Zoomeffekts anpassen</string>
-    <string name="pan_effect_percent">Schwenkstärke (%)</string>
-    <string name="pan_effect_percent_desc">Stärke des Schwenkeffekts anpassen</string>
 
     <!-- Other preferences -->
     <string name="photos_in_albums">Fotos in Alben</string>
@@ -295,10 +274,7 @@
     <string name="favorite_remove_failed">Entfernen aus Favoriten fehlgeschlagen</string>
 
     <!-- Slideshow redesign: menu -->
-    <string name="slideshow_settings_desc">Darstellung, Bewegung, Hochkant-Paare, Ablauf, Laden</string>
     <string name="browse_settings">Durchsuchen</string>
-    <string name="browse_settings_desc">Allgemein, Sortierung, Inhalt</string>
-    <string name="slideshow_shared_note">Gilt für Diashows in Alben, der Zeitleiste und dem Bildschirmschoner.</string>
     <string name="slideshow_display">Darstellung</string>
     <string name="slideshow_display_desc">Füllen, max. Beschnitt, Ränder</string>
     <string name="slideshow_motion">Bewegung</string>
@@ -327,9 +303,9 @@
     <string name="slideshow_video_trim_end_off">Aus</string>
     <string name="screensaver_content">Inhalt</string>
     <string name="screensaver_content_desc">Quelle, Alben, Personen, Videos</string>
-    <string name="screensaver_timing_desc">Intervall und Ton</string>
+    <string name="screensaver_timing_desc">Intervall, Übergang und Ton</string>
     <string name="screensaver_appearance_link">Darstellung, Bewegung &amp; Hochkant-Paare</string>
-    <string name="screensaver_appearance_link_desc">Wird von der Diashow übernommen, damit beide gleich aussehen</string>
+    <string name="screensaver_appearance_link_desc">Anzeige, Bewegung, Hochkant-Paare, Videos und Qualität, gemeinsam mit der Diashow</string>
 
     <!-- Slideshow redesign: display -->
     <string name="slideshow_fill_mode">Füllmodus</string>
@@ -394,7 +370,6 @@
     <string name="slideshow_prefetch">Vorladen</string>
     <string name="slideshow_prefetch_desc">Kommende Fotos und Videoanfänge im Hintergrund laden, damit sie sofort erscheinen</string>
     <string name="slideshow_prefetch_off">Aus</string>
-    <string name="slideshow_prefetch_n">%d Medien im Voraus</string>
     <string name="slideshow_video_cache">Videocache</string>
     <string name="slideshow_video_cache_desc">Speicher für vorgeladene Videoanfänge</string>
     <string name="show_location_map">Standortkarte anzeigen</string>

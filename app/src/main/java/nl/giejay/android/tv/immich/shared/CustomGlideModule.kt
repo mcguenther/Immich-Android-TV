@@ -8,7 +8,6 @@ import com.bumptech.glide.GlideBuilder
 import com.bumptech.glide.Registry
 import com.bumptech.glide.annotation.GlideModule
 import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader
-import com.bumptech.glide.load.engine.bitmap_recycle.LruBitmapPool
 import com.bumptech.glide.load.engine.cache.LruResourceCache
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
@@ -60,8 +59,8 @@ class CustomGlideModule : AppGlideModule() {
     }
 
     /**
-     * Enlarges the memory cache and bitmap pool so the slides prefetched by the slideshow stay in
-     * memory until they are shown. Glide's default is kept on low-RAM devices. The size is computed
+     * Enlarges the memory cache (at most 1/5 of the heap; Glide's default bitmap pool is kept) so the
+     * slides prefetched by the slideshow stay in memory until they are shown. Glide's default is kept on low-RAM devices. The size is computed
      * once when Glide starts, so a later change of the prefetch count applies after a restart.
      */
     override fun applyOptions(context: Context, builder: GlideBuilder) {
@@ -77,14 +76,11 @@ class CustomGlideModule : AppGlideModule() {
             isLowRamDevice = activityManager.isLowRamDevice
         ) ?: return
         builder.setMemoryCache(LruResourceCache(bytes))
-        builder.setBitmapPool(LruBitmapPool(bytes))
     }
 
-    /** Preference read guarded: at Glide start the preferences are normally initialised already. */
-    private fun prefetchCount(): Int = try {
-        PreferenceManager.get(SLIDESHOW_PREFETCH_COUNT)
-    } catch (e: UninitializedPropertyAccessException) {
-        SLIDESHOW_PREFETCH_COUNT.defaultValue
+    /** The preferences are initialised already: the `prefs` field reads them at construction. */
+    private fun prefetchCount(): Int {
+        return PreferenceManager.get(SLIDESHOW_PREFETCH_COUNT)
     }
 
     override fun registerComponents(

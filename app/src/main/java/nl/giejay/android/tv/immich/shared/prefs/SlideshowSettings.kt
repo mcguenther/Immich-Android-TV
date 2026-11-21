@@ -4,6 +4,7 @@ import nl.giejay.android.tv.immich.shared.util.SliderItemOptions
 import nl.giejay.mediaslider.config.DisplayOptions
 import nl.giejay.mediaslider.config.LoadingOptions
 import nl.giejay.mediaslider.config.MotionOptions
+import nl.giejay.mediaslider.config.SlideshowOptions
 import nl.giejay.mediaslider.config.TransitionOptions
 import nl.giejay.mediaslider.config.VideoPlaybackOptions
 
@@ -13,6 +14,25 @@ import nl.giejay.mediaslider.config.VideoPlaybackOptions
  * reads its look and behaviour from here, so they cannot drift apart.
  */
 object SlideshowSettings {
+
+    /**
+     * Everything the slideshow settings contribute to a [nl.giejay.mediaslider.config.MediaSliderConfiguration]
+     * on [screen]. The option groups are shared by all screens; the per-screen toggles read the
+     * screensaver's own preference on [MetaDataScreen.SCREENSAVER] and the viewer's on [MetaDataScreen.VIEWER].
+     */
+    fun sliderOptions(screen: MetaDataScreen): SlideshowOptions = SlideshowOptions(
+        display = display(),
+        motion = motion(),
+        transition = transition(),
+        loading = loading(),
+        videoPlayback = videoPlayback(),
+        showLocationMap = PreferenceManager.get(
+            when (screen) {
+                MetaDataScreen.SCREENSAVER -> SCREENSAVER_SHOW_LOCATION_MAP
+                MetaDataScreen.VIEWER -> SLIDER_SHOW_LOCATION_MAP
+            }
+        )
+    )
 
     fun display(): DisplayOptions = DisplayOptions(
         fillMode = PreferenceManager.get(SLIDESHOW_FILL_MODE).value,

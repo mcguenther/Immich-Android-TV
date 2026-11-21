@@ -1,5 +1,6 @@
 package nl.giejay.mediaslider.adapter
 
+import com.zeuskartik.mediaslider.BuildConfig
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.drawable.BitmapDrawable
@@ -169,6 +170,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                     false
                 }
             }
+            view.setBackdrop(model.mainItem.thumbnailUrl)
         }
         view?.tag = "view$position"
         view?.setTag(R.id.slider_page_item, model)
@@ -195,7 +197,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
     /**
      * Binds one photo to its slot.
      *
-     * Page structure (also for the next agent's motion code): the clipping slot is the parent of the mover (ids slot_main/slot_left/slot_right),
+     * Page structure (relevant for the motion code): the clipping slot is the parent of the mover (ids slot_main/slot_left/slot_right),
      * `moverId` (a [TouchImageView]) is the "mover" laid out at the [FitResult]'s displayW x displayH,
      * centered in the slot (larger than the slot when the photo covers it, so the cropped parts still
      * exist and can be revealed by translating the mover). The current [FitResult] sits in the tag
@@ -267,7 +269,7 @@ class ScreenSlidePagerAdapter(private val context: Context,
                     // photos), so the real aspect ratio wins when it differs.
                     // Hint the GPU upload now (usually while the page is still off screen) instead of at its first draw.
                     (resource as? BitmapDrawable)?.bitmap?.prepareToDraw()
-                    loadedSources.getOrPut(position) { mutableListOf() }.add(dataSource.name)
+                    if (BuildConfig.DEBUG) loadedSources.getOrPut(position) { mutableListOf() }.add(dataSource.name)
                     val rw = resource.intrinsicWidth
                     val rh = resource.intrinsicHeight
                     if (rw > 0 && rh > 0) {

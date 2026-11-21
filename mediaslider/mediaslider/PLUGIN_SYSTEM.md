@@ -114,7 +114,7 @@ MediaSliderConfiguration(
 
 - `MetadataViewPlugin`: Renders asset metadata (description, date, etc.).
 - `DateOverlayViewPlugin`: Optional top-of-screen DATE overlay with a dark scrim (`MediaSliderConfiguration.showDateTopLeft`). Bottom DATE metadata is unchanged.
-- `LocationMapViewPlugin`: Optional offline map behind the bottom-right metadata (`MediaSliderConfiguration.showLocationMap`). Draws the bundled Natural Earth 1:50m land silhouette and country borders around `SliderItem.getGeoLocation()`; assets without coordinates show no map.
+- `LocationMapViewPlugin`: Optional offline map behind the bottom-right metadata (`MediaSliderConfiguration.showLocationMap`). Draws the bundled Natural Earth 1:50m land silhouette and country borders around `SliderItem.getGeoLocation()`; assets without coordinates show an estimated location with a softer mark when one is possible.
 - `MediaRemoteControlsKeyEventPlugin`: Remote FF/RW tap-vs-hold seek, photo play/pause slideshow, opt-in D-pad seek, Back exits slideshow without pausing.
 - `FavoriteButtonControllerPlugin`: Adds a toggle for favoriting assets.
 - `ExternalPlayerButtonControllerPlugin`: Adds a button to open videos in an external player.

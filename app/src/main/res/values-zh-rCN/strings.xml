@@ -148,8 +148,8 @@
     <string name="show_date_top_left_viewer_desc">在照片/视频查看器中以左上角浮层显示媒体日期，与底部元数据互不影响。</string>
     <string name="show_date_top_left_screensaver_desc">在屏保中以左上角浮层显示媒体日期，与底部元数据互不影响。</string>
     <string name="show_location_map">显示位置地图</string>
-    <string name="show_location_map_viewer_desc">在照片/视频查看器的位置信息后面显示一张离线小地图（陆地轮廓和国界），方便了解地点所在位置。仅适用于带有 GPS 数据的媒体。</string>
-    <string name="show_location_map_screensaver_desc">在屏保的位置信息后面显示一张离线小地图（陆地轮廓和国界），方便了解地点所在位置。仅适用于带有 GPS 数据的媒体。</string>
+    <string name="show_location_map_viewer_desc">在照片/视频查看器的位置信息后面显示一张离线小地图（陆地轮廓和国界），方便了解地点所在位置。对于没有 GPS 数据的媒体，仅在能够估算其位置时显示。</string>
+    <string name="show_location_map_screensaver_desc">在屏保的位置信息后面显示一张离线小地图（陆地轮廓和国界），方便了解地点所在位置。对于没有 GPS 数据的媒体，仅在能够估算其位置时显示。</string>
     <string name="estimate_camera_locations">估算相机照片的拍摄地点</string>
     <string name="estimate_camera_locations_desc">没有 GPS 的照片（例如来自相机）会根据前后拍摄的带 GPS 的照片（例如手机照片）粗略定位。地图上显示为圆环或柔和的云，地点显示为“约 Innsbruck”。不会修改 Immich 中的任何内容。</string>
     <string name="estimate_locations_with_partners">使用伙伴照片进行估算</string>

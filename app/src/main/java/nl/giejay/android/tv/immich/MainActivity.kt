@@ -27,7 +27,6 @@ import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_INTERVAL
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_DATE_TOP_LEFT
-import nl.giejay.android.tv.immich.shared.prefs.SLIDER_SHOW_LOCATION_MAP
 import nl.giejay.android.tv.immich.shared.util.toSliderItem
 import nl.giejay.android.tv.immich.shared.viewmodel.KeyEventsViewModel
 import nl.giejay.android.tv.immich.slider.ImmichMediaSliderArgs
@@ -136,15 +135,10 @@ class MainActivity : FragmentActivity() {
                 loadMore = null,
                 gradiantOverlay = false,
                 metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.VIEWER),
-                display = SlideshowSettings.display(),
-                motion = SlideshowSettings.motion(),
-                transition = SlideshowSettings.transition(),
-                loading = SlideshowSettings.loading(),
-                videoPlayback = SlideshowSettings.videoPlayback(),
+                options = SlideshowSettings.sliderOptions(MetaDataScreen.VIEWER),
                 useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
                 dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
-                showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT),
-                showLocationMap = PreferenceManager.get(SLIDER_SHOW_LOCATION_MAP)
+                showDateTopLeft = PreferenceManager.get(SLIDER_SHOW_DATE_TOP_LEFT)
             )
             withContext(Dispatchers.Main) {
                 ViewModelProvider(this@MainActivity)[MediaSliderViewModel::class.java].configuration = config

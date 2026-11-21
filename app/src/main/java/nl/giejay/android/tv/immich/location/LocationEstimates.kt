@@ -1,20 +1,27 @@
 package nl.giejay.android.tv.immich.location
 
 import arrow.core.Either
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.job
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import nl.giejay.android.tv.immich.ImmichApplication
 import nl.giejay.android.tv.immich.api.ApiClient
 import nl.giejay.android.tv.immich.api.ApiClientConfig
 import nl.giejay.android.tv.immich.api.MAX_SEARCH_PAGE_SIZE
 import nl.giejay.android.tv.immich.api.model.Asset
-import nl.giejay.android.tv.immich.shared.util.AssetDetailCache
 import nl.giejay.android.tv.immich.shared.util.AssetMetaDataMapping
+import nl.giejay.android.tv.immich.shared.util.fetchAssetDetailDetached
 import timber.log.Timber
 import java.io.File
 import java.time.Instant
@@ -23,8 +30,15 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 
-private const val HOUR_MS = 3_600_000L
-private const val DAY_MS = 24 * HOUR_MS
+internal const val HOUR_MS = 3_600_000L
+internal const val DAY_MS = 24 * HOUR_MS
+
+/** Cancels the running coroutines of this scope and waits until they have finished; the scope stays usable. */
+internal suspend fun CoroutineScope.cancelChildrenAndJoin() {
+    val job = coroutineContext.job
+    job.cancelChildren()
+    job.children.toList().joinAll()
+}
 
 /**
  * Local clock time of the capture, encoded as if it were UTC. Uses Immich's time-zone-free `localDateTime`
@@ -64,12 +78,11 @@ data class CachedAnchorDay(val fetchedAtMs: Long, val anchors: List<LocationAnch
 interface AnchorDayStore {
     fun load(utcDay: Long): CachedAnchorDay?
     fun save(utcDay: Long, day: CachedAnchorDay)
-}
 
-/** No persistence (tests, or no app context yet). */
-object NoAnchorDayStore : AnchorDayStore {
-    override fun load(utcDay: Long): CachedAnchorDay? = null
-    override fun save(utcDay: Long, day: CachedAnchorDay) = Unit
+    /** Saves the days of one request; a store with housekeeping does it once for all of them. */
+    fun saveAll(days: Map<Long, CachedAnchorDay>) {
+        days.forEach { (utcDay, day) -> save(utcDay, day) }
+    }
 }
 
 /**
@@ -101,8 +114,21 @@ class FileAnchorDayStore(private val directory: () -> File?) : AnchorDayStore {
         }
     }
 
-    override fun save(utcDay: Long, day: CachedAnchorDay) {
+    override fun save(utcDay: Long, day: CachedAnchorDay) = saveAll(mapOf(utcDay to day))
+
+    /** Writes every day, then prunes once (listing the directory is the expensive part). */
+    override fun saveAll(days: Map<Long, CachedAnchorDay>) {
+        if (days.isEmpty()) return
         val dir = directory() ?: return
+        days.forEach { (utcDay, day) -> write(dir, utcDay, day) }
+        try {
+            prune(dir)
+        } catch (e: Exception) {
+            Timber.w(e, "Could not prune the location cache")
+        }
+    }
+
+    private fun write(dir: File, utcDay: Long, day: CachedAnchorDay) {
         try {
             dir.mkdirs()
             val clean = { value: String? -> value.orEmpty().replace('\t', ' ').replace('\n', ' ').replace('\r', ' ') }
@@ -117,7 +143,6 @@ class FileAnchorDayStore(private val directory: () -> File?) : AnchorDayStore {
             val tmp = File(dir, "$utcDay.tmp")
             tmp.writeText(text)
             if (!tmp.renameTo(File(dir, "$utcDay.tsv"))) tmp.delete()
-            prune(dir)
         } catch (e: Exception) {
             Timber.w(e, "Could not write location cache for day $utcDay")
         }
@@ -147,11 +172,11 @@ object LocationAnchorRepository {
     private const val MAX_DAYS_IN_MEMORY = 120
     private const val MAX_PAGES_PER_DAY = 5
     /** Local clock time differs from UTC by at most 14 hours (UTC+14). */
-    internal const val MAX_ZONE_OFFSET_MS = 14 * HOUR_MS
+    private const val MAX_ZONE_OFFSET_MS = 14 * HOUR_MS
     /** Days within this distance of now may still receive uploads. */
     private const val RECENT_DAYS_MS = 2 * DAY_MS
-    internal const val RECENT_MAX_AGE_MS = 30 * 60_000L
-    internal const val OLD_MAX_AGE_MS = 30 * DAY_MS
+    private const val RECENT_MAX_AGE_MS = 30 * 60_000L
+    private const val OLD_MAX_AGE_MS = 30 * DAY_MS
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -173,15 +198,15 @@ object LocationAnchorRepository {
 
     /** Test seam: one page of assets in a UTC range, and whether there are more pages. */
     @Volatile
-    var fetchPage = defaultFetchPage
+    internal var fetchPage = defaultFetchPage
 
     /** Test seam: persistent day cache. */
     @Volatile
-    var store: AnchorDayStore = defaultStore
+    internal var store: AnchorDayStore = defaultStore
 
     /** Test seam: current time. */
     @Volatile
-    var now: () -> Long = { System.currentTimeMillis() }
+    internal var now: () -> Long = { System.currentTimeMillis() }
 
     private fun isFresh(utcDay: Long, day: CachedAnchorDay): Boolean {
         val dayEnd = (utcDay + 1) * DAY_MS
@@ -190,7 +215,7 @@ object LocationAnchorRepository {
     }
 
     /** Anchors captured on the UTC day [utcDay] (days since 1970-01-01), or null when Immich could not be asked. */
-    suspend fun anchorsOfUtcDay(utcDay: Long): List<LocationAnchor>? = anchorsOfUtcDays(utcDay..utcDay)
+    internal suspend fun anchorsOfUtcDay(utcDay: Long): List<LocationAnchor>? = anchorsOfUtcDays(utcDay..utcDay)
 
     /**
      * Anchors of all UTC days in [days]. Cached days come from memory or the file cache; the missing ones are
@@ -200,11 +225,26 @@ object LocationAnchorRepository {
         if (days.isEmpty()) return emptyList()
         val result = mutableListOf<LocationAnchor>()
         val waits = mutableListOf<Pair<Long, Deferred<Map<Long, List<LocationAnchor>>?>>>()
+        // Memory and running requests first; the file cache is read outside the lock (file IO).
+        val notInMemory = mutableListOf<Long>()
         mutex.withLock {
-            val missing = mutableListOf<Long>()
             for (day in days) {
                 val cached = memory[day]?.takeIf { isFresh(day, it) }
-                    ?: store.load(day)?.takeIf { isFresh(day, it) }?.also { memory[day] = it }
+                when {
+                    cached != null -> result += cached.anchors
+                    inFlight[day] != null -> waits += day to inFlight.getValue(day)
+                    else -> notInMemory += day
+                }
+            }
+        }
+        if (notInMemory.isEmpty()) return awaitAll(result, waits)
+        val fromDisk = notInMemory.associateWith { day -> store.load(day)?.takeIf { isFresh(day, it) } }
+        mutex.withLock {
+            val missing = mutableListOf<Long>()
+            for (day in notInMemory) {
+                // Checked again: another lookup may have loaded or started the day while the lock was free.
+                val cached = memory[day]?.takeIf { isFresh(day, it) }
+                    ?: fromDisk[day]?.also { memory[day] = it }
                 when {
                     cached != null -> result += cached.anchors
                     inFlight[day] != null -> waits += day to inFlight.getValue(day)
@@ -214,17 +254,29 @@ object LocationAnchorRepository {
             for (run in contiguousRuns(missing)) {
                 // Own scope: a slide change cancels the caller, but the request still fills the cache.
                 val deferred = scope.async {
-                    val loaded = load(run)
-                    mutex.withLock {
-                        val fetchedAt = now()
-                        loaded?.complete?.forEach { (day, anchors) ->
-                            val entry = CachedAnchorDay(fetchedAt, anchors)
-                            memory[day] = entry
-                            store.save(day, entry)
+                    val self = coroutineContext.job
+                    var loaded: Loaded? = null
+                    try {
+                        loaded = load(run)
+                        loaded?.all
+                    } finally {
+                        // Also on an exception or cancellation, so a failed request is tried again next time
+                        // instead of every later lookup of these days waiting for it.
+                        withContext(NonCancellable) {
+                            val fetchedAt = now()
+                            val entries = loaded?.complete?.mapValues { (_, anchors) -> CachedAnchorDay(fetchedAt, anchors) }.orEmpty()
+                            mutex.withLock {
+                                memory.putAll(entries)
+                                run.forEach { if (inFlight[it] === self) inFlight.remove(it) }
+                            }
+                            // Outside the lock: writes the files and prunes the directory once for the whole request.
+                            try {
+                                store.saveAll(entries)
+                            } catch (e: Exception) {
+                                Timber.w(e, "Could not save location cache for $run")
+                            }
                         }
-                        run.forEach { inFlight.remove(it) }
                     }
-                    loaded?.all
                 }
                 run.forEach { day ->
                     inFlight[day] = deferred
@@ -232,6 +284,14 @@ object LocationAnchorRepository {
                 }
             }
         }
+        return awaitAll(result, waits)
+    }
+
+    /** Adds the days of the running requests in [waits] to [result]; null when one of them failed. */
+    private suspend fun awaitAll(
+        result: MutableList<LocationAnchor>,
+        waits: List<Pair<Long, Deferred<Map<Long, List<LocationAnchor>>?>>>
+    ): List<LocationAnchor>? {
         for ((day, deferred) in waits) {
             val loaded = deferred.await() ?: return null
             result += loaded[day].orEmpty()
@@ -261,7 +321,8 @@ object LocationAnchorRepository {
 
     private suspend fun load(days: LongRange): Loaded? {
         val after = Instant.ofEpochMilli(days.first * DAY_MS).toString()
-        val before = Instant.ofEpochMilli((days.last + 1) * DAY_MS - 1000).toString()
+        // Last millisecond of the last day (Immich's takenBefore is inclusive; Instant prints the millis).
+        val before = Instant.ofEpochMilli((days.last + 1) * DAY_MS - 1).toString()
         val byDay = days.associateWith { mutableListOf<LocationAnchor>() }
         val maxPages = MAX_PAGES_PER_DAY * (days.last - days.first + 1).toInt()
         var cutOffFrom: Long? = null
@@ -285,6 +346,8 @@ object LocationAnchorRepository {
                     cutOffFrom = assets.lastOrNull()?.fileCreatedAt?.time?.let { Math.floorDiv(it, DAY_MS) } ?: days.first
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.w(e, "Could not load photos with location for $after..$before")
             return null
@@ -314,14 +377,22 @@ object LocationAnchorRepository {
         return anchors
     }
 
-    /** Test helper: forgets the memory cache only, like an app restart. */
-    fun clearMemory() {
-        memory.clear()
-        inFlight.clear()
+    /**
+     * Test helper: forgets the memory cache only, like an app restart. Stops running requests first, so none of
+     * them reaches into the next test; the scope stays usable.
+     */
+    internal fun clearMemory() {
+        runBlocking {
+            scope.cancelChildrenAndJoin()
+            mutex.withLock {
+                memory.clear()
+                inFlight.clear()
+            }
+        }
     }
 
     /** Test helper. */
-    fun clear() {
+    internal fun clear() {
         clearMemory()
         fetchPage = defaultFetchPage
         store = defaultStore
@@ -345,13 +416,14 @@ object LocationEstimateService {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Result>?): Boolean = size > MAX_ENTRIES
     }
     private val inFlight = mutableMapOf<String, Deferred<Result?>>()
+    private val defaultSettings: () -> LocationEstimateSettings = { LocationEstimatePrefs.current() }
 
     /** Cached result; [estimate] is null when there is none. */
     private class Result(val estimate: LocationEstimate?)
 
     /** Test seam for the settings; production reads the preferences. */
     @Volatile
-    var settings: () -> LocationEstimateSettings = { LocationEstimatePrefs.current() }
+    internal var settings: () -> LocationEstimateSettings = defaultSettings
 
     /**
      * Estimate for [asset] (possibly a partial timeline asset; details are loaded when time or owner are
@@ -365,12 +437,19 @@ object LocationEstimateService {
             cache[key]?.let { return it.estimate }
             inFlight.getOrPut(key) {
                 scope.async {
-                    val result = compute(asset, current.includePartners)
-                    mutex.withLock {
-                        if (result != null) cache[key] = result
-                        inFlight.remove(key)
+                    var result: Result? = null
+                    try {
+                        result = compute(asset, current.includePartners)
+                        result
+                    } finally {
+                        // Also on an exception, so a failed lookup is tried again instead of failing forever.
+                        withContext(NonCancellable) {
+                            mutex.withLock {
+                                result?.let { cache[key] = it }
+                                inFlight.remove(key)
+                            }
+                        }
                     }
-                    result
                 }
             }
         }
@@ -380,7 +459,8 @@ object LocationEstimateService {
     /** Null when a lookup failed (not cached, tried again next time). */
     private suspend fun compute(asset: Asset, includePartners: Boolean): Result? {
         val full = if (asset.localDateTime == null || asset.ownerId == null) {
-            AssetDetailCache.get(asset.id).getOrNull() ?: asset
+            // Detached, like the providers: a cancelled lookup must not fail the other waiters of the same asset.
+            fetchAssetDetailDetached(asset.id).getOrNull() ?: asset
         } else {
             asset
         }
@@ -394,10 +474,15 @@ object LocationEstimateService {
         return Result(LocationEstimator.estimate(wallTime, usable))
     }
 
-    /** Test helper. */
-    fun clear() {
-        cache.clear()
-        inFlight.clear()
-        settings = { LocationEstimatePrefs.current() }
+    /** Test helper. Stops running lookups first, so none of them reaches into the next test. */
+    internal fun clear() {
+        runBlocking {
+            scope.cancelChildrenAndJoin()
+            mutex.withLock {
+                cache.clear()
+                inFlight.clear()
+            }
+        }
+        settings = defaultSettings
     }
 }

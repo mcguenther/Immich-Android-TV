@@ -28,7 +28,6 @@ import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_INTERVAL
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_PEOPLE
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_PLAY_SOUND
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_SHOW_DATE_TOP_LEFT
-import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_SHOW_LOCATION_MAP
 import nl.giejay.android.tv.immich.shared.prefs.SCREENSAVER_TYPE
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_DPAD_SEEK_IN_VIDEO
 import nl.giejay.android.tv.immich.shared.prefs.SLIDER_FORCE_ORIGINAL_VIDEO
@@ -80,15 +79,10 @@ internal fun buildScreenSaverConfiguration(
         loadMore,
         gradiantOverlay = true,
         metaDataConfig = PreferenceManager.getAllMetaData(MetaDataScreen.SCREENSAVER),
-        display = SlideshowSettings.display(),
-        motion = SlideshowSettings.motion(),
-        transition = SlideshowSettings.transition(),
-        loading = SlideshowSettings.loading(),
-        videoPlayback = SlideshowSettings.videoPlayback(),
+        options = SlideshowSettings.sliderOptions(MetaDataScreen.SCREENSAVER),
         useLargeVideoBuffer = PreferenceManager.get(SLIDER_FORCE_ORIGINAL_VIDEO),
         dpadSeeksInVideo = PreferenceManager.get(SLIDER_DPAD_SEEK_IN_VIDEO),
         showDateTopLeft = PreferenceManager.get(SCREENSAVER_SHOW_DATE_TOP_LEFT),
-        showLocationMap = PreferenceManager.get(SCREENSAVER_SHOW_LOCATION_MAP),
         controllerPlugins = enabledPlugins.controllerPlugins,
         viewPlugins = enabledPlugins.viewPlugins,
         keyEventPlugins = enabledPlugins.keyEventPlugins

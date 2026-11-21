@@ -5,6 +5,20 @@ package nl.giejay.mediaslider.config
  * hosting app can build them from its own preferences and the slider stays free of app types.
  */
 
+/**
+ * All option groups as one value, so a [MediaSliderConfiguration] takes the slideshow settings in a
+ * single argument. The configuration exposes each group (`config.display`, ...) directly as well.
+ */
+data class SlideshowOptions(
+    val display: DisplayOptions = DisplayOptions(),
+    val motion: MotionOptions = MotionOptions(),
+    val transition: TransitionOptions = TransitionOptions(),
+    val loading: LoadingOptions = LoadingOptions(),
+    val videoPlayback: VideoPlaybackOptions = VideoPlaybackOptions(),
+    /** When true, [nl.giejay.mediaslider.plugin.LocationMapViewPlugin] shows an offline map behind the bottom-right metadata. */
+    val showLocationMap: Boolean = false
+)
+
 /** How a photo or video is scaled into its slot (the full screen, or one half for portrait pairs). */
 enum class FillMode {
     /** Show the whole asset; empty space is filled according to [EdgeFill]. */
@@ -59,7 +73,13 @@ enum class TransitionType { CROSSFADE, SLIDE, NONE }
 data class TransitionOptions(
     val type: TransitionType = TransitionType.CROSSFADE,
     val durationMillis: Int = 1000
-)
+) {
+    /** Transition length in ms that actually runs: 0 for NONE or a non-positive duration. */
+    val effectiveMs: Int get() = if (type == TransitionType.NONE) 0 else durationMillis.coerceAtLeast(0)
+
+    /** True when paging animates (not NONE, duration above zero). */
+    val isAnimated: Boolean get() = effectiveMs > 0
+}
 
 data class LoadingOptions(
     /** Load the original (decoded at screen size) instead of Immich's preview thumbnail. */

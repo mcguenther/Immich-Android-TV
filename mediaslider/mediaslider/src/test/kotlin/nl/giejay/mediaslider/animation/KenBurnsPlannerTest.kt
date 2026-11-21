@@ -74,7 +74,7 @@ class KenBurnsPlannerTest {
             val p = KenBurnsPlanner.plan(1920f, 1080f, 1920f, 1080f, opts, Random(seed))!!
             assertTrue(minOf(p.startScale, p.endScale) >= 1.03f - 1e-5f)
             assertEquals(0.08f, abs(p.endScale - p.startScale), 1e-4f)
-            assertEquals(0f, KenBurnsPlanner.travel(p), eps)
+            assertEquals(0f, travel(p), eps)
         }
     }
 
@@ -140,4 +140,7 @@ class KenBurnsPlannerTest {
     fun panoramaWithNothingToScrollIsNull() {
         assertNull(KenBurnsPlanner.planPanorama(1920f, 1080f, 1920f, 1080f, Random(1)))
     }
+
+    private fun travel(plan: MotionPlan): Float =
+        abs(plan.endTranslationX - plan.startTranslationX) + abs(plan.endTranslationY - plan.startTranslationY)
 }

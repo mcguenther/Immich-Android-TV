@@ -102,8 +102,8 @@ class PortraitPairingLargeSetTest {
         val cityA = a.exifInfo?.city?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: return false
         val cityB = b.exifInfo?.city?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: return false
         if (cityA != cityB) return false
-        val countryA = a.exifInfo?.country?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }
-        val countryB = b.exifInfo?.country?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }
+        val countryA = a.exifInfo.country?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }
+        val countryB = b.exifInfo.country?.trim()?.lowercase(Locale.ROOT)?.takeIf { it.isNotEmpty() }
         return countryA == null || countryB == null || countryA == countryB
     }
 

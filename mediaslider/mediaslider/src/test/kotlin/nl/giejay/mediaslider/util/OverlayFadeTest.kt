@@ -55,4 +55,24 @@ class OverlayFadeTest {
         assertEquals(0, s.begin()) // second quick press: the fading-in layer becomes outgoing
         assertEquals(1, s.back)
     }
+
+    @Test
+    fun switcherCanStartOnTheOtherLayer() {
+        val s = OverlaySwitcher(initialFront = 1)
+        assertEquals(0, s.begin()) // first use lands on layer 0
+        assertEquals(1, s.begin())
+    }
+
+    @Test
+    fun remainingFadeIsWhatIsLeftOfTheTransition() {
+        assertEquals(700L, OverlayFade.remainingFadeMs(1000, startedAt = 100, now = 400))
+    }
+
+    @Test
+    fun lateFadeNeverBelowMinimum() {
+        assertEquals(OverlayFade.LATE_FADE_MS, OverlayFade.remainingFadeMs(1000, 0, 5000))
+        assertEquals(OverlayFade.LATE_FADE_MS, OverlayFade.remainingFadeMs(0, 0, 10))
+        // Date overlay: minimum capped at the fade length itself.
+        assertEquals(100L, OverlayFade.remainingFadeMs(100, 0, 5000, minMs = minOf(OverlayFade.LATE_FADE_MS, 100)))
+    }
 }
