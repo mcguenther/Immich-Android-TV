@@ -116,6 +116,8 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     private val monitorTimeoutRunnable = Runnable { frameMonitor.stop("no idle signal, stopped by timeout") }
     private var destroyed = false
     private var pluginsDestroyed = false
+    /** Between [onPause] and [onResume]. */
+    private var paused = false
     private val ioScope = CoroutineScope(Job() + Dispatchers.IO)
     private data class ViewPluginEntry(val plugin: SliderViewPlugin<Any?>, val state: Any?)
     private val viewPlugins = mutableListOf<ViewPluginEntry>()
@@ -724,20 +726,49 @@ open class MediaSliderView(context: Context) : ConstraintLayout(context) {
     }
 
     /**
-     * Pauses everything that must not run in the background: the player and timers are released and
-     * prefetching is torn down. [onResume] sets prefetching up again.
+     * Lifecycle (the fragment calls these; another activity, e.g. an external video player, pauses and resumes it):
+     * - [onPause] stops what must not run in the background: prefetching is torn down, the next-slide timer and the
+     *   story progress stop, the photo motion freezes and the current player is released (frees the decoder).
+     *   The slideshow keeps its playing state and the view plugins (date, map, metadata) stay attached: they have
+     *   no background work of their own besides one-shot lookups.
+     * - [onResume] sets prefetching up again and continues the slideshow: a photo gets a fresh timer and its motion
+     *   continues; a video page is rebuilt, because its player was released, and plays again once it settles.
+     * - [onDestroy] is the final teardown; only it destroys the plugins.
      */
     fun onPause() {
         tearDownPrefetching()
-        destroyPluginsOnce()
+        if (isConfigReady) {
+            paused = true
+            freezeMotion()
+            // Stops the timer and tells the controller plugins (story progress) the slideshow is on hold.
+            controller.cancelNextAssetTimer()
+        }
         controller.onDestroy()
     }
 
-    /** Restores prefetching (and its video cache) after [onPause]. */
+    /** Continues after [onPause], see there. */
     fun onResume() {
-        if (!isConfigReady || destroyed || prefetcher != null || pagerAdapter == null) return
-        setUpPrefetching()
-        prefetcher?.onPageChanged(mPager.currentItem, config.items, playingBackwards())
+        if (!paused || !isConfigReady || destroyed || pagerAdapter == null) return
+        paused = false
+        if (prefetcher == null) {
+            setUpPrefetching()
+            prefetcher?.onPageChanged(mPager.currentItem, config.items, playingBackwards())
+        }
+        val index = mPager.currentItem
+        when (config.items.getOrNull(index)?.type) {
+            SliderItemType.VIDEO -> mPager.findViewWithTag<ExoPlayerView>("view$index")?.let { page ->
+                // Its player was released: without the page item the adapter treats the page as stale, rebuilds
+                // it with a new player and the pager settles on it again (which prepares and starts the video).
+                page.setTag(R.id.slider_page_item, null)
+                pagerAdapter?.setItems(config.items)
+            }
+            SliderItemType.IMAGE -> if (controller.slideShowPlaying) {
+                controller.setKeepScreenOnFlags()
+                controller.startTimerNextAsset()
+                resumeMotion()
+            }
+            null -> Unit
+        }
     }
 
     /** Final teardown; also safe after [onPause]. */

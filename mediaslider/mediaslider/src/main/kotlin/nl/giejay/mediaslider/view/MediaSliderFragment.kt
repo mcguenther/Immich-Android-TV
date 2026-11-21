@@ -23,7 +23,7 @@ open class MediaSliderFragment : Fragment() {
     }
 
     override fun onPause() {
-        // Releases the player and pauses prefetching; onResume brings prefetching back.
+        // Releases the player and holds the slideshow's background work; onResume continues it.
         view.onPause()
         super.onPause()
     }
