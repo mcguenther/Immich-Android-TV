@@ -74,11 +74,9 @@ class SlidePrefetcher(
      * beginning, plays completely or the duration is unknown. Uses the planner the player uses.
      */
     private fun clipStartFraction(slide: SliderItemViewHolder): Double {
-        val video = config.videoPlayback
         val duration = slide.mainItem.durationMs ?: return 0.0
-        val window = clipPlanner.excerpt(
-            slide.mainItem.id, duration, video.clipLengthSeconds, config.interval, 1f, video.clipPosition, video.trimEndSeconds
-        ) ?: return 0.0
+        val window = clipPlanner.excerptFor(slide.mainItem.id, duration, config.videoPlayback, config.interval, 1f)
+            ?: return 0.0
         return window.startMs.toDouble() / duration
     }
 
